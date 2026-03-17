@@ -1,0 +1,2 @@
+export { ComponentConfigGeneralTab } from './ComponentConfigGeneralTab';
+

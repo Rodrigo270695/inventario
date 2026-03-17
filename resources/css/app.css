@@ -1,0 +1,360 @@
+@import 'tailwindcss';
+
+@import 'tw-animate-css';
+
+@source '../views';
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+    --font-sans:
+        'Instrument Sans', ui-sans-serif, system-ui, sans-serif,
+        'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
+        'Noto Color Emoji';
+
+    --radius-lg: var(--radius);
+    --radius-md: calc(var(--radius) - 2px);
+    --radius-sm: calc(var(--radius) - 4px);
+
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+
+    --color-chart-1: var(--chart-1);
+    --color-chart-2: var(--chart-2);
+    --color-chart-3: var(--chart-3);
+    --color-chart-4: var(--chart-4);
+    --color-chart-5: var(--chart-5);
+
+    --color-sidebar: var(--sidebar);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-ring: var(--sidebar-ring);
+
+    /* Paleta Inventario TI (navy) */
+    --color-inv-primary: #447794;
+    --color-inv-surface: #2d5b75;
+    --color-inv-section: #123249;
+    --color-inv-bg: #061222;
+}
+
+:root {
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.145 0 0);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.145 0 0);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.145 0 0);
+    --primary: oklch(0.205 0 0);
+    --primary-foreground: oklch(0.985 0 0);
+    --secondary: oklch(0.97 0 0);
+    --secondary-foreground: oklch(0.205 0 0);
+    --muted: oklch(0.97 0 0);
+    --muted-foreground: oklch(0.556 0 0);
+    --accent: oklch(0.97 0 0);
+    --accent-foreground: oklch(0.205 0 0);
+    --destructive: oklch(0.577 0.245 27.325);
+    --destructive-foreground: oklch(0.577 0.245 27.325);
+    --border: oklch(0.922 0 0);
+    --input: oklch(0.922 0 0);
+    --ring: oklch(0.87 0 0);
+    --chart-1: oklch(0.646 0.222 41.116);
+    --chart-2: oklch(0.6 0.118 184.704);
+    --chart-3: oklch(0.398 0.07 227.392);
+    --chart-4: oklch(0.828 0.189 84.429);
+    --chart-5: oklch(0.769 0.188 70.08);
+    --radius: 0.625rem;
+    --sidebar: oklch(0.985 0 0);
+    --sidebar-foreground: oklch(0.145 0 0);
+    --sidebar-primary: oklch(0.205 0 0);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.97 0 0);
+    --sidebar-accent-foreground: oklch(0.205 0 0);
+    --sidebar-border: oklch(0.922 0 0);
+    --sidebar-ring: oklch(0.87 0 0);
+}
+
+.dark {
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.145 0 0);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.145 0 0);
+    --popover-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.985 0 0);
+    --primary-foreground: oklch(0.205 0 0);
+    --secondary: oklch(0.269 0 0);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.269 0 0);
+    --muted-foreground: oklch(0.708 0 0);
+    --accent: oklch(0.269 0 0);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.396 0.141 25.723);
+    --destructive-foreground: oklch(0.637 0.237 25.331);
+    --border: oklch(0.269 0 0);
+    --input: oklch(0.269 0 0);
+    --ring: oklch(0.439 0 0);
+    --chart-1: oklch(0.488 0.243 264.376);
+    --chart-2: oklch(0.696 0.17 162.48);
+    --chart-3: oklch(0.769 0.188 70.08);
+    --chart-4: oklch(0.627 0.265 303.9);
+    --chart-5: oklch(0.645 0.246 16.439);
+    --sidebar: oklch(0.205 0 0);
+    --sidebar-foreground: oklch(0.985 0 0);
+    --sidebar-primary: oklch(0.985 0 0);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.269 0 0);
+    --sidebar-accent-foreground: oklch(0.985 0 0);
+    --sidebar-border: oklch(0.269 0 0);
+    --sidebar-ring: oklch(0.439 0 0);
+}
+
+/* Panel administrativo: paleta navy (Inventario TI) */
+.admin-panel {
+    --background: #061222;
+    --foreground: #f1f5f9;
+    --card: #0d1f33;
+    --card-foreground: #f1f5f9;
+    --popover: #0d1f33;
+    --popover-foreground: #f1f5f9;
+    --primary: #447794;
+    --primary-foreground: #ffffff;
+    --secondary: #123249;
+    --secondary-foreground: #f1f5f9;
+    --muted: #123249;
+    --muted-foreground: #94a3b8;
+    --accent: #2d5b75;
+    --accent-foreground: #f1f5f9;
+    --border: rgba(255, 255, 255, 0.08);
+    --input: rgba(255, 255, 255, 0.12);
+    --ring: #447794;
+    --sidebar: #123249;
+    --sidebar-foreground: #f1f5f9;
+    --sidebar-primary: #447794;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #2d5b75;
+    --sidebar-accent-foreground: #f1f5f9;
+    --sidebar-border: rgba(255, 255, 255, 0.08);
+    --sidebar-ring: #447794;
+}
+
+/* Sidebar: fondo blanco como al principio; sin azul */
+.admin-panel [data-sidebar="sidebar"] {
+    --sidebar: #ffffff;
+    --sidebar-foreground: #1e293b;
+    --sidebar-accent: #f1f5f9;
+    --sidebar-accent-foreground: #1e293b;
+    --sidebar-border: #e2e8f0;
+    --sidebar-primary: #447794;
+    --sidebar-primary-foreground: #ffffff;
+    background: #ffffff;
+    border-right: 1px solid #e2e8f0;
+    font-family: var(--font-sans);
+    letter-spacing: 0.01em;
+    box-shadow: 4px 0 16px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.02);
+}
+
+.admin-panel [data-sidebar="header"] {
+    border-bottom: 1px solid var(--sidebar-border);
+    padding-bottom: 0.5rem;
+    margin-bottom: 0.25rem;
+}
+
+.admin-panel [data-sidebar="menu-button"] span,
+.admin-panel [data-sidebar="menu-sub-button"] span {
+    font-weight: 500;
+}
+
+/* Ítem activo en sidebar blanco: barra + fondo gris claro */
+.admin-panel [data-sidebar="menu-button"][data-active="true"] {
+    background-color: #f1f5f9;
+    color: #1e293b;
+    font-weight: 600;
+    border-left: 3px solid #64748b;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+}
+
+.admin-panel [data-sidebar="menu-button"][data-active="true"]:hover {
+    background-color: #e2e8f0;
+    color: #1e293b;
+    border-left-color: #64748b;
+}
+
+/* Sub-ítem activo (ej. Roles, Usuarios) */
+.admin-panel [data-sidebar="menu-sub-button"][data-active="true"] {
+    background-color: #f1f5f9;
+    color: #1e293b;
+    font-weight: 600;
+    border-left: 3px solid #64748b;
+    margin-left: 0.25rem;
+    border-radius: 0 6px 6px 0;
+}
+
+.admin-panel [data-sidebar="menu-sub-button"][data-active="true"]:hover {
+    background-color: #e2e8f0;
+    color: #1e293b;
+}
+
+.admin-panel [data-sidebar="footer"] {
+    border-top: 1px solid var(--sidebar-border);
+    padding-top: 0.5rem;
+    margin-top: 0.25rem;
+}
+
+.admin-panel [data-sidebar="group-label"] {
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    opacity: 1;
+}
+
+/* Header: página actual clara (breadcrumb último ítem) */
+.admin-panel [aria-current="page"] {
+    color: var(--inv-primary);
+    font-weight: 600;
+}
+
+/* Barra inferior del header: refuerza “estás aquí” */
+.admin-panel [data-sidebar-header]::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--inv-primary) 0%, transparent 100%);
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+
+    body {
+        @apply bg-background text-foreground;
+    }
+
+}
+
+/* Login: ambient glow y bordes vivos (tendencias 2026) */
+@keyframes login-ambient {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.85;
+    }
+}
+
+@keyframes login-border-glow {
+    0%,
+    100% {
+        opacity: 0.5;
+    }
+    50% {
+        opacity: 0.9;
+    }
+}
+
+@keyframes login-orb-float {
+    0%,
+    100% {
+        transform: translate(0, 0) scale(1);
+    }
+    33% {
+        transform: translate(3%, -2%) scale(1.02);
+    }
+    66% {
+        transform: translate(-2%, 2%) scale(0.98);
+    }
+}
+
+@keyframes login-card-float {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-4px);
+    }
+}
+
+@keyframes login-shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+@keyframes login-border-shine {
+    0%,
+    100% {
+        opacity: 0.6;
+    }
+    50% {
+        opacity: 1;
+    }
+}
+
+/* Selección de texto: paleta Inventario TI (navy) - fuera de @layer para que aplique en inputs */
+::selection,
+::-moz-selection,
+input::selection,
+input::-moz-selection,
+textarea::selection,
+textarea::-moz-selection {
+    background-color: rgb(45, 91, 117);
+    color: #fff;
+}
+
+/* Variables de la paleta navy (para estilos inline / rgba) */
+:root {
+    --inv-primary: #447794;
+    --inv-primary-rgb: 68 119 148;
+    --inv-surface: #2d5b75;
+    --inv-surface-rgb: 45 91 117;
+    --inv-section: #123249;
+    --inv-section-rgb: 18 50 73;
+    --inv-bg: #061222;
+    --inv-bg-rgb: 6 18 34;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .login-motion-safe {
+        animation: none !important;
+    }
+}
