@@ -33,7 +33,7 @@ class AssetCategoryRequest extends FormRequest
             'gl_account_id' => ['nullable', 'uuid', 'exists:gl_accounts,id'],
             'gl_depreciation_account_id' => ['nullable', 'uuid', 'exists:gl_accounts,id'],
             'icon' => ['nullable', 'string', 'max:50'],
-            'default_useful_life_years' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'default_useful_life_years' => ['nullable', 'integer', 'min:0', 'max:100'],
             'default_depreciation_method' => ['nullable', 'string', 'in:straight_line,sum_of_years'],
             'default_residual_value_pct' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'requires_insurance' => ['required', 'boolean'],

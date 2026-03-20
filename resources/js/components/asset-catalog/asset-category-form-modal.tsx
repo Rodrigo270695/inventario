@@ -69,9 +69,9 @@ export function AssetCategoryFormModal({ open, onOpenChange, category, glAccount
         gl_account_id: category?.gl_account_id ?? '',
         gl_depreciation_account_id: category?.gl_depreciation_account_id ?? '',
         icon: category?.icon ?? '',
-        default_useful_life_years: category?.default_useful_life_years?.toString() ?? '',
+        default_useful_life_years: category?.default_useful_life_years?.toString() ?? '0',
         default_depreciation_method: category?.default_depreciation_method ?? 'straight_line',
-        default_residual_value_pct: category?.default_residual_value_pct?.toString() ?? '',
+        default_residual_value_pct: category?.default_residual_value_pct?.toString() ?? '0',
         requires_insurance: category?.requires_insurance ?? false,
         requires_soat: category?.requires_soat ?? false,
         is_active: category?.is_active ?? true,
@@ -110,9 +110,9 @@ export function AssetCategoryFormModal({ open, onOpenChange, category, glAccount
             gl_account_id: category?.gl_account_id ?? '',
             gl_depreciation_account_id: category?.gl_depreciation_account_id ?? '',
             icon: category?.icon ?? '',
-            default_useful_life_years: category?.default_useful_life_years?.toString() ?? '',
+            default_useful_life_years: category?.default_useful_life_years?.toString() ?? '0',
             default_depreciation_method: category?.default_depreciation_method ?? 'straight_line',
-            default_residual_value_pct: category?.default_residual_value_pct?.toString() ?? '',
+            default_residual_value_pct: category?.default_residual_value_pct?.toString() ?? '0',
             requires_insurance: category?.requires_insurance ?? false,
             requires_soat: category?.requires_soat ?? false,
             is_active: category?.is_active ?? true,
@@ -155,10 +155,10 @@ export function AssetCategoryFormModal({ open, onOpenChange, category, glAccount
             gl_account_id: data.gl_account_id === '' ? null : data.gl_account_id,
             gl_depreciation_account_id: data.gl_depreciation_account_id === '' ? null : data.gl_depreciation_account_id,
             default_useful_life_years:
-                data.default_useful_life_years === '' ? null : Number(data.default_useful_life_years),
+                data.default_useful_life_years === '' ? 0 : Number(data.default_useful_life_years),
             default_depreciation_method: data.default_depreciation_method || null,
             default_residual_value_pct:
-                data.default_residual_value_pct === '' ? null : Number(data.default_residual_value_pct),
+                data.default_residual_value_pct === '' ? 0 : Number(data.default_residual_value_pct),
         };
         if (isEdit && category) {
             put(`/admin/asset-categories/${category.id}`, {
@@ -291,7 +291,7 @@ export function AssetCategoryFormModal({ open, onOpenChange, category, glAccount
                             value={data.default_useful_life_years}
                             onChange={(e) => setData('default_useful_life_years', e.target.value)}
                             inputMode="numeric"
-                            placeholder="ej. 10"
+                            placeholder="0"
                         />
                     </div>
                     <div className="space-y-2">
@@ -300,7 +300,7 @@ export function AssetCategoryFormModal({ open, onOpenChange, category, glAccount
                             value={data.default_residual_value_pct}
                             onChange={(e) => setData('default_residual_value_pct', e.target.value)}
                             inputMode="decimal"
-                            placeholder="ej. 10"
+                            placeholder="0"
                         />
                     </div>
                 </div>

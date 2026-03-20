@@ -18,6 +18,9 @@ class AssetCategoryController extends Controller
     private const VALID_ORDER = ['asc', 'desc'];
 
     private const PER_PAGE_OPTIONS = [5, 10, 15, 25];
+    private const DEFAULT_USEFUL_LIFE_YEARS = 0;
+    private const DEFAULT_DEPRECIATION_METHOD = 'straight_line';
+    private const DEFAULT_RESIDUAL_VALUE_PCT = 0.0;
 
     public function index(Request $request): Response
     {
@@ -109,9 +112,7 @@ class AssetCategoryController extends Controller
 
     public function store(AssetCategoryRequest $request): RedirectResponse
     {
-        $validated = $request->validated();
-        $validated['gl_account_id'] = $validated['gl_account_id'] ?? null;
-        $validated['gl_depreciation_account_id'] = $validated['gl_depreciation_account_id'] ?? null;
+        $validated = $this->normalizePayload($request->validated());
 
         AssetCategory::create($validated);
 
@@ -121,9 +122,7 @@ class AssetCategoryController extends Controller
 
     public function update(AssetCategoryRequest $request, AssetCategory $asset_category): RedirectResponse
     {
-        $validated = $request->validated();
-        $validated['gl_account_id'] = $validated['gl_account_id'] ?? null;
-        $validated['gl_depreciation_account_id'] = $validated['gl_depreciation_account_id'] ?? null;
+        $validated = $this->normalizePayload($request->validated());
 
         $asset_category->update($validated);
 
@@ -137,5 +136,23 @@ class AssetCategoryController extends Controller
 
         return redirect()->back()
             ->with('toast', ['type' => 'success', 'message' => 'Categoría de activos eliminada correctamente.']);
+    }
+
+    /**
+     * @param array<string, mixed> $validated
+     * @return array<string, mixed>
+     */
+    private function normalizePayload(array $validated): array
+    {
+        $validated['gl_account_id'] = $validated['gl_account_id'] ?? null;
+        $validated['gl_depreciation_account_id'] = $validated['gl_depreciation_account_id'] ?? null;
+        $validated['icon'] = ($validated['icon'] ?? null) === '' ? null : ($validated['icon'] ?? null);
+
+        // Estas columnas son NOT NULL en BD: si llegan vacías desde el formulario, aplicamos defaults.
+        $validated['default_useful_life_years'] = $validated['default_useful_life_years'] ?? self::DEFAULT_USEFUL_LIFE_YEARS;
+        $validated['default_depreciation_method'] = $validated['default_depreciation_method'] ?? self::DEFAULT_DEPRECIATION_METHOD;
+        $validated['default_residual_value_pct'] = $validated['default_residual_value_pct'] ?? self::DEFAULT_RESIDUAL_VALUE_PCT;
+
+        return $validated;
     }
 }
