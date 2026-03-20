@@ -9,8 +9,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import type { PaginationLink as PaginationLinkType } from '@/types';
 import { cn } from '@/lib/utils';
+import type { PaginationLink as PaginationLinkType } from '@/types';
 
 type TablePaginationProps = {
     from: number | null;
@@ -102,11 +102,11 @@ export function TablePagination({
     return (
         <div
             className={cn(
-                'flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between lg:items-center',
+                'w-full overflow-x-hidden flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between lg:items-center',
                 className
             )}
         >
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="min-w-0 flex-1">
                 <p className="text-muted-foreground text-sm wrap-break-word">
                     {text}
                     {lastPage > 0 && (
@@ -115,6 +115,7 @@ export function TablePagination({
                         </span>
                     )}
                 </p>
+                <div className="mt-2 flex flex-wrap items-center gap-3">
                 <div className="flex items-center gap-2">
                     <span className="text-muted-foreground text-sm whitespace-nowrap">
                         Mostrar:
@@ -155,9 +156,10 @@ export function TablePagination({
                     </form>
                 )}
             </div>
+            </div>
             {hasPages && (
                 <nav
-                    className="flex flex-wrap items-center justify-center gap-1 sm:justify-end"
+                    className="w-full sm:w-auto flex flex-wrap items-center justify-start gap-1 sm:justify-end"
                     aria-label="Paginación"
                 >
                     {prev && (
