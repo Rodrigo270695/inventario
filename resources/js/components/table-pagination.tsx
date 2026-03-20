@@ -102,12 +102,12 @@ export function TablePagination({
     return (
         <div
             className={cn(
-                'flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between',
+                'flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between lg:items-center',
                 className
             )}
         >
             <div className="flex flex-wrap items-center gap-3">
-                <p className="text-muted-foreground text-sm">
+                <p className="text-muted-foreground text-sm wrap-break-word">
                     {text}
                     {lastPage > 0 && (
                         <span className="ml-1 text-muted-foreground/80">
@@ -123,7 +123,7 @@ export function TablePagination({
                         value={String(perPage)}
                         onValueChange={(v) => onPerPageChange(Number(v))}
                     >
-                        <SelectTrigger className="h-8 w-18 border-border">
+                        <SelectTrigger className="h-8 w-[78px] shrink-0 border-border">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -156,7 +156,10 @@ export function TablePagination({
                 )}
             </div>
             {hasPages && (
-                <nav className="flex flex-wrap items-center justify-center gap-1" aria-label="Paginación">
+                <nav
+                    className="flex flex-wrap items-center justify-center gap-1 sm:justify-end"
+                    aria-label="Paginación"
+                >
                     {prev && (
                         <PaginationLink link={prev}>
                             <ChevronLeft className="size-4" />
