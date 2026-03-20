@@ -102,12 +102,12 @@ export function TablePagination({
     return (
         <div
             className={cn(
-                'w-full overflow-x-hidden flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between lg:items-center',
+                'flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between',
                 className
             )}
         >
-            <div className="min-w-0 flex-1">
-                <p className="text-muted-foreground text-sm wrap-break-word">
+            <div className="flex min-w-0 flex-wrap items-center gap-3 sm:flex-nowrap">
+                <p className="text-muted-foreground text-sm sm:truncate">
                     {text}
                     {lastPage > 0 && (
                         <span className="ml-1 text-muted-foreground/80">
@@ -115,7 +115,6 @@ export function TablePagination({
                         </span>
                     )}
                 </p>
-                <div className="mt-2 flex flex-wrap items-center gap-3">
                 <div className="flex items-center gap-2">
                     <span className="text-muted-foreground text-sm whitespace-nowrap">
                         Mostrar:
@@ -124,10 +123,10 @@ export function TablePagination({
                         value={String(perPage)}
                         onValueChange={(v) => onPerPageChange(Number(v))}
                     >
-                        <SelectTrigger className="h-8 w-[78px] shrink-0 border-border">
+                        <SelectTrigger className="h-8 w-[64px] shrink-0 border-border px-2">
                             <SelectValue />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent side="bottom" className="min-w-[64px]">
                             {perPageOptions.map((n) => (
                                 <SelectItem key={n} value={String(n)}>
                                     {n}
@@ -156,10 +155,9 @@ export function TablePagination({
                     </form>
                 )}
             </div>
-            </div>
             {hasPages && (
                 <nav
-                    className="w-full sm:w-auto flex flex-wrap items-center justify-start gap-1 sm:justify-end"
+                    className="flex flex-wrap items-center justify-start gap-1 sm:justify-end"
                     aria-label="Paginación"
                 >
                     {prev && (
