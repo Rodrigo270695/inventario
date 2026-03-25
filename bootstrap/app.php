@@ -2,10 +2,14 @@
 
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
+use Inertia\Inertia;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -35,5 +39,18 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->render(function (\Throwable $e, Request $request) {
+            if (! $request->expectsJson()) {
+                $status = $e instanceof HttpExceptionInterface ? $e->getStatusCode() : Response::HTTP_INTERNAL_SERVER_ERROR;
+                $handledStatuses = [Response::HTTP_FORBIDDEN, Response::HTTP_NOT_FOUND, Response::HTTP_INTERNAL_SERVER_ERROR];
+
+                if (in_array($status, $handledStatuses, true)) {
+                    return Inertia::render("errors/{$status}")
+                        ->toResponse($request)
+                        ->setStatusCode($status);
+                }
+            }
+
+            return null;
+        });
     })->create();
