@@ -37,7 +37,8 @@ class PurchaseOrderFlowNotifier
     }
 
     /**
-     * Usuarios activos con el permiso indicado y el zonal de la oficina de la OC asignado en user_zonals.
+     * Usuarios activos con el permiso indicado y relación con el zonal de la oficina de la OC:
+     * asignación en user_zonals o rol de gestor del zonal (manager_id).
      *
      * @return Collection<int, User>
      */
@@ -48,12 +49,51 @@ class PurchaseOrderFlowNotifier
             return collect();
         }
 
-        return User::query()
+        $fromPivot = User::query()
             ->where('is_active', true)
             ->whereHas('zonals', fn ($q) => $q->where('zonals.id', $zonalId))
             ->get()
-            ->filter(fn (User $u) => $u->hasPermissionTo($permission))
-            ->values();
+            ->filter(fn (User $u) => $u->hasPermissionTo($permission));
+
+        $managerId = Zonal::query()->whereKey($zonalId)->value('manager_id');
+        $fromManager = collect();
+        if ($managerId) {
+            $mgr = User::query()
+                ->where('is_active', true)
+                ->whereKey($managerId)
+                ->first();
+            if ($mgr && $mgr->hasPermissionTo($permission)) {
+                $fromManager = collect([$mgr]);
+            }
+        }
+
+        return $fromPivot->merge($fromManager)->unique('id')->values();
+    }
+
+    /**
+     * @param  array<int, string|null>  $emails
+     * @return array<int, string>
+     */
+    public static function filterDeliverableEmails(array $emails): array
+    {
+        return collect($emails)
+            ->filter(function ($email) {
+                if (! is_string($email)) {
+                    return false;
+                }
+                $email = trim($email);
+                if ($email === '' || ! str_contains($email, '@')) {
+                    return false;
+                }
+                if (str_ends_with(strtolower($email), '.local')) {
+                    return false;
+                }
+
+                return true;
+            })
+            ->unique()
+            ->values()
+            ->all();
     }
 
     public static function deleteNotificationsForPurchaseOrder(string $purchaseOrderId, array $types): void

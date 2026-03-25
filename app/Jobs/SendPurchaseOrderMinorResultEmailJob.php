@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Mail\PurchaseOrderNotificationMail;
 use App\Models\PurchaseOrder;
+use App\Services\PurchaseOrderFlowNotifier;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Mail;
@@ -30,10 +31,20 @@ class SendPurchaseOrderMinorResultEmailJob implements ShouldQueue
                 'minorApprovedByUser:id,name,last_name,usuario,email',
                 'minorRejectedByUser:id,name,last_name,usuario,email',
                 'minorObservedByUser:id,name,last_name,usuario,email',
+                'items' => fn ($q) => $q->orderBy('id')->with([
+                    'assetCategory:id,name,code',
+                    'assetSubcategory:id,name',
+                    'assetBrand:id,name',
+                ]),
             ])
             ->find($this->purchaseOrderId);
 
-        if (! $order || ! $order->requestedByUser?->email) {
+        if (! $order) {
+            return;
+        }
+
+        $to = PurchaseOrderFlowNotifier::filterDeliverableEmails([$order->requestedByUser?->email ?? '']);
+        if ($to === []) {
             return;
         }
 
@@ -68,6 +79,6 @@ class SendPurchaseOrderMinorResultEmailJob implements ShouldQueue
             ]
         );
 
-        Mail::to($order->requestedByUser->email)->send($mailable);
+        Mail::to($to[0])->send($mailable);
     }
 }

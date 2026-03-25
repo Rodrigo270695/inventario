@@ -24,6 +24,11 @@ class SendPurchaseOrderMinorPendingEmailJob implements ShouldQueue
                 'supplier:id,name,ruc',
                 'office.zonal:id,name,code',
                 'requestedByUser:id,name,last_name,usuario,email',
+                'items' => fn ($q) => $q->orderBy('id')->with([
+                    'assetCategory:id,name,code',
+                    'assetSubcategory:id,name',
+                    'assetBrand:id,name',
+                ]),
             ])
             ->find($this->purchaseOrderId);
 
@@ -31,13 +36,12 @@ class SendPurchaseOrderMinorPendingEmailJob implements ShouldQueue
             return;
         }
 
-        $recipients = PurchaseOrderFlowNotifier::recipientsForZonal('purchase_orders.minor_approve', $order)
-            ->filter(fn ($u) => $u->id !== $order->requested_by && $u->email)
-            ->pluck('email')
-            ->filter()
-            ->unique()
-            ->values()
-            ->all();
+        $recipients = PurchaseOrderFlowNotifier::filterDeliverableEmails(
+            PurchaseOrderFlowNotifier::recipientsForZonal('purchase_orders.minor_approve', $order)
+                ->filter(fn ($u) => $u->id !== $order->requested_by && $u->email)
+                ->pluck('email')
+                ->all()
+        );
 
         if ($recipients === []) {
             return;

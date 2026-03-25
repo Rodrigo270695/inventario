@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Mail\PurchaseOrderNotificationMail;
 use App\Models\PurchaseOrder;
+use App\Services\PurchaseOrderFlowNotifier;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Mail;
@@ -31,6 +32,11 @@ class SendPurchaseOrderMajorResultEmailJob implements ShouldQueue
                 'approvedByUser:id,name,last_name,usuario,email',
                 'rejectedByUser:id,name,last_name,usuario,email',
                 'observedByUser:id,name,last_name,usuario,email',
+                'items' => fn ($q) => $q->orderBy('id')->with([
+                    'assetCategory:id,name,code',
+                    'assetSubcategory:id,name',
+                    'assetBrand:id,name',
+                ]),
             ])
             ->find($this->purchaseOrderId);
 
@@ -54,14 +60,12 @@ class SendPurchaseOrderMajorResultEmailJob implements ShouldQueue
             default => 'MACGA | OC '.($order->code ?? '').' | Actualización general',
         };
 
-        $emails = collect([
-            $order->requestedByUser?->email,
-            $order->minor_approved_by ? $order->minorApprovedByUser?->email : null,
-        ])
-            ->filter()
-            ->unique()
-            ->values()
-            ->all();
+        $emails = PurchaseOrderFlowNotifier::filterDeliverableEmails(
+            collect([
+                $order->requestedByUser?->email,
+                $order->minor_approved_by ? $order->minorApprovedByUser?->email : null,
+            ])->all()
+        );
 
         foreach ($emails as $email) {
             Mail::to($email)->send(
