@@ -36,6 +36,7 @@ class SendPurchaseOrderMinorPendingEmailJob implements ShouldQueue
             return;
         }
 
+        // No notificar al solicitante (requested_by): no recibe este correo ni la notificación in-app de pendiente zonal.
         $recipients = PurchaseOrderFlowNotifier::filterDeliverableEmails(
             PurchaseOrderFlowNotifier::recipientsForZonal('purchase_orders.minor_approve', $order)
                 ->filter(fn ($u) => $u->id !== $order->requested_by && $u->email)
@@ -47,15 +48,19 @@ class SendPurchaseOrderMinorPendingEmailJob implements ShouldQueue
             return;
         }
 
-        $mailable = new PurchaseOrderNotificationMail(
-            $order,
-            'emails.purchase-order-pending-minor',
-            'MACGA | OC '.($order->code ?? '').' | Pendiente aprobación zonal',
-            ['detailUrl' => route('admin.purchase-orders.show', $order)]
-        );
+        $subject = 'MACGA | OC '.($order->code ?? '').' | Pendiente aprobación zonal';
+        $templateData = ['detailUrl' => route('admin.purchase-orders.show', $order)];
 
-        Mail::to(config('mail.from.address'))
-            ->bcc($recipients)
-            ->send($mailable);
+        // Un envío por destinatario (TO): varios SMTP descartan o no entregan bien BCC masivo.
+        foreach ($recipients as $email) {
+            Mail::to($email)->send(
+                new PurchaseOrderNotificationMail(
+                    $order,
+                    'emails.purchase-order-pending-minor',
+                    $subject,
+                    $templateData
+                )
+            );
+        }
     }
 }

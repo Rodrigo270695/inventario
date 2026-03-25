@@ -48,15 +48,18 @@ class SendPurchaseOrderMajorPendingEmailJob implements ShouldQueue
             return;
         }
 
-        $mailable = new PurchaseOrderNotificationMail(
-            $order,
-            'emails.purchase-order-pending-major',
-            'MACGA | OC '.($order->code ?? '').' | Pendiente aprobación general',
-            ['detailUrl' => route('admin.purchase-orders.show', $order)]
-        );
+        $subject = 'MACGA | OC '.($order->code ?? '').' | Pendiente aprobación general';
+        $templateData = ['detailUrl' => route('admin.purchase-orders.show', $order)];
 
-        Mail::to(config('mail.from.address'))
-            ->bcc($recipients)
-            ->send($mailable);
+        foreach ($recipients as $email) {
+            Mail::to($email)->send(
+                new PurchaseOrderNotificationMail(
+                    $order,
+                    'emails.purchase-order-pending-major',
+                    $subject,
+                    $templateData
+                )
+            );
+        }
     }
 }
