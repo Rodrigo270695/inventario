@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\Admin\Asset;
 
+use App\Models\AssetModel;
+use App\Models\AssetSubcategory;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -17,8 +19,18 @@ class AssetRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $modelId = $this->input('model_id');
-        if ($modelId === '' || $modelId === null) {
+        if ($modelId === '__other__' || $modelId === '' || $modelId === null) {
             $this->merge(['model_id' => null]);
+        }
+        $brandId = $this->input('brand_id');
+        if ($brandId === '' || $brandId === null) {
+            $this->merge(['brand_id' => null]);
+        }
+        $newModelName = trim((string) ($this->input('new_model_name') ?? ''));
+        $this->merge(['new_model_name' => $newModelName === '' ? null : $newModelName]);
+        $subcategoryId = $this->input('subcategory_id');
+        if ($subcategoryId === '' || $subcategoryId === null) {
+            $this->merge(['subcategory_id' => null]);
         }
     }
 
@@ -43,6 +55,9 @@ class AssetRequest extends FormRequest
                 Rule::unique('assets', 'serial_number')->whereNull('deleted_at')->ignore($asset?->id),
             ],
             'model_id' => ['nullable', 'uuid', 'exists:asset_models,id'],
+            'brand_id' => ['nullable', 'uuid', 'exists:asset_brands,id'],
+            'subcategory_id' => ['nullable', 'uuid', 'exists:asset_subcategories,id'],
+            'new_model_name' => ['nullable', 'string', 'max:200'],
             'category_id' => ['required', 'uuid', 'exists:asset_categories,id'],
             'status' => ['required', 'string', 'in:active,stored,in_repair,in_transit,disposed,sold'],
             'condition' => ['required', 'string', 'in:new,good,regular,damaged,obsolete,broken,in_repair,pending_disposal'],
@@ -55,6 +70,46 @@ class AssetRequest extends FormRequest
         ];
     }
 
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator): void {
+            $newModelName = trim((string) ($this->input('new_model_name') ?? ''));
+            $modelId = $this->input('model_id');
+            $categoryId = $this->input('category_id');
+
+            if ($newModelName !== '') {
+                if ($modelId) {
+                    $validator->errors()->add('new_model_name', 'No puede indicar un modelo nuevo si ya seleccionó un modelo existente.');
+                }
+                $subcategoryId = $this->input('subcategory_id');
+                $brandId = $this->input('brand_id');
+                if (! $subcategoryId) {
+                    $validator->errors()->add('subcategory_id', 'La subcategoría es obligatoria para registrar un modelo nuevo.');
+                }
+                if (! $brandId) {
+                    $validator->errors()->add('brand_id', 'La marca es obligatoria para registrar un modelo nuevo.');
+                }
+                if ($subcategoryId && $categoryId) {
+                    $sub = AssetSubcategory::query()->find($subcategoryId);
+                    if (! $sub || (string) $sub->asset_category_id !== (string) $categoryId) {
+                        $validator->errors()->add('subcategory_id', 'La subcategoría no corresponde a la categoría del activo.');
+                    }
+                }
+
+                return;
+            }
+
+            $brandId = $this->input('brand_id');
+            if (! $modelId || ! $brandId) {
+                return;
+            }
+            $model = AssetModel::query()->find($modelId);
+            if ($model && (string) $model->brand_id !== (string) $brandId) {
+                $validator->errors()->add('brand_id', 'La marca no coincide con el modelo seleccionado.');
+            }
+        });
+    }
+
     /**
      * @return array<string, string>
      */
@@ -64,6 +119,9 @@ class AssetRequest extends FormRequest
             'code' => 'código',
             'serial_number' => 'número de serie',
             'model_id' => 'modelo',
+            'brand_id' => 'marca',
+            'subcategory_id' => 'subcategoría',
+            'new_model_name' => 'nombre del modelo',
             'category_id' => 'categoría',
             'status' => 'estado',
             'condition' => 'condición',

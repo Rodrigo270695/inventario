@@ -6,22 +6,23 @@ use App\Exports\AssetsExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\Asset\AssetRequest;
 use App\Models\Asset;
-use App\Models\AssetCategory;
-use App\Models\AssetModel;
-use App\Models\AssetSubcategory;
 use App\Models\AssetAssignment;
+use App\Models\AssetBrand;
+use App\Models\AssetCategory;
 use App\Models\AssetComputer;
+use App\Models\AssetModel;
 use App\Models\AssetPhoto;
-use App\Models\ComputerComponent;
+use App\Models\AssetSubcategory;
 use App\Models\Component;
+use App\Models\ComputerComponent;
 use App\Models\Office;
-use App\Models\Warehouse;
 use App\Models\User;
+use App\Models\Warehouse;
 use App\Models\Zonal;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -72,7 +73,8 @@ class AssetController extends Controller
         $query = Asset::query()->with([
             'model:id,name,subcategory_id,brand_id',
             'model.brand:id,name',
-            'model.subcategory:id,name,asset_category_id',
+            'model.subcategory:id,name,asset_category_id,code',
+            'brand:id,name',
             'category:id,name,code,type',
             'warehouse:id,name,code,office_id',
             'warehouse.office:id,zonal_id,name,code',
@@ -126,6 +128,7 @@ class AssetController extends Controller
             ->with('brand:id,name')
             ->orderBy('name')
             ->get(['id', 'subcategory_id', 'name', 'brand_id']);
+        $brandsForSelect = AssetBrand::query()->orderBy('name')->get(['id', 'name']);
         $warehousesForSelect = Warehouse::query()
             ->where('is_active', true)
             ->with('office:id,zonal_id,name,code')
@@ -205,6 +208,7 @@ class AssetController extends Controller
             'categoriesForSelect' => $categoriesForSelect,
             'subcategoriesForSelect' => $subcategoriesForSelect,
             'modelsForSelect' => $modelsForSelect,
+            'brandsForSelect' => $brandsForSelect,
             'warehousesForSelect' => $warehousesForSelect,
             'zonalsForFilter' => $zonalsForFilter,
             'officesForFilter' => $officesForFilter,
@@ -374,6 +378,22 @@ class AssetController extends Controller
         $validated = $request->validated();
         $validated['warehouse_id'] = ! empty($validated['warehouse_id'] ?? '') ? $validated['warehouse_id'] : null;
         $validated['model_id'] = (! empty($validated['model_id'] ?? '')) ? $validated['model_id'] : null;
+
+        $newModelName = trim((string) ($validated['new_model_name'] ?? ''));
+        unset($validated['new_model_name']);
+        $subcategoryIdForNew = $validated['subcategory_id'] ?? null;
+        unset($validated['subcategory_id']);
+
+        if ($newModelName !== '') {
+            $brandId = $validated['brand_id'] ?? null;
+            $validated['model_id'] = $this->resolveOrCreateAssetModelId(
+                (string) $brandId,
+                (string) $subcategoryIdForNew,
+                $newModelName
+            );
+        }
+
+        $validated['brand_id'] = $this->resolveAssetBrandId($validated['model_id'] ?? null, $validated['brand_id'] ?? null);
         $validated['registered_by_id'] = $request->user()?->id;
         $validated['updated_by_id'] = $request->user()?->id;
 
@@ -397,6 +417,44 @@ class AssetController extends Controller
 
         return redirect()->back()
             ->with('toast', ['type' => 'success', 'message' => 'Activo creado correctamente.']);
+    }
+
+    private function resolveAssetBrandId(?string $modelId, ?string $brandId): ?string
+    {
+        if ($modelId) {
+            $model = AssetModel::query()->find($modelId);
+
+            return $model?->brand_id;
+        }
+
+        return $brandId ?: null;
+    }
+
+    private function resolveOrCreateAssetModelId(string $brandId, string $subcategoryId, string $modelName): string
+    {
+        $existing = AssetModel::withTrashed()
+            ->where('brand_id', $brandId)
+            ->where('subcategory_id', $subcategoryId)
+            ->whereRaw('LOWER(name) = ?', [mb_strtolower($modelName)])
+            ->first();
+
+        if ($existing) {
+            if ($existing->trashed()) {
+                $existing->restore();
+            }
+            if (! $existing->is_active) {
+                $existing->update(['is_active' => true]);
+            }
+
+            return $existing->id;
+        }
+
+        return AssetModel::create([
+            'brand_id' => $brandId,
+            'subcategory_id' => $subcategoryId,
+            'name' => $modelName,
+            'is_active' => true,
+        ])->id;
     }
 
     private function generateAssetCode(string $categoryId): string
@@ -452,7 +510,7 @@ class AssetController extends Controller
 
     private function makeBarcodePdfResponse(Collection $assets, string $filename, bool $download): SymfonyResponse
     {
-        $generator = new BarcodeGeneratorPNG();
+        $generator = new BarcodeGeneratorPNG;
 
         $labels = $assets->map(function (Asset $asset) use ($generator) {
             $barcode = base64_encode(
@@ -486,6 +544,22 @@ class AssetController extends Controller
         $validated = $request->validated();
         $validated['warehouse_id'] = ! empty($validated['warehouse_id'] ?? '') ? $validated['warehouse_id'] : null;
         $validated['model_id'] = (! empty($validated['model_id'] ?? '')) ? $validated['model_id'] : null;
+
+        $newModelName = trim((string) ($validated['new_model_name'] ?? ''));
+        unset($validated['new_model_name']);
+        $subcategoryIdForNew = $validated['subcategory_id'] ?? null;
+        unset($validated['subcategory_id']);
+
+        if ($newModelName !== '') {
+            $brandId = $validated['brand_id'] ?? null;
+            $validated['model_id'] = $this->resolveOrCreateAssetModelId(
+                (string) $brandId,
+                (string) $subcategoryIdForNew,
+                $newModelName
+            );
+        }
+
+        $validated['brand_id'] = $this->resolveAssetBrandId($validated['model_id'] ?? null, $validated['brand_id'] ?? null);
         $validated['updated_by_id'] = $request->user()?->id;
 
         $asset->update($validated);
@@ -508,8 +582,10 @@ class AssetController extends Controller
         $request->validate(['id' => ['required', 'uuid']]);
         $asset = Asset::withTrashed()->findOrFail($request->input('id'));
         $asset->restore();
-        $data = $request->only(['code', 'serial_number', 'model_id', 'category_id', 'status', 'condition', 'warehouse_id', 'acquisition_value', 'current_value', 'depreciation_rate', 'warranty_until', 'notes']);
+        $data = $request->only(['code', 'serial_number', 'model_id', 'brand_id', 'category_id', 'status', 'condition', 'warehouse_id', 'acquisition_value', 'current_value', 'depreciation_rate', 'warranty_until', 'notes']);
         $data['warehouse_id'] = ($data['warehouse_id'] ?? '') !== '' ? $data['warehouse_id'] : null;
+        $data['model_id'] = ($data['model_id'] ?? '') !== '' ? $data['model_id'] : null;
+        $data['brand_id'] = $this->resolveAssetBrandId($data['model_id'] ?? null, ($data['brand_id'] ?? '') !== '' ? $data['brand_id'] : null);
         $asset->update($data);
 
         return redirect()->back()
@@ -738,7 +814,7 @@ class AssetController extends Controller
 
         $file = $request->file('photo');
         $path = $file->store(
-            'asset_photos/' . $asset->id,
+            'asset_photos/'.$asset->id,
             'public'
         );
 
@@ -760,6 +836,7 @@ class AssetController extends Controller
         }
         Storage::disk('public')->delete($photo->path);
         $photo->delete();
+
         return redirect()->back()
             ->with('toast', ['type' => 'success', 'message' => 'Foto eliminada.']);
     }

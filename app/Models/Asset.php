@@ -10,15 +10,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\AssetModel;
-use App\Models\AssetCategory;
-use App\Models\PurchaseItem;
-use App\Models\Warehouse;
-use App\Models\RepairShop;
-use App\Models\User;
-use App\Models\AssetComputer;
-use App\Models\AssetAssignment;
-use App\Models\AssetPhoto;
 
 class Asset extends Model
 {
@@ -30,6 +21,7 @@ class Asset extends Model
         'code',
         'serial_number',
         'model_id',
+        'brand_id',
         'category_id',
         'purchase_item_id',
         'status',
@@ -60,6 +52,11 @@ class Asset extends Model
     public function model(): BelongsTo
     {
         return $this->belongsTo(AssetModel::class, 'model_id');
+    }
+
+    public function brand(): BelongsTo
+    {
+        return $this->belongsTo(AssetBrand::class, 'brand_id');
     }
 
     public function category(): BelongsTo
@@ -130,4 +127,3 @@ class Asset extends Model
         });
     }
 }
-

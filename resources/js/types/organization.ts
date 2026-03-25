@@ -151,6 +151,13 @@ export type PurchaseOrder = {
     code: string | null;
     status: string;
     requested_by: string | null;
+    minor_approved_by?: string | null;
+    minor_rejected_by?: string | null;
+    minor_observed_by?: string | null;
+    minor_approved_at?: string | null;
+    minor_rejected_at?: string | null;
+    minor_observed_at?: string | null;
+    minor_observation_notes?: string | null;
     approved_by: string | null;
     rejected_by: string | null;
     observed_by: string | null;
@@ -165,6 +172,9 @@ export type PurchaseOrder = {
     supplier?: { id: string; name: string; ruc: string | null } | null;
     office?: { id: string; name: string; code: string | null; zonal_id: string; zonal?: { id: string; name: string; code: string } | null } | null;
     requested_by_user?: UserName | null;
+    minor_approved_by_user?: UserName | null;
+    minor_rejected_by_user?: UserName | null;
+    minor_observed_by_user?: UserName | null;
     approved_by_user?: UserName | null;
     rejected_by_user?: UserName | null;
     observed_by_user?: UserName | null;
@@ -224,7 +234,8 @@ export type Asset = {
     id: string;
     code: string;
     serial_number: string | null;
-    model_id: string;
+    model_id: string | null;
+    brand_id?: string | null;
     category_id: string;
     status: string;
     condition: string;
@@ -238,9 +249,21 @@ export type Asset = {
     updated_by_id: string | null;
     created_at?: string;
     updated_at?: string;
-    model?: { id: string; name: string; subcategory?: { id: string; name: string } | null } | null;
+    model?: {
+        id: string;
+        name: string;
+        subcategory?: { id: string; name: string; code?: string | null } | null;
+        brand?: { id: string; name: string } | null;
+    } | null;
+    brand?: { id: string; name: string } | null;
     category?: { id: string; name: string; code: string } | null;
-    warehouse?: { id: string; name: string; code: string | null } | null;
+    warehouse?: {
+        id: string;
+        name: string;
+        code: string | null;
+        office_id?: string | null;
+        office?: { id: string; zonal_id: string; name: string; code: string | null } | null;
+    } | null;
     registered_by?: { id: string; name: string } | null;
     updated_by?: { id: string; name: string } | null;
 };

@@ -35,6 +35,7 @@ class AlertController extends Controller
             ]);
 
         $notifications = Notification::query()
+            ->where('user_id', $request->user()->id)
             ->orderByDesc('created_at')
             ->limit(50)
             ->get(['id', 'type', 'data', 'read_at', 'created_at']);
@@ -46,4 +47,3 @@ class AlertController extends Controller
         ]);
     }
 }
-

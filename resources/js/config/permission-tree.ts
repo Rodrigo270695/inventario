@@ -104,6 +104,16 @@ export const PERMISSION_TREE: PermissionTreeNode[] = [
                     { key: 'purchase_orders.create', label: 'Crear', permission: 'purchase_orders.create' },
                     { key: 'purchase_orders.update', label: 'Editar', permission: 'purchase_orders.update' },
                     { key: 'purchase_orders.delete', label: 'Eliminar', permission: 'purchase_orders.delete' },
+                    {
+                        key: 'purchase_orders.minor_approve',
+                        label: 'Aprobar/Rechazar (1.º nivel)',
+                        permission: 'purchase_orders.minor_approve',
+                    },
+                    {
+                        key: 'purchase_orders.minor_observe',
+                        label: 'Observación (1.º nivel)',
+                        permission: 'purchase_orders.minor_observe',
+                    },
                     { key: 'purchase_orders.approve', label: 'Aprobar/Rechazar (Ger. Oper.)', permission: 'purchase_orders.approve' },
                     { key: 'purchase_orders.export', label: 'Exportar a Excel', permission: 'purchase_orders.export' },
                     { key: 'purchase_orders.observe', label: 'Poner en observado', permission: 'purchase_orders.observe' },

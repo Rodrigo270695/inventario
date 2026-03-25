@@ -2,7 +2,6 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\StockEntry;
 use App\Models\Notification;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -45,6 +44,9 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'name' => config('app.name'),
+            'allowedZonalIds' => $request->attributes->has('allowed_zonal_ids')
+                ? $request->attributes->get('allowed_zonal_ids')
+                : null,
             'auth' => [
                 'user' => $user,
                 'permissions' => $permissions,
@@ -57,8 +59,9 @@ class HandleInertiaRequests extends Middleware
                 'restore_user' => $request->session()->get('restore_user'),
             ],
             'stockEntriesPendingConfirmCount' => 0,
-            'notificationsUnreadCount' => in_array('alerts.view', $permissions, true)
+            'notificationsUnreadCount' => $user && in_array('alerts.view', $permissions, true)
                 ? Notification::query()
+                    ->where('user_id', $user->id)
                     ->whereNull('read_at')
                     ->count()
                 : 0,

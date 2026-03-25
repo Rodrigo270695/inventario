@@ -90,6 +90,8 @@ class PermissionSeeder extends Seeder
         'purchase_orders.create',
         'purchase_orders.update',
         'purchase_orders.delete',
+        'purchase_orders.minor_approve',
+        'purchase_orders.minor_observe',
         'purchase_orders.approve',
         'purchase_orders.export',
         'purchase_orders.observe',

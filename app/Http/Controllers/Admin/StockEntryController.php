@@ -713,10 +713,13 @@ class StockEntryController extends Controller
             }
         }
 
+        $modelRow = $modelId ? AssetModel::query()->find($modelId) : null;
+
         return Asset::create([
             'code' => $this->generateAssetCode($purchaseItem->asset_category_id),
             'serial_number' => $this->nullableTrimmed($validated['serial_number'] ?? null),
             'model_id' => $modelId,
+            'brand_id' => $modelRow?->brand_id,
             'category_id' => $purchaseItem->asset_category_id,
             'purchase_item_id' => $purchaseItem->id,
             'status' => 'stored',

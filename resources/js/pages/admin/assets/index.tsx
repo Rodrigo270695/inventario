@@ -64,6 +64,7 @@ type Filters = {
 type CategoryOption = { id: string; name: string; code: string };
 type SubcategoryOption = { id: string; asset_category_id: string; name: string; code: string | null };
 type ModelOption = { id: string; subcategory_id: string; name: string; brand?: { id: string; name: string } | null };
+type BrandOption = { id: string; name: string };
 type WarehouseOption = { id: string; office_id: string; name: string; code: string | null };
 type ZonalOption = { id: string; name: string; code: string };
 type OfficeOption = { id: string; zonal_id: string; name: string; code: string | null };
@@ -82,6 +83,7 @@ type AssetsIndexProps = {
     categoriesForSelect: CategoryOption[];
     subcategoriesForSelect: SubcategoryOption[];
     modelsForSelect: ModelOption[];
+    brandsForSelect: BrandOption[];
     warehousesForSelect: WarehouseOption[];
     zonalsForFilter: ZonalOption[];
     officesForFilter: OfficeOption[];
@@ -165,6 +167,7 @@ export default function AssetsIndex({
     categoriesForSelect,
     subcategoriesForSelect,
     modelsForSelect,
+    brandsForSelect,
     warehousesForSelect,
     zonalsForFilter,
     officesForFilter,
@@ -876,6 +879,7 @@ export default function AssetsIndex({
                 categoriesForSelect={categoriesForSelect}
                 subcategoriesForSelect={subcategoriesForSelect}
                 modelsForSelect={modelsForSelect}
+                brandsForSelect={brandsForSelect}
                 zonalsForSelect={zonalsForFilter}
                 officesForSelect={officesForFilter}
                 warehousesForSelect={warehousesForSelect}

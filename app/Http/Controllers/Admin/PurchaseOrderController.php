@@ -5,14 +5,17 @@ namespace App\Http\Controllers\Admin;
 use App\Exports\PurchaseOrdersExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\PurchaseOrder\PurchaseOrderRequest;
+use App\Models\AssetBrand;
 use App\Models\AssetCategory;
+use App\Models\AssetSubcategory;
 use App\Models\Office;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseQuote;
 use App\Models\Supplier;
-use App\Models\AssetSubcategory;
-use App\Models\AssetBrand;
+use App\Models\User;
 use App\Models\Zonal;
+use App\Services\PurchaseOrderFlowNotifier;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -62,7 +65,10 @@ class PurchaseOrderController extends Controller
         }
 
         $user = $request->user();
+        $isSuperadmin = $user?->hasRole('superadmin', 'web') ?? false;
         $canApprove = $user?->can('purchase_orders.approve') ?? false;
+        $canMinorApprove = ($user?->can('purchase_orders.minor_approve') ?? false) || $isSuperadmin;
+        $canMinorObserve = ($user?->can('purchase_orders.minor_observe') ?? false) || $isSuperadmin;
         $canViewDetail = $user?->can('purchase_orders.view_detail') ?? false;
 
         $query = PurchaseOrder::query()->with([
@@ -70,10 +76,15 @@ class PurchaseOrderController extends Controller
             'office:id,zonal_id,name,code',
             'office.zonal:id,name,code',
             'requestedByUser:id,name,last_name,usuario',
+            'minorApprovedByUser:id,name,last_name,usuario',
+            'minorRejectedByUser:id,name,last_name,usuario',
+            'minorObservedByUser:id,name,last_name,usuario',
             'approvedByUser:id,name,last_name,usuario',
             'rejectedByUser:id,name,last_name,usuario',
             'observedByUser:id,name,last_name,usuario',
         ]);
+
+        $this->applyPurchaseOrderMinorStageVisibility($query, $user);
 
         if ($q !== '') {
             $term = '%'.mb_strtolower($q).'%';
@@ -120,14 +131,17 @@ class PurchaseOrderController extends Controller
         $baseQuery = PurchaseOrder::query()
             ->where('created_at', '>=', $from)
             ->where('created_at', '<=', $to);
+        $this->applyPurchaseOrderMinorStageVisibility($baseQuery, $user);
         $totalCount = (clone $baseQuery)->count();
-        $pendingCount = (clone $baseQuery)->where('status', 'pending')->count();
+        $pendingCount = (clone $baseQuery)->whereIn('status', ['pending_minor', 'pending'])->count();
         $approvedCount = (clone $baseQuery)->where('status', 'approved')->count();
 
         return Inertia::render('admin/purchase-orders/index', [
             'purchaseOrders' => $orders,
             'suppliersForFilter' => $suppliersForFilter,
             'canApprove' => $canApprove,
+            'canMinorApprove' => $canMinorApprove,
+            'canMinorObserve' => $canMinorObserve,
             'canViewDetail' => $canViewDetail,
             'filters' => [
                 'q' => $q,
@@ -178,6 +192,8 @@ class PurchaseOrderController extends Controller
             'rejectedByUser:id,name,last_name,usuario',
             'observedByUser:id,name,last_name,usuario',
         ]);
+
+        $this->applyPurchaseOrderMinorStageVisibility($query, $request->user());
 
         if ($q !== '') {
             $term = '%'.mb_strtolower($q).'%';
@@ -232,19 +248,27 @@ class PurchaseOrderController extends Controller
     public function show(Request $request, PurchaseOrder $purchaseOrder): Response
     {
         $user = $request->user();
+        $isSuperadmin = $user?->hasRole('superadmin', 'web') ?? false;
         $canApprove = $user?->can('purchase_orders.approve') ?? false;
         $canObserve = $user?->can('purchase_orders.observe') ?? false;
+        $canMinorApprove = ($user?->can('purchase_orders.minor_approve') ?? false) || $isSuperadmin;
+        $canMinorObserve = ($user?->can('purchase_orders.minor_observe') ?? false) || $isSuperadmin;
         $canSelectQuote = $user?->can('purchase_quotes.select') ?? false;
 
         if (! $user?->can('purchase_orders.view_detail')) {
             abort(403, 'No tiene permiso para ver el detalle de órdenes de compra.');
         }
 
+        $this->authorizePurchaseOrderView($user, $purchaseOrder);
+
         $purchaseOrder->load([
             'supplier:id,name,ruc',
             'office:id,zonal_id,name,code',
             'office.zonal:id,name,code',
             'requestedByUser:id,name,last_name,usuario',
+            'minorApprovedByUser:id,name,last_name,usuario',
+            'minorRejectedByUser:id,name,last_name,usuario',
+            'minorObservedByUser:id,name,last_name,usuario',
             'approvedByUser:id,name,last_name,usuario',
             'rejectedByUser:id,name,last_name,usuario',
             'observedByUser:id,name,last_name,usuario',
@@ -252,10 +276,16 @@ class PurchaseOrderController extends Controller
             'quotes',
         ]);
 
+        $zonalId = $purchaseOrder->office?->zonal_id;
+        $canActMinor = $zonalId
+            && PurchaseOrderFlowNotifier::userCanActOnZonal($user, $zonalId);
+
         return Inertia::render('admin/purchase-orders/show', [
             'purchaseOrder' => $purchaseOrder,
             'canApprove' => $canApprove,
             'canObserve' => $canObserve,
+            'canMinorApprove' => $canMinorApprove && $canActMinor,
+            'canMinorObserve' => $canMinorObserve && $canActMinor,
             'canSelectQuote' => $canSelectQuote,
         ]);
     }
@@ -268,8 +298,8 @@ class PurchaseOrderController extends Controller
             abort(404);
         }
 
-        if ($purchaseOrder->status !== 'pending') {
-            abort(422, 'Solo se puede elegir cotización ganadora cuando la orden está Pendiente.');
+        if (! in_array($purchaseOrder->status, ['pending_minor', 'pending'], true)) {
+            abort(422, 'Solo se puede elegir cotización ganadora cuando la orden está pendiente (zonal o general).');
         }
 
         // Desmarcar todas y marcar solo la seleccionada
@@ -312,8 +342,8 @@ class PurchaseOrderController extends Controller
         unset($validated['items']);
         unset($validated['code']);
 
-        // Forzar estado inicial pendiente
-        $validated['status'] = 'pending';
+        // Flujo: primero aprobación zonal (menor)
+        $validated['status'] = 'pending_minor';
 
         $validated['code'] = $this->nextPurchaseOrderCode();
 
@@ -384,14 +414,18 @@ class PurchaseOrderController extends Controller
             }
         }
 
+        $order->load(['office.zonal', 'supplier', 'requestedByUser']);
+        PurchaseOrderFlowNotifier::notifyMinorPending($order);
+        PurchaseOrderFlowNotifier::dispatchMinorPendingEmails($order->id);
+
         return redirect()->route('admin.purchase-orders.index')
             ->with('toast', ['type' => 'success', 'message' => 'Orden de compra creada correctamente.']);
     }
 
     public function edit(Request $request, PurchaseOrder $purchaseOrder): Response
     {
-        if (! in_array($purchaseOrder->status, ['pending', 'observed'], true)) {
-            abort(403, 'Solo se pueden editar órdenes en estado Pendiente u Observado.');
+        if (! in_array($purchaseOrder->status, ['pending_minor', 'observed_minor', 'pending', 'observed'], true)) {
+            abort(403, 'Solo se pueden editar órdenes en estado pendiente (zonal o general) u observado.');
         }
 
         $purchaseOrder->load([
@@ -424,9 +458,11 @@ class PurchaseOrderController extends Controller
 
     public function update(PurchaseOrderRequest $request, PurchaseOrder $purchaseOrder): RedirectResponse
     {
-        if (! in_array($purchaseOrder->status, ['pending', 'observed'], true)) {
-            abort(403, 'Solo se pueden modificar órdenes en estado Pendiente u Observado.');
+        if (! in_array($purchaseOrder->status, ['pending_minor', 'observed_minor', 'pending', 'observed'], true)) {
+            abort(403, 'Solo se pueden modificar órdenes en estado pendiente (zonal o general) u observado.');
         }
+
+        $wasObservedMinor = $purchaseOrder->status === 'observed_minor';
 
         $validated = $request->validated();
         $canSelectQuote = $request->user()?->can('purchase_quotes.select') ?? false;
@@ -446,8 +482,16 @@ class PurchaseOrderController extends Controller
         }
 
         $validated['total_amount'] = round($total, 2);
-        // Siempre que se edita (desde pendiente u observado) la orden vuelve a estado Pendiente
-        $validated['status'] = 'pending';
+
+        if ($purchaseOrder->status === 'observed_minor') {
+            $validated['status'] = 'pending_minor';
+            $validated = array_merge($validated, $this->clearedMinorTierAttributes());
+        } elseif ($purchaseOrder->status === 'pending_minor') {
+            $validated['status'] = 'pending_minor';
+        } else {
+            // Desde observado (general) vuelve a cola de aprobación general
+            $validated['status'] = 'pending';
+        }
 
         $purchaseOrder->update($validated);
 
@@ -544,14 +588,20 @@ class PurchaseOrderController extends Controller
             }
         }
 
+        $purchaseOrder->refresh();
+        if ($purchaseOrder->status === 'pending_minor' && $wasObservedMinor) {
+            PurchaseOrderFlowNotifier::notifyMinorPending($purchaseOrder);
+            PurchaseOrderFlowNotifier::dispatchMinorPendingEmails($purchaseOrder->id);
+        }
+
         return redirect()->route('admin.purchase-orders.index')
             ->with('toast', ['type' => 'success', 'message' => 'Orden de compra actualizada correctamente.']);
     }
 
     public function destroy(PurchaseOrder $purchaseOrder): RedirectResponse
     {
-        if ($purchaseOrder->status !== 'pending') {
-            abort(403, 'Solo se pueden eliminar órdenes en estado Pendiente.');
+        if ($purchaseOrder->status !== 'pending_minor') {
+            abort(403, 'Solo se pueden eliminar órdenes en espera de aprobación zonal (pendiente zonal).');
         }
 
         foreach ($purchaseOrder->quotes as $quote) {
@@ -570,7 +620,7 @@ class PurchaseOrderController extends Controller
     public function approve(Request $request, PurchaseOrder $purchaseOrder): RedirectResponse
     {
         if ($purchaseOrder->status !== 'pending') {
-            abort(422, 'Solo se puede aprobar una orden en estado Pendiente.');
+            abort(422, 'Solo se puede aprobar una orden en cola de aprobación general.');
         }
 
         $observationNotes = $request->input('observation_notes', '');
@@ -585,6 +635,10 @@ class PurchaseOrderController extends Controller
             'observation_notes' => $observationNotes !== '' ? $observationNotes : null,
         ]);
 
+        $purchaseOrder->refresh();
+        PurchaseOrderFlowNotifier::notifyMajorOutcome($purchaseOrder, 'Aprobada');
+        PurchaseOrderFlowNotifier::dispatchMajorResultEmails($purchaseOrder->id, 'approved');
+
         return redirect()->route('admin.purchase-orders.index')
             ->with('toast', ['type' => 'success', 'message' => 'Orden aprobada correctamente.']);
     }
@@ -592,7 +646,7 @@ class PurchaseOrderController extends Controller
     public function reject(Request $request, PurchaseOrder $purchaseOrder): RedirectResponse
     {
         if ($purchaseOrder->status !== 'pending') {
-            abort(422, 'Solo se puede rechazar una orden en estado Pendiente.');
+            abort(422, 'Solo se puede rechazar una orden en cola de aprobación general.');
         }
 
         $observationNotes = $request->input('observation_notes', '');
@@ -607,6 +661,10 @@ class PurchaseOrderController extends Controller
             'observation_notes' => $observationNotes !== '' ? $observationNotes : null,
         ]);
 
+        $purchaseOrder->refresh();
+        PurchaseOrderFlowNotifier::notifyMajorOutcome($purchaseOrder, 'Rechazada');
+        PurchaseOrderFlowNotifier::dispatchMajorResultEmails($purchaseOrder->id, 'rejected');
+
         return redirect()->route('admin.purchase-orders.index')
             ->with('toast', ['type' => 'success', 'message' => 'Orden rechazada.']);
     }
@@ -614,7 +672,7 @@ class PurchaseOrderController extends Controller
     public function observe(Request $request, PurchaseOrder $purchaseOrder): RedirectResponse
     {
         if ($purchaseOrder->status !== 'pending') {
-            abort(422, 'Solo se puede poner en observación una orden en estado Pendiente.');
+            abort(422, 'Solo se puede poner en observación una orden en cola de aprobación general.');
         }
 
         $observationNotes = $request->input('observation_notes', '');
@@ -629,8 +687,165 @@ class PurchaseOrderController extends Controller
             'observation_notes' => $observationNotes !== '' ? $observationNotes : null,
         ]);
 
+        $purchaseOrder->refresh();
+        PurchaseOrderFlowNotifier::notifyMajorOutcome($purchaseOrder, 'Observada');
+        PurchaseOrderFlowNotifier::dispatchMajorResultEmails($purchaseOrder->id, 'observed');
+
         return redirect()->route('admin.purchase-orders.index')
             ->with('toast', ['type' => 'success', 'message' => 'Orden puesta en observación.']);
+    }
+
+    public function minorApprove(Request $request, PurchaseOrder $purchaseOrder): RedirectResponse
+    {
+        $u = $request->user();
+        abort_unless($u && ($u->can('purchase_orders.minor_approve') || $u->hasRole('superadmin', 'web')), 403);
+        if ($purchaseOrder->status !== 'pending_minor') {
+            abort(422, 'Solo se puede aprobar en zonal cuando la orden está pendiente zonal.');
+        }
+        $this->assertUserCanMinorAct($request->user(), $purchaseOrder);
+
+        $observationNotes = $request->input('observation_notes', '');
+        $purchaseOrder->update([
+            'status' => 'pending',
+            'minor_approved_by' => $request->user()?->id,
+            'minor_approved_at' => now(),
+            'minor_rejected_by' => null,
+            'minor_rejected_at' => null,
+            'minor_observed_by' => null,
+            'minor_observed_at' => null,
+            'minor_observation_notes' => null,
+            'observation_notes' => $observationNotes !== '' ? $observationNotes : null,
+        ]);
+
+        $purchaseOrder->refresh();
+        PurchaseOrderFlowNotifier::onMinorApproved($purchaseOrder);
+        PurchaseOrderFlowNotifier::dispatchMinorResultEmails($purchaseOrder->id, 'approved');
+        PurchaseOrderFlowNotifier::dispatchMajorPendingEmails($purchaseOrder->id);
+
+        return redirect()->route('admin.purchase-orders.index')
+            ->with('toast', ['type' => 'success', 'message' => 'Aprobación zonal registrada.']);
+    }
+
+    public function minorReject(Request $request, PurchaseOrder $purchaseOrder): RedirectResponse
+    {
+        $u = $request->user();
+        abort_unless($u && ($u->can('purchase_orders.minor_approve') || $u->hasRole('superadmin', 'web')), 403);
+        if ($purchaseOrder->status !== 'pending_minor') {
+            abort(422, 'Solo se puede rechazar en zonal cuando la orden está pendiente zonal.');
+        }
+        $this->assertUserCanMinorAct($request->user(), $purchaseOrder);
+
+        $observationNotes = $request->input('observation_notes', '');
+        $purchaseOrder->update([
+            'status' => 'rejected',
+            'minor_rejected_by' => $request->user()?->id,
+            'minor_rejected_at' => now(),
+            'minor_approved_by' => null,
+            'minor_approved_at' => null,
+            'minor_observed_by' => null,
+            'minor_observed_at' => null,
+            'minor_observation_notes' => null,
+            'observation_notes' => $observationNotes !== '' ? $observationNotes : null,
+        ]);
+
+        $purchaseOrder->refresh();
+        PurchaseOrderFlowNotifier::onMinorRejected($purchaseOrder);
+        PurchaseOrderFlowNotifier::dispatchMinorResultEmails($purchaseOrder->id, 'rejected');
+
+        return redirect()->route('admin.purchase-orders.index')
+            ->with('toast', ['type' => 'success', 'message' => 'Orden rechazada en zonal.']);
+    }
+
+    public function minorObserve(Request $request, PurchaseOrder $purchaseOrder): RedirectResponse
+    {
+        $u = $request->user();
+        abort_unless($u && ($u->can('purchase_orders.minor_observe') || $u->hasRole('superadmin', 'web')), 403);
+        if ($purchaseOrder->status !== 'pending_minor') {
+            abort(422, 'Solo se puede observar en zonal cuando la orden está pendiente zonal.');
+        }
+        $this->assertUserCanMinorAct($request->user(), $purchaseOrder);
+
+        $observationNotes = $request->input('observation_notes', '');
+        $purchaseOrder->update([
+            'status' => 'observed_minor',
+            'minor_observed_by' => $request->user()?->id,
+            'minor_observed_at' => now(),
+            'minor_observation_notes' => $observationNotes !== '' ? $observationNotes : null,
+        ]);
+
+        $purchaseOrder->refresh();
+        PurchaseOrderFlowNotifier::onMinorObserved($purchaseOrder);
+        PurchaseOrderFlowNotifier::dispatchMinorResultEmails($purchaseOrder->id, 'observed');
+
+        return redirect()->route('admin.purchase-orders.index')
+            ->with('toast', ['type' => 'success', 'message' => 'Observación zonal registrada.']);
+    }
+
+    private function applyPurchaseOrderMinorStageVisibility(Builder $query, ?User $user): void
+    {
+        if (! $user) {
+            return;
+        }
+        if ($user->hasRole('superadmin', 'web')) {
+            return;
+        }
+        if ($user->can('purchase_orders.minor_approve') || $user->can('purchase_orders.minor_observe')) {
+            return;
+        }
+        $query->where(function ($q) use ($user) {
+            $q->whereNotIn('status', ['pending_minor', 'observed_minor'])
+                ->orWhere('requested_by', $user->id);
+        });
+    }
+
+    private function authorizePurchaseOrderView(?User $user, PurchaseOrder $purchaseOrder): void
+    {
+        if (! $user) {
+            abort(403);
+        }
+        if (! in_array($purchaseOrder->status, ['pending_minor', 'observed_minor'], true)) {
+            return;
+        }
+        if ($purchaseOrder->requested_by === $user->id) {
+            return;
+        }
+        if ($user->hasRole('superadmin', 'web')) {
+            return;
+        }
+        if ($user->can('purchase_orders.minor_approve') || $user->can('purchase_orders.minor_observe')) {
+            return;
+        }
+        abort(403, 'Esta orden aún está en aprobación zonal.');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function clearedMinorTierAttributes(): array
+    {
+        return [
+            'minor_approved_by' => null,
+            'minor_approved_at' => null,
+            'minor_rejected_by' => null,
+            'minor_rejected_at' => null,
+            'minor_observed_by' => null,
+            'minor_observed_at' => null,
+            'minor_observation_notes' => null,
+        ];
+    }
+
+    private function assertUserCanMinorAct(?User $user, PurchaseOrder $purchaseOrder): void
+    {
+        if (! $user) {
+            abort(403, 'No tiene permiso para esta acción en el zonal de la orden.');
+        }
+        if ($user->hasRole('superadmin', 'web')) {
+            return;
+        }
+        $zonalId = $purchaseOrder->office?->zonal_id;
+        if (! $zonalId || ! PurchaseOrderFlowNotifier::userCanActOnZonal($user, $zonalId)) {
+            abort(403, 'No tiene permiso para esta acción en el zonal de la orden.');
+        }
     }
 
     private function nextPurchaseOrderCode(): string
@@ -659,5 +874,4 @@ class PurchaseOrderController extends Controller
 
         return str_pad((string) $next, 7, '0', STR_PAD_LEFT);
     }
-
 }

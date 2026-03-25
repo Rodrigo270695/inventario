@@ -1,5 +1,5 @@
 import { useForm } from '@inertiajs/react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppModal } from '@/components/app-modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,11 +12,13 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { CONDITION_OPTIONS } from '@/constants/conditions';
+import { SUBCATEGORY_CODES_WITH_COMPUTER_TAB } from '@/constants/asset-config';
 import type { Asset } from '@/types';
 
 type CategoryOption = { id: string; name: string; code: string };
 type SubcategoryOption = { id: string; asset_category_id: string; name: string; code: string | null };
 type ModelOption = { id: string; subcategory_id: string; name: string; brand?: { id: string; name: string } | null };
+type BrandOption = { id: string; name: string };
 type ZonalOption = { id: string; name: string; code: string };
 type OfficeOption = { id: string; zonal_id: string; name: string; code: string | null };
 type WarehouseOption = { id: string; name: string; code: string | null; office_id: string; office?: { id: string; zonal_id: string; name: string; code: string | null } };
@@ -28,10 +30,14 @@ type Props = {
     categoriesForSelect: CategoryOption[];
     subcategoriesForSelect: SubcategoryOption[];
     modelsForSelect: ModelOption[];
+    brandsForSelect: BrandOption[];
     zonalsForSelect: ZonalOption[];
     officesForSelect: OfficeOption[];
     warehousesForSelect: WarehouseOption[];
 };
+
+/** Valor interno del select de modelo para «registrar otro modelo». */
+const MODEL_OTHER = '__other__';
 
 const STATUS_OPTIONS = [
     { value: 'stored', label: 'Almacenado' },
@@ -54,6 +60,7 @@ export function AssetFormModal({
     categoriesForSelect,
     subcategoriesForSelect,
     modelsForSelect,
+    brandsForSelect,
     zonalsForSelect,
     officesForSelect,
     warehousesForSelect,
@@ -62,11 +69,14 @@ export function AssetFormModal({
     const [subcategoryId, setSubcategoryId] = useState('');
     const [cascadeZonalId, setCascadeZonalId] = useState('');
     const [cascadeOfficeId, setCascadeOfficeId] = useState('');
+    const subcategoryIdRef = useRef('');
+    const formSessionRef = useRef<string | null>(null);
 
-    const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
+    const { data, setData, post, put, processing, errors, reset, clearErrors, transform } = useForm({
         code: asset?.code ?? '',
         serial_number: asset?.serial_number ?? '',
         model_id: asset?.model_id ?? '',
+        brand_id: asset?.brand_id ?? asset?.model?.brand?.id ?? '',
         category_id: asset?.category_id ?? '',
         status: asset?.status ?? 'stored',
         condition: asset?.condition ?? 'new',
@@ -76,6 +86,7 @@ export function AssetFormModal({
         depreciation_rate: toStr(asset?.depreciation_rate),
         warranty_until: asset?.warranty_until ?? '',
         notes: asset?.notes ?? '',
+        new_model_name: '',
     });
 
     const subcategoriesFiltered = useMemo(
@@ -83,13 +94,26 @@ export function AssetFormModal({
         [data.category_id, subcategoriesForSelect]
     );
 
-    const modelsFiltered = useMemo(
-        () =>
-            subcategoryId
-                ? modelsForSelect.filter((m) => m.subcategory_id === subcategoryId)
-                : [],
-        [subcategoryId, modelsForSelect]
-    );
+    const showMarcaColumn = useMemo(() => {
+        const sub = subcategoriesForSelect.find((s) => s.id === subcategoryId);
+        return !!(sub?.code && SUBCATEGORY_CODES_WITH_COMPUTER_TAB.includes(sub.code));
+    }, [subcategoryId, subcategoriesForSelect]);
+
+    const modelsFiltered = useMemo(() => {
+        if (!subcategoryId) return [];
+        let list = modelsForSelect.filter((m) => m.subcategory_id === subcategoryId);
+        if (showMarcaColumn) {
+            if (!data.brand_id) return [];
+            list = list.filter((m) => m.brand?.id === data.brand_id);
+        }
+        return list;
+    }, [subcategoryId, modelsForSelect, showMarcaColumn, data.brand_id]);
+
+    const isOtherModel = data.model_id === MODEL_OTHER;
+
+    useEffect(() => {
+        subcategoryIdRef.current = subcategoryId;
+    }, [subcategoryId]);
 
     const officesFilteredByZonal = useMemo(
         () =>
@@ -124,88 +148,148 @@ export function AssetFormModal({
         };
     }, [open, clearErrors]);
 
+    /**
+     * Inicializa el formulario solo al abrir el modal o al cambiar de activo (edición).
+     * Evita borrar los datos del usuario cuando Inertia vuelve con errores de validación
+     * y las props del listado (p. ej. modelsForSelect) cambian de referencia.
+     */
     useEffect(() => {
-        if (!open) return;
-        const modelSubcategoryId = isEdit && asset?.model_id
-            ? modelsForSelect.find((m) => m.id === asset.model_id)?.subcategory_id ?? ''
-            : '';
-        if (asset?.warehouse_id) {
-            const wh = warehousesForSelect.find((w) => w.id === asset.warehouse_id);
+        if (!open) {
+            formSessionRef.current = null;
+            return;
+        }
+
+        const sessionKey = isEdit && asset ? `edit:${asset.id}` : 'create';
+        if (formSessionRef.current === sessionKey) {
+            return;
+        }
+        formSessionRef.current = sessionKey;
+
+        if (isEdit && asset) {
+            const modelSubcategoryId =
+                asset.model?.subcategory?.id ??
+                modelsForSelect.find((m) => m.id === asset.model_id)?.subcategory_id ??
+                '';
+
+            const wh = asset.warehouse;
             if (wh?.office) {
                 setCascadeZonalId(wh.office.zonal_id);
-                setCascadeOfficeId(wh.office_id);
+                setCascadeOfficeId(wh.office_id ?? '');
             } else if (wh?.office_id) {
                 setCascadeOfficeId(wh.office_id);
                 const off = officesForSelect.find((o) => o.id === wh.office_id);
-                if (off) setCascadeZonalId(off.zonal_id);
+                setCascadeZonalId(off?.zonal_id ?? '');
+            } else {
+                setCascadeZonalId('');
+                setCascadeOfficeId('');
             }
+
+            setData({
+                code: asset.code ?? '',
+                serial_number: asset.serial_number ?? '',
+                model_id: asset.model_id ?? '',
+                brand_id: asset.brand_id ?? asset.model?.brand?.id ?? '',
+                category_id: asset.category_id ?? '',
+                status: asset.status ?? 'stored',
+                condition: asset.condition ?? 'new',
+                warehouse_id: asset.warehouse_id ?? '',
+                acquisition_value: toStr(asset.acquisition_value),
+                current_value: toStr(asset.current_value),
+                depreciation_rate: toStr(asset.depreciation_rate),
+                warranty_until: asset.warranty_until ?? '',
+                notes: asset.notes ?? '',
+                new_model_name: '',
+            });
+            setSubcategoryId(modelSubcategoryId);
         } else {
             setCascadeZonalId('');
             setCascadeOfficeId('');
+            setSubcategoryId('');
+            setData({
+                code: '',
+                serial_number: '',
+                model_id: '',
+                brand_id: '',
+                category_id: '',
+                status: 'stored',
+                condition: 'new',
+                warehouse_id: '',
+                acquisition_value: '',
+                current_value: '',
+                depreciation_rate: '',
+                warranty_until: '',
+                notes: '',
+                new_model_name: '',
+            });
         }
-        setData({
-            code: asset?.code ?? '',
-            serial_number: asset?.serial_number ?? '',
-            model_id: asset?.model_id ?? '',
-            category_id: asset?.category_id ?? '',
-            status: asset?.status ?? 'stored',
-            condition: asset?.condition ?? 'new',
-            warehouse_id: asset?.warehouse_id ?? '',
-            acquisition_value: toStr(asset?.acquisition_value),
-            current_value: toStr(asset?.current_value),
-            depreciation_rate: toStr(asset?.depreciation_rate),
-            warranty_until: asset?.warranty_until ?? '',
-            notes: asset?.notes ?? '',
-        });
-        setSubcategoryId(modelSubcategoryId);
-    }, [
-        open,
-        asset?.id,
-        asset?.code,
-        asset?.serial_number,
-        asset?.model_id,
-        asset?.category_id,
-        asset?.status,
-        asset?.condition,
-        asset?.warehouse_id,
-        asset?.acquisition_value,
-        asset?.current_value,
-        asset?.depreciation_rate,
-        asset?.warranty_until,
-        asset?.notes,
-        isEdit,
-        modelsForSelect,
-        warehousesForSelect,
-        officesForSelect,
-    ]);
+    }, [open, isEdit, asset, modelsForSelect, officesForSelect, setData]);
 
     const handleCategoryChange = (v: string) => {
         const value = v === '_' ? '' : v;
-        setData((prev) => ({ ...prev, category_id: value, model_id: '' }));
+        setData((prev) => ({
+            ...prev,
+            category_id: value,
+            model_id: '',
+            brand_id: '',
+            new_model_name: '',
+        }));
         setSubcategoryId('');
     };
 
     const handleSubcategoryChange = (v: string) => {
         const value = v === '_' ? '' : v;
         setSubcategoryId(value);
-        setData((prev) => ({ ...prev, model_id: '' }));
+        setData((prev) => ({ ...prev, model_id: '', brand_id: '', new_model_name: '' }));
+    };
+
+    const handleBrandChange = (v: string) => {
+        const id = v === '_' ? '' : v;
+        setData((prev) => ({ ...prev, brand_id: id, model_id: '', new_model_name: '' }));
+    };
+
+    /** Marca en flujo «Otro» sin columna fija de marca: no resetea la opción Otro. */
+    const handleBrandChangeKeepOther = (v: string) => {
+        const id = v === '_' ? '' : v;
+        setData('brand_id', id);
+    };
+
+    const handleModelSelectChange = (v: string) => {
+        if (v === '_' || v === '') {
+            setData((prev) => ({ ...prev, model_id: '', new_model_name: '' }));
+            return;
+        }
+        if (v === MODEL_OTHER) {
+            setData((prev) => ({ ...prev, model_id: MODEL_OTHER, new_model_name: '' }));
+            return;
+        }
+        setData((prev) => ({ ...prev, model_id: v, new_model_name: '' }));
     };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        const payload = {
-            ...data,
-            warehouse_id: data.warehouse_id === '' ? null : data.warehouse_id,
-            acquisition_value: data.acquisition_value === '' ? null : Number(data.acquisition_value),
-            current_value: data.current_value === '' ? null : Number(data.current_value),
-            depreciation_rate: data.depreciation_rate === '' ? null : Number(data.depreciation_rate),
-            warranty_until: data.warranty_until === '' ? null : data.warranty_until,
-        };
+        transform((formData) => {
+            const other = formData.model_id === MODEL_OTHER;
+            const nameTrim = formData.new_model_name.trim();
+            const subId = subcategoryIdRef.current;
+            return {
+                ...formData,
+                warehouse_id: formData.warehouse_id === '' ? null : formData.warehouse_id,
+                model_id: other ? null : formData.model_id === '' ? null : formData.model_id,
+                brand_id: formData.brand_id === '' ? null : formData.brand_id,
+                subcategory_id: other ? subId || null : null,
+                new_model_name: other ? nameTrim : null,
+                acquisition_value:
+                    formData.acquisition_value === '' ? null : Number(formData.acquisition_value),
+                current_value:
+                    formData.current_value === '' ? null : Number(formData.current_value),
+                depreciation_rate:
+                    formData.depreciation_rate === '' ? null : Number(formData.depreciation_rate),
+                warranty_until: formData.warranty_until === '' ? null : formData.warranty_until,
+            };
+        });
         if (isEdit && asset) {
             put(`/admin/assets/${asset.id}`, {
                 preserveScroll: true,
-                data: payload,
-                transform: () => payload,
                 onSuccess: () => {
                     reset();
                     onOpenChange(false);
@@ -214,8 +298,6 @@ export function AssetFormModal({
         } else {
             post('/admin/assets', {
                 preserveScroll: true,
-                data: payload,
-                transform: () => payload,
                 onSuccess: () => {
                     reset();
                     onOpenChange(false);
@@ -224,9 +306,15 @@ export function AssetFormModal({
         }
     };
 
-    const canSubmit = isEdit
+    const otherModelValid =
+        !isOtherModel ||
+        (data.new_model_name.trim() !== '' &&
+            data.brand_id !== '' &&
+            subcategoryId !== '');
+
+    const canSubmit = otherModelValid && (isEdit
         ? data.code.trim() !== '' && data.category_id !== '' && data.warehouse_id !== ''
-        : data.category_id !== '' && subcategoryId !== '' && data.warehouse_id !== '';
+        : data.category_id !== '' && subcategoryId !== '' && data.warehouse_id !== '');
 
     return (
         <AppModal
@@ -237,7 +325,7 @@ export function AssetFormModal({
             width="wide"
         >
             <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-3 gap-x-6 gap-y-4">
+                <div className="grid grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-3">
                     {/* Ubicación: Zonal → Oficina → Almacén (obligatorios, primero) */}
                     <div className="space-y-2">
                         <Label>
@@ -316,8 +404,15 @@ export function AssetFormModal({
                             <p className="text-sm text-destructive">{errors.warehouse_id}</p>
                         )}
                     </div>
+                </div>
 
-                    {/* Categoría y subcategoría */}
+                <div
+                    className={
+                        showMarcaColumn
+                            ? 'grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-4'
+                            : 'grid grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-3'
+                    }
+                >
                     <div className="space-y-2">
                         <Label>
                             Categoría <span className="text-red-500">*</span>
@@ -366,15 +461,55 @@ export function AssetFormModal({
                         </Select>
                     </div>
 
+                    {showMarcaColumn && (
+                        <div className="space-y-2">
+                            <Label>Marca</Label>
+                            <Select
+                                value={data.brand_id === '' ? '_' : data.brand_id}
+                                onValueChange={handleBrandChange}
+                                disabled={!subcategoryId}
+                            >
+                                <SelectTrigger className="w-full border-border bg-background">
+                                    <SelectValue placeholder="Seleccione marca" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="_">Seleccione marca</SelectItem>
+                                    {brandsForSelect.map((b) => (
+                                        <SelectItem key={b.id} value={b.id}>
+                                            {b.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            {errors.brand_id && (
+                                <p className="text-sm text-destructive">{errors.brand_id}</p>
+                            )}
+                        </div>
+                    )}
+
                     <div className="space-y-2">
                         <Label>Modelo (opcional)</Label>
                         <Select
-                            value={data.model_id === '' ? '_' : data.model_id}
-                            onValueChange={(v) => setData('model_id', v === '_' ? '' : v)}
-                            disabled={!subcategoryId}
+                            value={
+                                data.model_id === ''
+                                    ? '_'
+                                    : data.model_id === MODEL_OTHER
+                                      ? MODEL_OTHER
+                                      : data.model_id
+                            }
+                            onValueChange={handleModelSelectChange}
+                            disabled={
+                                !subcategoryId || (showMarcaColumn && data.brand_id === '')
+                            }
                         >
                             <SelectTrigger className="w-full border-border bg-background">
-                                <SelectValue placeholder="Seleccione modelo (marca - modelo)" />
+                                <SelectValue
+                                    placeholder={
+                                        showMarcaColumn && !data.brand_id
+                                            ? 'Primero elija marca'
+                                            : 'Seleccione modelo'
+                                    }
+                                />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="_">Seleccione modelo</SelectItem>
@@ -383,13 +518,68 @@ export function AssetFormModal({
                                         {m.brand?.name ? `${m.brand.name} - ${m.name}` : m.name}
                                     </SelectItem>
                                 ))}
+                                <SelectItem value={MODEL_OTHER}>Otro (registrar nuevo)</SelectItem>
                             </SelectContent>
                         </Select>
                         {errors.model_id && (
                             <p className="text-sm text-destructive">{errors.model_id}</p>
                         )}
                     </div>
+                </div>
 
+                {isOtherModel && (
+                    <div className="grid grid-cols-1 gap-x-6 gap-y-4 border-t border-border pt-4 md:grid-cols-2">
+                        {!showMarcaColumn && (
+                            <div className="space-y-2">
+                                <Label>
+                                    Marca <span className="text-red-500">*</span>
+                                </Label>
+                                <Select
+                                    value={data.brand_id === '' ? '_' : data.brand_id}
+                                    onValueChange={handleBrandChangeKeepOther}
+                                    disabled={!subcategoryId}
+                                >
+                                    <SelectTrigger className="w-full border-border bg-background">
+                                        <SelectValue placeholder="Seleccione marca" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="_">Seleccione marca</SelectItem>
+                                        {brandsForSelect.map((b) => (
+                                            <SelectItem key={b.id} value={b.id}>
+                                                {b.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                {errors.brand_id && (
+                                    <p className="text-sm text-destructive">{errors.brand_id}</p>
+                                )}
+                            </div>
+                        )}
+                        <div
+                            className={`space-y-2 ${showMarcaColumn ? 'md:col-span-2' : ''}`}
+                        >
+                            <Label>
+                                Nombre del modelo <span className="text-red-500">*</span>
+                            </Label>
+                            <Input
+                                value={data.new_model_name}
+                                onChange={(e) => setData('new_model_name', e.target.value)}
+                                maxLength={200}
+                                placeholder="Ej.: ThinkPad E14 Gen 5"
+                                className={errors.new_model_name ? 'border-destructive' : ''}
+                            />
+                            {errors.new_model_name && (
+                                <p className="text-sm text-destructive">{errors.new_model_name}</p>
+                            )}
+                            {errors.subcategory_id && (
+                                <p className="text-sm text-destructive">{errors.subcategory_id}</p>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                <div className="grid grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-3">
                     {isEdit && (
                         <div className="space-y-2">
                             <Label>Código</Label>
@@ -515,7 +705,7 @@ export function AssetFormModal({
                         )}
                     </div>
 
-                    <div className="space-y-2 col-span-3">
+                    <div className="space-y-2 md:col-span-3">
                         <Label>Notas</Label>
                         <textarea
                             value={data.notes}

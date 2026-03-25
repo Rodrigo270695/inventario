@@ -1,27 +1,27 @@
 <?php
 
-use App\Http\Controllers\Admin\ApiPeruRucController;
 use App\Http\Controllers\Admin\AlertController;
+use App\Http\Controllers\Admin\ApiPeruRucController;
 use App\Http\Controllers\Admin\AssetCatalogController;
+use App\Http\Controllers\Admin\AssetCategoryController;
 use App\Http\Controllers\Admin\AssetController;
 use App\Http\Controllers\Admin\AssetDisposalController;
 use App\Http\Controllers\Admin\AssetTransferController;
 use App\Http\Controllers\Admin\ComponentController;
 use App\Http\Controllers\Admin\DepartmentController;
-use App\Http\Controllers\Admin\GlAccountController;
 use App\Http\Controllers\Admin\DepreciationController;
+use App\Http\Controllers\Admin\GlAccountController;
 use App\Http\Controllers\Admin\InventoryCountController;
 use App\Http\Controllers\Admin\InvoiceController;
-use App\Http\Controllers\Admin\AssetCategoryController;
 use App\Http\Controllers\Admin\OrganizationController;
+use App\Http\Controllers\Admin\PreventiveMaintenanceController;
 use App\Http\Controllers\Admin\PurchaseOrderController;
-use App\Http\Controllers\Admin\StockEntryController;
-use App\Http\Controllers\Admin\SupplierController;
 use App\Http\Controllers\Admin\RepairShopController;
 use App\Http\Controllers\Admin\RepairTicketController;
-use App\Http\Controllers\Admin\PreventiveMaintenanceController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\ServiceController;
+use App\Http\Controllers\Admin\StockEntryController;
+use App\Http\Controllers\Admin\SupplierController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\WarehouseLocationController;
 use Illuminate\Support\Facades\Route;
@@ -445,6 +445,9 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::post('purchase-orders/{purchase_order}/approve', [PurchaseOrderController::class, 'approve'])->middleware('permission:purchase_orders.approve')->name('purchase-orders.approve');
     Route::post('purchase-orders/{purchase_order}/reject', [PurchaseOrderController::class, 'reject'])->middleware('permission:purchase_orders.approve')->name('purchase-orders.reject');
     Route::post('purchase-orders/{purchase_order}/observe', [PurchaseOrderController::class, 'observe'])->middleware('permission:purchase_orders.observe')->name('purchase-orders.observe');
+    Route::post('purchase-orders/{purchase_order}/minor-approve', [PurchaseOrderController::class, 'minorApprove'])->middleware('permission:purchase_orders.minor_approve')->name('purchase-orders.minor-approve');
+    Route::post('purchase-orders/{purchase_order}/minor-reject', [PurchaseOrderController::class, 'minorReject'])->middleware('permission:purchase_orders.minor_approve')->name('purchase-orders.minor-reject');
+    Route::post('purchase-orders/{purchase_order}/minor-observe', [PurchaseOrderController::class, 'minorObserve'])->middleware('permission:purchase_orders.minor_observe')->name('purchase-orders.minor-observe');
     Route::post('purchase-orders/{purchase_order}/quotes/{purchase_quote}/select', [PurchaseOrderController::class, 'selectQuote'])->middleware('permission:purchase_quotes.select')->name('purchase-orders.quotes.select');
 
     Route::get('users', [UserController::class, 'index'])->middleware('permission:users.view')->name('users.index');

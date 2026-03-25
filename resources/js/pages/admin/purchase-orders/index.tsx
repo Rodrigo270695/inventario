@@ -33,7 +33,10 @@ import {
 import AppLayout from '@/layouts/app-layout';
 import { AppModal } from '@/components/app-modal';
 import { PurchaseOrderStatusBadge } from '@/components/purchase-orders/status-badge';
-import { PurchaseOrderActionsCell } from '@/components/purchase-orders/actions-cell';
+import {
+    PurchaseOrderActionsCell,
+    type PurchaseOrderActionKind,
+} from '@/components/purchase-orders/actions-cell';
 import type { BreadcrumbItem, PaginationMeta, PurchaseOrder } from '@/types';
 import type { ToastMessage } from '@/components/toast';
 
@@ -78,36 +81,62 @@ type PurchaseOrdersIndexProps = {
     filters: Filters;
     stats?: Stats;
     canApprove?: boolean;
+    canMinorApprove?: boolean;
+    canMinorObserve?: boolean;
     canViewDetail?: boolean;
 };
 
-type ActionModalType = 'approve' | 'reject' | 'observe' | null;
+type ActionModalType = PurchaseOrderActionKind | null;
 
 const ACTION_MODAL_CONFIG: Record<
     Exclude<ActionModalType, null>,
     { title: string; description: string; placeholder: string; endpoint: string; confirmLabel: string; confirmClassName: string }
 > = {
     approve: {
-        title: 'Confirmar aprobación',
-        description: 'Esta acción aprobará la orden seleccionada y la enviará a ejecución.',
+        title: 'Confirmar aprobación (general)',
+        description: 'Aprobará la orden en nivel general (después de la aprobación zonal).',
         placeholder: 'Indique la observación o nota (ej. Se procede con la orden, conforme…)',
         endpoint: 'approve',
         confirmLabel: 'Aprobar orden',
         confirmClassName: 'bg-emerald-600 hover:bg-emerald-700 text-white',
     },
     reject: {
-        title: 'Rechazar orden',
-        description: 'La orden será rechazada y no continuará con el proceso.',
+        title: 'Rechazar orden (general)',
+        description: 'La orden será rechazada en nivel general.',
         placeholder: 'Indique el motivo del rechazo…',
         endpoint: 'reject',
         confirmLabel: 'Rechazar orden',
         confirmClassName: 'bg-rose-600 hover:bg-rose-700 text-white',
     },
     observe: {
-        title: 'Poner en observación',
+        title: 'Observación (general)',
         description: 'La orden quedará en estado Observado hasta que el solicitante revise y corrija.',
         placeholder: 'Indique el motivo de la observación…',
         endpoint: 'observe',
+        confirmLabel: 'Guardar observación',
+        confirmClassName: 'bg-amber-600 hover:bg-amber-700 text-white',
+    },
+    'minor-approve': {
+        title: 'Aprobar en zonal',
+        description: 'La orden pasará a cola de aprobación general.',
+        placeholder: 'Nota opcional…',
+        endpoint: 'minor-approve',
+        confirmLabel: 'Aprobar zonal',
+        confirmClassName: 'bg-emerald-600 hover:bg-emerald-700 text-white',
+    },
+    'minor-reject': {
+        title: 'Rechazar en zonal',
+        description: 'La orden quedará rechazada y no continuará.',
+        placeholder: 'Indique el motivo del rechazo…',
+        endpoint: 'minor-reject',
+        confirmLabel: 'Rechazar zonal',
+        confirmClassName: 'bg-rose-600 hover:bg-rose-700 text-white',
+    },
+    'minor-observe': {
+        title: 'Observación zonal',
+        description: 'El solicitante podrá corregir y la orden volverá a pendiente zonal.',
+        placeholder: 'Indique la observación…',
+        endpoint: 'minor-observe',
         confirmLabel: 'Guardar observación',
         confirmClassName: 'bg-amber-600 hover:bg-amber-700 text-white',
     },
@@ -169,6 +198,47 @@ const dateTimeFormat: Intl.DateTimeFormatOptions = {
     minute: '2-digit',
 };
 
+function formatZonalOperCell(row: PurchaseOrder): React.ReactNode {
+    const approvedUser = row.minor_approved_by_user;
+    const approvedAt = row.minor_approved_at;
+    const rejectedUser = row.minor_rejected_by_user;
+    const rejectedAt = row.minor_rejected_at;
+    const observedUser = row.minor_observed_by_user;
+    const observedAt = row.minor_observed_at;
+
+    if (approvedAt && approvedUser) {
+        const name = fullName(approvedUser);
+        const dateStr = new Date(approvedAt).toLocaleString('es', dateTimeFormat);
+        return (
+            <div className="min-w-0 truncate" title={`Aprobado zonal: ${name} · ${dateStr}`}>
+                <span className="block truncate text-emerald-700 dark:text-emerald-400">Z. {name || '—'}</span>
+                <span className="block truncate text-[11px] text-muted-foreground">{dateStr}</span>
+            </div>
+        );
+    }
+    if (rejectedAt && rejectedUser) {
+        const name = fullName(rejectedUser);
+        const dateStr = new Date(rejectedAt).toLocaleString('es', dateTimeFormat);
+        return (
+            <div className="min-w-0 truncate" title={`Rechazado zonal: ${name} · ${dateStr}`}>
+                <span className="block truncate text-rose-700 dark:text-rose-400">Z. {name || '—'}</span>
+                <span className="block truncate text-[11px] text-muted-foreground">{dateStr}</span>
+            </div>
+        );
+    }
+    if (observedAt && observedUser) {
+        const name = fullName(observedUser);
+        const dateStr = new Date(observedAt).toLocaleString('es', dateTimeFormat);
+        return (
+            <div className="min-w-0 truncate" title={`Observado zonal: ${name} · ${dateStr}`}>
+                <span className="block truncate text-amber-700 dark:text-amber-400">Z. {name || '—'}</span>
+                <span className="block truncate text-[11px] text-muted-foreground">{dateStr}</span>
+            </div>
+        );
+    }
+    return <span>—</span>;
+}
+
 function formatGerOperCell(row: PurchaseOrder): React.ReactNode {
     const approvedUser = row.approved_by_user;
     const approvedAt = row.approved_at;
@@ -210,6 +280,16 @@ function formatGerOperCell(row: PurchaseOrder): React.ReactNode {
     return <span>—</span>;
 }
 
+function canActOnOrderZonal(
+    order: PurchaseOrder,
+    allowedZonalIds: string[] | null | undefined
+): boolean {
+    const zid = order.office?.zonal_id;
+    if (!zid) return false;
+    if (allowedZonalIds === null || allowedZonalIds === undefined) return true;
+    return allowedZonalIds.includes(zid);
+}
+
 function officeDisplayParts(row: PurchaseOrder): { office: string; zonal: string | null } {
     const office = (row as { office?: { name?: string; code?: string | null; zonal?: { name?: string; code?: string } | null } | null }).office;
     if (!office) return { office: '—', zonal: null };
@@ -224,6 +304,8 @@ export default function PurchaseOrdersIndex({
     filters,
     stats,
     canApprove = false,
+    canMinorApprove = false,
+    canMinorObserve = false,
     canViewDetail = false,
 }: PurchaseOrdersIndexProps) {
     const { data, links, from, to, total, current_page, last_page } = purchaseOrders;
@@ -243,6 +325,7 @@ export default function PurchaseOrdersIndex({
     const [modalSubmitting, setModalSubmitting] = useState(false);
 
     const { props } = usePage();
+    const allowedZonalIds = (props as { allowedZonalIds?: string[] | null }).allowedZonalIds;
     const auth = (props as { auth?: { permissions?: string[] } }).auth;
     const permissions = auth?.permissions ?? [];
     const canCreate = permissions.includes('purchase_orders.create');
@@ -309,7 +392,7 @@ export default function PurchaseOrdersIndex({
         });
     };
 
-    const openActionModal = (order: PurchaseOrder, action: Exclude<ActionModalType, null>) => {
+    const openActionModal = (order: PurchaseOrder, action: PurchaseOrderActionKind) => {
         setModalOrder(order);
         setModalAction(action);
         setModalObservation('');
@@ -399,6 +482,13 @@ export default function PurchaseOrdersIndex({
             render: (row) => <PurchaseOrderStatusBadge status={row.status} />,
         },
         {
+            key: 'minor_approval',
+            label: 'Apr. zonal',
+            sortable: false,
+            className: 'text-foreground text-xs max-w-[160px]',
+            render: (row) => formatZonalOperCell(row),
+        },
+        {
             key: 'total_amount',
             label: 'Total',
             sortable: true,
@@ -446,6 +536,8 @@ export default function PurchaseOrdersIndex({
                         canViewDetail={canViewDetail}
                         canApprove={canApprove}
                         canObserve={canObserve}
+                        canMinorApprove={canMinorApprove}
+                        canMinorObserve={canMinorObserve}
                         canDelete={canDelete}
                         canUpdate={canUpdate}
                         actioningId={actioningId}
@@ -557,7 +649,9 @@ export default function PurchaseOrdersIndex({
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="_">Todos</SelectItem>
-                                <SelectItem value="pending">Pendiente</SelectItem>
+                                <SelectItem value="pending_minor">Pendiente zonal</SelectItem>
+                                <SelectItem value="pending">Pendiente general</SelectItem>
+                                <SelectItem value="observed_minor">Observado zonal</SelectItem>
                                 <SelectItem value="observed">Observado</SelectItem>
                                 <SelectItem value="approved">Aprobada</SelectItem>
                                 <SelectItem value="rejected">Rechazada</SelectItem>
@@ -655,6 +749,12 @@ export default function PurchaseOrdersIndex({
                                                         <dd className="text-foreground">{[row.requested_by_user?.name, row.requested_by_user?.last_name].filter(Boolean).join(' ') || row.requested_by_user?.usuario || '—'}</dd>
                                                     </div>
                                                     <div className="flex flex-wrap gap-x-2">
+                                                        <dt className="text-muted-foreground shrink-0">Apr. zonal:</dt>
+                                                        <dd className="text-foreground text-sm">
+                                                            {formatZonalOperCell(row)}
+                                                        </dd>
+                                                    </div>
+                                                    <div className="flex flex-wrap gap-x-2">
                                                         <dt className="text-muted-foreground shrink-0">Ger. Oper.:</dt>
                                                         <dd className="text-foreground text-sm">
                                                             {formatGerOperCell(row)}
@@ -684,6 +784,48 @@ export default function PurchaseOrdersIndex({
                                                         Ver detalle
                                                     </Link>
                                                 )}
+                                                {row.status === 'pending_minor' &&
+                                                    canActOnOrderZonal(row, allowedZonalIds) &&
+                                                    (canMinorApprove || canMinorObserve) && (
+                                                        <>
+                                                            {canMinorApprove && canActOnOrderZonal(row, allowedZonalIds) && (
+                                                                <>
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        className="cursor-pointer shrink-0 rounded-lg border-emerald-400/80 bg-emerald-50/80 py-2 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-500 dark:border-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400 dark:hover:bg-emerald-900/40"
+                                                                        disabled={actioningId === row.id}
+                                                                        onClick={() => openActionModal(row, 'minor-approve')}
+                                                                    >
+                                                                        {actioningId === row.id ? '…' : 'Aprobar zonal'}
+                                                                    </Button>
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        className="cursor-pointer shrink-0 rounded-lg border-rose-400/80 bg-rose-50/80 py-2 text-rose-700 hover:bg-rose-100 hover:border-rose-500 dark:border-rose-600 dark:bg-rose-900/20 dark:text-rose-400 dark:hover:bg-rose-900/40"
+                                                                        disabled={actioningId === row.id}
+                                                                        onClick={() => openActionModal(row, 'minor-reject')}
+                                                                    >
+                                                                        {actioningId === row.id ? '…' : 'Rechazar zonal'}
+                                                                    </Button>
+                                                                </>
+                                                            )}
+                                                            {canMinorObserve && canActOnOrderZonal(row, allowedZonalIds) && (
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    className="cursor-pointer shrink-0 rounded-lg border-amber-400/80 bg-amber-50/80 py-2 text-amber-700 hover:bg-amber-100 hover:border-amber-500 dark:border-amber-600 dark:bg-amber-900/20 dark:text-amber-400 dark:hover:bg-amber-900/40"
+                                                                    disabled={actioningId === row.id}
+                                                                    onClick={() => openActionModal(row, 'minor-observe')}
+                                                                >
+                                                                    {actioningId === row.id ? '…' : 'Observar zonal'}
+                                                                </Button>
+                                                            )}
+                                                        </>
+                                                    )}
                                                 {row.status === 'pending' && (canApprove || canObserve) && (
                                                     <>
                                                         {canApprove && (
@@ -696,7 +838,7 @@ export default function PurchaseOrdersIndex({
                                                                     disabled={actioningId === row.id}
                                                                     onClick={() => openActionModal(row, 'approve')}
                                                                 >
-                                                                    {actioningId === row.id ? '…' : 'Aprobar'}
+                                                                    {actioningId === row.id ? '…' : 'Aprobar general'}
                                                                 </Button>
                                                                 <Button
                                                                     type="button"
@@ -706,7 +848,7 @@ export default function PurchaseOrdersIndex({
                                                                     disabled={actioningId === row.id}
                                                                     onClick={() => openActionModal(row, 'reject')}
                                                                 >
-                                                                    {actioningId === row.id ? '…' : 'Rechazar'}
+                                                                    {actioningId === row.id ? '…' : 'Rechazar general'}
                                                                 </Button>
                                                             </>
                                                         )}
@@ -719,12 +861,16 @@ export default function PurchaseOrdersIndex({
                                                                 disabled={actioningId === row.id}
                                                                 onClick={() => openActionModal(row, 'observe')}
                                                             >
-                                                                {actioningId === row.id ? '…' : 'Observar'}
+                                                                {actioningId === row.id ? '…' : 'Observar general'}
                                                             </Button>
                                                         )}
                                                     </>
                                                 )}
-                                                {(row.status === 'pending' || row.status === 'observed') && canUpdate && (
+                                                {(row.status === 'pending_minor' ||
+                                                    row.status === 'observed_minor' ||
+                                                    row.status === 'pending' ||
+                                                    row.status === 'observed') &&
+                                                    canUpdate && (
                                                     <Link
                                                         href={`/admin/purchase-orders/${row.id}/edit`}
                                                         className="inline-flex shrink-0 items-center justify-center rounded-md border border-blue-200 bg-white px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:bg-slate-900 dark:text-blue-400 dark:hover:bg-blue-950/30"
@@ -733,7 +879,7 @@ export default function PurchaseOrdersIndex({
                                                         <span>Editar</span>
                                                     </Link>
                                                 )}
-                                                {row.status === 'pending' && canDelete && (
+                                                {row.status === 'pending_minor' && canDelete && (
                                                     <Button
                                                         type="button"
                                                         variant="outline"

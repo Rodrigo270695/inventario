@@ -1,4 +1,4 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { AlertCircle, ArrowLeft, Check, CheckCircle2, FileText, X } from 'lucide-react';
 import { useState } from 'react';
 import { AppModal } from '@/components/app-modal';
@@ -15,14 +15,18 @@ const breadcrumbs = (id: string): BreadcrumbItem[] => [
 ];
 
 const STATUS_LABELS: Record<string, string> = {
-    pending: 'Pendiente',
+    pending_minor: 'Pendiente zonal',
+    pending: 'Pendiente general',
+    observed_minor: 'Observado zonal',
     observed: 'Observado',
     approved: 'Aprobada',
     rejected: 'Rechazada',
 };
 
 const STATUS_CLASS: Record<string, string> = {
+    pending_minor: 'bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300',
     pending: 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400',
+    observed_minor: 'bg-slate-100 text-slate-700 dark:bg-slate-500/20 dark:text-slate-400',
     observed: 'bg-slate-100 text-slate-700 dark:bg-slate-500/20 dark:text-slate-400',
     approved: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400',
     rejected: 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400',
@@ -30,7 +34,14 @@ const STATUS_CLASS: Record<string, string> = {
 
 type QuoteDisplay = { id: string; description: string | null; pdf_path: string | null; is_selected: boolean };
 
-type ActionModalType = 'approve' | 'reject' | 'observe' | null;
+type ActionModalType =
+    | 'approve'
+    | 'reject'
+    | 'observe'
+    | 'minor-approve'
+    | 'minor-reject'
+    | 'minor-observe'
+    | null;
 
 type ShowProps = {
     purchaseOrder: PurchaseOrder & {
@@ -38,10 +49,15 @@ type ShowProps = {
         approved_by_user?: { id: string; name: string; last_name?: string; usuario: string } | null;
         rejected_by_user?: { id: string; name: string; last_name?: string; usuario: string } | null;
         observed_by_user?: { id: string; name: string; last_name?: string; usuario: string } | null;
+        minor_approved_by_user?: { id: string; name: string; last_name?: string; usuario: string } | null;
+        minor_rejected_by_user?: { id: string; name: string; last_name?: string; usuario: string } | null;
+        minor_observed_by_user?: { id: string; name: string; last_name?: string; usuario: string } | null;
         quotes?: QuoteDisplay[];
     };
     canApprove: boolean;
     canObserve: boolean;
+    canMinorApprove: boolean;
+    canMinorObserve: boolean;
     canSelectQuote: boolean;
 };
 
@@ -81,38 +97,78 @@ const MODAL_CONFIG: Record<
     { title: string; placeholder: string; endpoint: string; description: string; confirmLabel: string; confirmClassName: string }
 > = {
     approve: {
-        title: 'Confirmar aprobación',
+        title: 'Confirmar aprobación (general)',
         placeholder: 'Indique la observación o nota (ej. Se procede con la orden, conforme…)',
         endpoint: 'approve',
-        description: 'Esta acción aprobará la orden y la enviará a ejecución.',
+        description: 'Aprobará la orden en nivel general.',
         confirmLabel: 'Aprobar orden',
         confirmClassName: 'bg-emerald-600 hover:bg-emerald-700 text-white',
     },
     reject: {
-        title: 'Rechazar orden',
+        title: 'Rechazar orden (general)',
         placeholder: 'Indique el motivo del rechazo…',
         endpoint: 'reject',
-        description: 'La orden será rechazada y no continuará con el proceso.',
+        description: 'La orden será rechazada en nivel general.',
         confirmLabel: 'Rechazar orden',
         confirmClassName: 'bg-rose-600 hover:bg-rose-700 text-white',
     },
     observe: {
-        title: 'Poner en observación',
+        title: 'Observación (general)',
         placeholder: 'Indique el motivo de la observación…',
         endpoint: 'observe',
         description: 'La orden quedará en estado Observado hasta que el solicitante revise y corrija.',
         confirmLabel: 'Guardar observación',
         confirmClassName: 'bg-amber-600 hover:bg-amber-700 text-white',
     },
+    'minor-approve': {
+        title: 'Aprobar en zonal',
+        placeholder: 'Nota opcional…',
+        endpoint: 'minor-approve',
+        description: 'La orden pasará a cola de aprobación general.',
+        confirmLabel: 'Aprobar zonal',
+        confirmClassName: 'bg-emerald-600 hover:bg-emerald-700 text-white',
+    },
+    'minor-reject': {
+        title: 'Rechazar en zonal',
+        placeholder: 'Indique el motivo del rechazo…',
+        endpoint: 'minor-reject',
+        description: 'La orden quedará rechazada.',
+        confirmLabel: 'Rechazar zonal',
+        confirmClassName: 'bg-rose-600 hover:bg-rose-700 text-white',
+    },
+    'minor-observe': {
+        title: 'Observación zonal',
+        placeholder: 'Indique la observación…',
+        endpoint: 'minor-observe',
+        description: 'El solicitante podrá corregir y la orden volverá a pendiente zonal.',
+        confirmLabel: 'Guardar observación',
+        confirmClassName: 'bg-amber-600 hover:bg-amber-700 text-white',
+    },
 };
 
-export default function PurchaseOrderShow({ purchaseOrder, canApprove, canObserve, canSelectQuote }: ShowProps) {
+export default function PurchaseOrderShow({
+    purchaseOrder,
+    canApprove,
+    canObserve,
+    canMinorApprove,
+    canMinorObserve,
+    canSelectQuote,
+}: ShowProps) {
     const [actioning, setActioning] = useState(false);
     const [modalAction, setModalAction] = useState<ActionModalType>(null);
     const [observationText, setObservationText] = useState('');
 
     const po = purchaseOrder;
-    const isPending = po.status === 'pending';
+    const isPendingMajor = po.status === 'pending';
+    const isPendingMinor = po.status === 'pending_minor';
+    const { props: pageProps } = usePage();
+    const allowedZonalIds = (pageProps as { allowedZonalIds?: string[] | null }).allowedZonalIds;
+    const zid = po.office?.zonal_id;
+    const zonalOk =
+        zid &&
+        (allowedZonalIds === null ||
+            allowedZonalIds === undefined ||
+            (Array.isArray(allowedZonalIds) && allowedZonalIds.includes(zid)));
 
     const quotes = po.quotes ?? [];
 
@@ -212,6 +268,18 @@ export default function PurchaseOrderShow({ purchaseOrder, canApprove, canObserv
                                     <p className="text-foreground text-sm">{fullName(po.requested_by_user)}</p>
                                 </div>
                                 <div>
+                                    <p className="text-muted-foreground text-xs font-medium">Apr. zonal</p>
+                                    <p className="text-foreground text-sm">
+                                        {po.minor_approved_at && po.minor_approved_by_user
+                                            ? `Apr. ${fullName(po.minor_approved_by_user)} (${formatDate(po.minor_approved_at)})`
+                                            : po.minor_rejected_at && po.minor_rejected_by_user
+                                              ? `Rech. ${fullName(po.minor_rejected_by_user)} (${formatDate(po.minor_rejected_at)})`
+                                              : po.minor_observed_at && po.minor_observed_by_user
+                                                ? `Obs. ${fullName(po.minor_observed_by_user)} (${formatDate(po.minor_observed_at)})`
+                                                : '—'}
+                                    </p>
+                                </div>
+                                <div>
                                     <p className="text-muted-foreground text-xs font-medium">Ger. Oper.</p>
                                     <p className="text-foreground text-sm">
                                         {po.approved_at && po.approved_by_user
@@ -224,6 +292,12 @@ export default function PurchaseOrderShow({ purchaseOrder, canApprove, canObserv
                                     </p>
                                 </div>
                             </div>
+                            {po.minor_observation_notes && (
+                                <div>
+                                    <p className="text-muted-foreground text-xs font-medium">Observación zonal</p>
+                                    <p className="text-foreground text-sm whitespace-pre-wrap">{po.minor_observation_notes}</p>
+                                </div>
+                            )}
                             {po.observation_notes && (
                                 <div>
                                     <p className="text-muted-foreground text-xs font-medium">Nota / Observación</p>
@@ -346,7 +420,7 @@ export default function PurchaseOrderShow({ purchaseOrder, canApprove, canObserv
                                                         Elegida
                                                     </span>
                                                 )}
-                                                {canSelectQuote && isPending && !quote.is_selected && (
+                                                {canSelectQuote && (isPendingMajor || isPendingMinor) && !quote.is_selected && (
                                                     <Button
                                                         type="button"
                                                         variant="outline"
@@ -390,7 +464,93 @@ export default function PurchaseOrderShow({ purchaseOrder, canApprove, canObserv
                         )}
                     </div>
 
-                    {isPending && (canApprove || canObserve) ? (
+                    {isPendingMinor && zonalOk && (canMinorApprove || canMinorObserve) ? (
+                        <div className="flex flex-row flex-nowrap justify-end gap-1 border-t border-border/80 bg-muted/20 px-4 py-4 md:px-6 min-h-[52px] items-center">
+                            <div className="hidden md:flex flex-row flex-nowrap items-center justify-end gap-1">
+                                {canMinorApprove && zonalOk && (
+                                    <>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="cursor-pointer shrink-0 size-8 rounded-md text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-300"
+                                            disabled={actioning}
+                                            aria-label="Aprobar zonal"
+                                            onClick={() => openModal('minor-approve')}
+                                        >
+                                            <Check className="size-4" />
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="cursor-pointer shrink-0 size-8 rounded-md text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:text-rose-400 dark:hover:bg-rose-900/30 dark:hover:text-rose-300"
+                                            disabled={actioning}
+                                            aria-label="Rechazar zonal"
+                                            onClick={() => openModal('minor-reject')}
+                                        >
+                                            <X className="size-4" />
+                                        </Button>
+                                    </>
+                                )}
+                                {canMinorObserve && zonalOk && (
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="cursor-pointer shrink-0 size-8 rounded-md text-amber-600 hover:bg-amber-50 hover:text-amber-700 dark:text-amber-400 dark:hover:bg-amber-900/30 dark:hover:text-amber-300"
+                                        disabled={actioning}
+                                        aria-label="Observar zonal"
+                                        onClick={() => openModal('minor-observe')}
+                                    >
+                                        <AlertCircle className="size-4" />
+                                    </Button>
+                                )}
+                            </div>
+                            <div className="flex md:hidden flex-wrap justify-end gap-2">
+                                {canMinorApprove && zonalOk && (
+                                    <>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            className="cursor-pointer rounded-xl border-emerald-400/80 bg-emerald-50/80 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400"
+                                            disabled={actioning}
+                                            onClick={() => openModal('minor-approve')}
+                                        >
+                                            <CheckCircle2 className="size-4 mr-1.5 inline" />
+                                            Aprobar zonal
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            className="cursor-pointer rounded-xl border-rose-400/80 bg-rose-50/80 text-rose-700 hover:bg-rose-100 dark:border-rose-600 dark:bg-rose-900/20 dark:text-rose-400"
+                                            disabled={actioning}
+                                            onClick={() => openModal('minor-reject')}
+                                        >
+                                            <X className="size-4 mr-1.5 inline" />
+                                            Rechazar zonal
+                                        </Button>
+                                    </>
+                                )}
+                                {canMinorObserve && zonalOk && (
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        className="cursor-pointer rounded-xl border-amber-400/80 bg-amber-50/80 text-amber-700 hover:bg-amber-100 dark:border-amber-600 dark:bg-amber-900/20 dark:text-amber-400"
+                                        disabled={actioning}
+                                        onClick={() => openModal('minor-observe')}
+                                    >
+                                        <AlertCircle className="size-4 mr-1.5 inline" />
+                                        Observar zonal
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
+                    ) : null}
+                    {isPendingMajor && (canApprove || canObserve) ? (
                         <div className="flex flex-row flex-nowrap justify-end gap-1 border-t border-border/80 bg-muted/20 px-4 py-4 md:px-6 min-h-[52px] items-center">
                             <div className="hidden md:flex flex-row flex-nowrap items-center justify-end gap-1">
                                 {canApprove && (

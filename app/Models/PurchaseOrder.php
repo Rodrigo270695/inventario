@@ -18,6 +18,13 @@ class PurchaseOrder extends Model
         'code',
         'status',
         'requested_by',
+        'minor_approved_by',
+        'minor_approved_at',
+        'minor_rejected_by',
+        'minor_rejected_at',
+        'minor_observed_by',
+        'minor_observed_at',
+        'minor_observation_notes',
         'approved_by',
         'approved_at',
         'rejected_by',
@@ -35,6 +42,9 @@ class PurchaseOrder extends Model
     {
         return [
             'total_amount' => 'decimal:2',
+            'minor_approved_at' => 'datetime',
+            'minor_rejected_at' => 'datetime',
+            'minor_observed_at' => 'datetime',
             'approved_at' => 'datetime',
             'rejected_at' => 'datetime',
             'observed_at' => 'datetime',
@@ -54,6 +64,21 @@ class PurchaseOrder extends Model
     public function requestedByUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'requested_by');
+    }
+
+    public function minorApprovedByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'minor_approved_by');
+    }
+
+    public function minorRejectedByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'minor_rejected_by');
+    }
+
+    public function minorObservedByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'minor_observed_by');
     }
 
     public function approvedByUser(): BelongsTo

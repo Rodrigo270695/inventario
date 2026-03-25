@@ -12,7 +12,7 @@ use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class PurchaseOrdersExport implements FromCollection, WithHeadings, WithColumnWidths, WithStyles, WithEvents
+class PurchaseOrdersExport implements FromCollection, WithColumnWidths, WithEvents, WithHeadings, WithStyles
 {
     public function __construct(
         private Collection $orders
@@ -21,7 +21,9 @@ class PurchaseOrdersExport implements FromCollection, WithHeadings, WithColumnWi
     public function collection(): Collection
     {
         $statusLabels = [
-            'pending' => 'Pendiente',
+            'pending_minor' => 'Pendiente zonal',
+            'pending' => 'Pendiente general',
+            'observed_minor' => 'Observado zonal',
             'observed' => 'Observado',
             'approved' => 'Aprobada',
             'rejected' => 'Rechazada',
