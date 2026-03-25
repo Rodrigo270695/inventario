@@ -230,7 +230,7 @@ export const PERMISSION_TREE: PermissionTreeNode[] = [
     {
         key: 'licencias',
         label: 'Licencias',
-        children: [],
+        children: [{ key: 'licenses.view', label: 'Ver', permission: 'licenses.view' }],
     },
     {
         key: 'alertas-reportes',
@@ -385,6 +385,50 @@ export const PERMISSION_TREE: PermissionTreeNode[] = [
                     },
                 ],
             },
+            {
+                key: 'seguridad',
+                label: 'Seguridad',
+                children: [
+                    {
+                        key: 'security_login_attempts',
+                        label: 'Intentos de login',
+                        children: [
+                            {
+                                key: 'security.login_attempts.view',
+                                label: 'Ver',
+                                permission: 'security.login_attempts.view',
+                            },
+                        ],
+                    },
+                    {
+                        key: 'security_api_logs',
+                        label: 'Logs de API',
+                        children: [
+                            {
+                                key: 'security.api_logs.view',
+                                label: 'Ver',
+                                permission: 'security.api_logs.view',
+                            },
+                        ],
+                    },
+                    {
+                        key: 'security_backups',
+                        label: 'Backups',
+                        children: [
+                            {
+                                key: 'security.backups.view',
+                                label: 'Ver',
+                                permission: 'security.backups.view',
+                            },
+                        ],
+                    },
+                ],
+            },
+            {
+                key: 'auditoria',
+                label: 'Auditoría',
+                children: [{ key: 'audit.view', label: 'Ver', permission: 'audit.view' }],
+            },
         ],
     },
 ];
@@ -413,7 +457,7 @@ export const SIDEBAR_PREVIEW_SECTIONS: Array<{
     { key: 'compras', label: 'Compras y logística', items: [{ title: 'Órdenes de compra', permission: 'purchase_orders.view' }, { title: 'Facturas', permission: 'invoices.view' }, { title: 'Ingresos almacén', permission: 'stock_entries.view' }, { title: 'Ubicaciones físicas', permission: 'warehouse_locations.view' }] },
     { key: 'mantenimiento', label: 'Mantenimiento', items: [{ title: 'Reparaciones', permission: 'repair_tickets.view' }] },
     { key: 'bajas', label: 'Bajas y ventas', items: [{ title: 'Bajas y ventas', permission: 'asset_disposals.view' }] },
-    { key: 'licencias', label: 'Licencias', items: [] },
+    { key: 'licencias', label: 'Licencias', items: [{ title: 'Licencias', permission: 'licenses.view' }] },
     {
         key: 'alertas',
         label: 'Alertas y reportes',
@@ -440,6 +484,18 @@ export const ADMIN_CATALOGOS_ITEMS: Array<{ title: string; permission: string }>
     { title: 'Zonales, oficinas y almacenes', permission: 'zonals.view' },
     { title: 'Talleres externos', permission: 'repair_shops.view' },
     { title: 'Departamentos', permission: 'departments.view' },
+];
+
+/** Ítems bajo Seguridad (Administración). Mismo orden que nav-administracion SEGURIDAD_ITEMS. */
+export const ADMIN_SEGURIDAD_ITEMS: Array<{ title: string; permission: string }> = [
+    { title: 'Intentos de login', permission: 'security.login_attempts.view' },
+    { title: 'Logs de API', permission: 'security.api_logs.view' },
+    { title: 'Backups', permission: 'security.backups.view' },
+];
+
+/** Ítem Auditoría (Administración). Mismo permiso que el enlace en nav-administracion. */
+export const ADMIN_AUDITORIA_ITEMS: Array<{ title: string; permission: string }> = [
+    { title: 'Auditoría', permission: 'audit.view' },
 ];
 
 /** Ítems del menú Usuario para el sidebar real (nav-administracion). */

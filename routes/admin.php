@@ -25,6 +25,7 @@ use App\Http\Controllers\Admin\SupplierController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\WarehouseLocationController;
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
 Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
     // ApiPeru (RUC)
@@ -487,4 +488,20 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::put('roles/{role}/permissions', [RoleController::class, 'updatePermissions'])
         ->middleware('permission:permissions.view')
         ->name('roles.permissions.update');
+
+    Route::get('licenses', fn () => Inertia::render('admin/placeholder-development', ['title' => 'Licencias']))
+        ->middleware('permission:licenses.view')
+        ->name('licenses.index');
+    Route::get('security/login-attempts', fn () => Inertia::render('admin/placeholder-development', ['title' => 'Intentos de login']))
+        ->middleware('permission:security.login_attempts.view')
+        ->name('security.login-attempts.index');
+    Route::get('security/api-logs', fn () => Inertia::render('admin/placeholder-development', ['title' => 'Logs de API']))
+        ->middleware('permission:security.api_logs.view')
+        ->name('security.api-logs.index');
+    Route::get('security/backups', fn () => Inertia::render('admin/placeholder-development', ['title' => 'Backups']))
+        ->middleware('permission:security.backups.view')
+        ->name('security.backups.index');
+    Route::get('audit', fn () => Inertia::render('admin/placeholder-development', ['title' => 'Auditoría']))
+        ->middleware('permission:audit.view')
+        ->name('audit.index');
 });

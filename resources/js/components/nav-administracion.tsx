@@ -7,6 +7,9 @@ import {
     FolderOpen,
     ScrollText,
     Wrench,
+    LogIn,
+    Cable,
+    DatabaseBackup,
 } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 import {
@@ -47,9 +50,24 @@ const CATALOGOS_ITEMS = [
 ];
 
 const SEGURIDAD_ITEMS = [
-    { title: 'Tokens agente', href: '/admin/agent-tokens', icon: Key, permission: 'roles.view' },
-    { title: 'Intentos de login', href: '/admin/login-attempts', icon: Key, permission: 'roles.view' },
-    { title: 'Backups', href: '/admin/backups', icon: Key, permission: 'roles.view' },
+    {
+        title: 'Intentos de login',
+        href: '/admin/security/login-attempts',
+        icon: LogIn,
+        permission: 'security.login_attempts.view',
+    },
+    {
+        title: 'Logs de API',
+        href: '/admin/security/api-logs',
+        icon: Cable,
+        permission: 'security.api_logs.view',
+    },
+    {
+        title: 'Backups',
+        href: '/admin/security/backups',
+        icon: DatabaseBackup,
+        permission: 'security.backups.view',
+    },
 ];
 
 export function NavAdministracion() {
@@ -70,7 +88,7 @@ export function NavAdministracion() {
         [permissions]
     );
     const showAuditoria = useMemo(
-        () => hasPermission(permissions, 'roles.view'),
+        () => hasPermission(permissions, 'audit.view'),
         [permissions]
     );
 
@@ -241,10 +259,10 @@ export function NavAdministracion() {
                     <SidebarMenuItem>
                         <SidebarMenuButton
                             asChild
-                            isActive={isCurrentUrl('/audit')}
+                            isActive={isCurrentUrl('/admin/audit')}
                             tooltip={{ children: 'Auditoría' }}
                         >
-                            <Link href="/audit" prefetch>
+                            <Link href="/admin/audit" prefetch>
                                 <ScrollText className="size-4 shrink-0" />
                                 <span>Auditoría</span>
                             </Link>

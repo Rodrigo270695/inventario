@@ -11,10 +11,16 @@ import {
     Trash2,
     Key,
     BarChart3,
+    ScrollText,
+    LogIn,
+    Cable,
+    DatabaseBackup,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
+    ADMIN_AUDITORIA_ITEMS,
     ADMIN_CATALOGOS_ITEMS,
+    ADMIN_SEGURIDAD_ITEMS,
     ADMIN_USUARIO_ITEMS,
     SIDEBAR_PREVIEW_SECTIONS,
 } from '@/config/permission-tree';
@@ -56,9 +62,17 @@ export function SidebarPreview({ selectedPermissionNames, className }: SidebarPr
     const visibleCatalogosItems = ADMIN_CATALOGOS_ITEMS.filter((item) =>
         selectedPermissionNames.has(item.permission)
     );
+    const visibleSeguridadItems = ADMIN_SEGURIDAD_ITEMS.filter((item) =>
+        selectedPermissionNames.has(item.permission)
+    );
+    const visibleAuditoriaItems = ADMIN_AUDITORIA_ITEMS.filter((item) =>
+        selectedPermissionNames.has(item.permission)
+    );
     const showUsuario = visibleUsuarioItems.length > 0;
     const showCatalogos = visibleCatalogosItems.length > 0;
-    const showAdmin = showUsuario || showCatalogos;
+    const showSeguridad = visibleSeguridadItems.length > 0;
+    const showAuditoria = visibleAuditoriaItems.length > 0;
+    const showAdmin = showUsuario || showCatalogos || showSeguridad || showAuditoria;
 
     return (
         <div
@@ -120,6 +134,36 @@ export function SidebarPreview({ selectedPermissionNames, className }: SidebarPr
                                                     ))}
                                                 </ul>
                                             </>
+                                        )}
+                                        {showSeguridad && (
+                                            <>
+                                                <div className="flex items-center gap-2 px-2 py-1.5 bg-muted/50 border-t border-border">
+                                                    <Key className="size-3.5 shrink-0 text-muted-foreground" />
+                                                    <span className="font-medium text-foreground text-xs">Seguridad</span>
+                                                </div>
+                                                <ul className="bg-background/50">
+                                                    {visibleSeguridadItems.map((item) => (
+                                                        <li key={item.permission}>
+                                                            <div className="flex items-center gap-2 pl-6 pr-2 py-1.5 border-t border-border/70">
+                                                                {item.permission === 'security.login_attempts.view' ? (
+                                                                    <LogIn className="size-3.5 shrink-0 text-muted-foreground" />
+                                                                ) : item.permission === 'security.api_logs.view' ? (
+                                                                    <Cable className="size-3.5 shrink-0 text-muted-foreground" />
+                                                                ) : (
+                                                                    <DatabaseBackup className="size-3.5 shrink-0 text-muted-foreground" />
+                                                                )}
+                                                                <span className="text-foreground text-xs">{item.title}</span>
+                                                            </div>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </>
+                                        )}
+                                        {showAuditoria && (
+                                            <div className="flex items-center gap-2 px-2 py-1.5 border-t border-border bg-background/50">
+                                                <ScrollText className="size-3.5 shrink-0 text-muted-foreground" />
+                                                <span className="text-foreground text-xs">Auditoría</span>
+                                            </div>
                                         )}
                                     </div>
                                 ) : (

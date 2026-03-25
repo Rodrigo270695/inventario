@@ -50,7 +50,6 @@ const ACTIVOS_ITEMS = [
     { title: 'Servicios', href: '/admin/services', icon: Server, permission: 'services.view', permissionsAny: ['services.view', 'services.create', 'services.update', 'services.delete'] },
     { title: 'Traslados', href: '/admin/asset-transfers', icon: Truck, permission: 'asset_transfers.view', permissionsAny: ['asset_transfers.view', 'asset_transfers.view_detail', 'asset_transfers.create', 'asset_transfers.update', 'asset_transfers.delete', 'asset_transfers.approve', 'asset_transfers.cancel', 'asset_transfers.dispatch', 'asset_transfers.receive'] },
     { title: 'Inventario físico', href: '/admin/inventory-counts', icon: ClipboardCheck, permission: 'inventory_counts.view', permissionsAny: ['inventory_counts.view', 'inventory_counts.create', 'inventory_counts.update', 'inventory_counts.delete'] },
-    { title: 'Órd. de servicio', href: '/fixed-assets/service', icon: Wrench, permission: 'roles.view' },
 ];
 
 const COMPRAS_ITEMS = [
@@ -70,7 +69,7 @@ const BAJAS_ITEMS = [
 ];
 
 const LICENCIAS_ITEMS = [
-    { title: 'Licencias', href: '/licenses', icon: Key, permission: 'roles.view' },
+    { title: 'Licencias', href: '/admin/licenses', icon: Key, permission: 'licenses.view' },
 ];
 
 const ALERTAS_ITEMS = [
