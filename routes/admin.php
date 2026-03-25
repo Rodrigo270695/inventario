@@ -445,9 +445,15 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::post('purchase-orders/{purchase_order}/approve', [PurchaseOrderController::class, 'approve'])->middleware('permission:purchase_orders.approve')->name('purchase-orders.approve');
     Route::post('purchase-orders/{purchase_order}/reject', [PurchaseOrderController::class, 'reject'])->middleware('permission:purchase_orders.approve')->name('purchase-orders.reject');
     Route::post('purchase-orders/{purchase_order}/observe', [PurchaseOrderController::class, 'observe'])->middleware('permission:purchase_orders.observe')->name('purchase-orders.observe');
-    Route::post('purchase-orders/{purchase_order}/minor-approve', [PurchaseOrderController::class, 'minorApprove'])->middleware('permission:purchase_orders.minor_approve')->name('purchase-orders.minor-approve');
-    Route::post('purchase-orders/{purchase_order}/minor-reject', [PurchaseOrderController::class, 'minorReject'])->middleware('permission:purchase_orders.minor_approve')->name('purchase-orders.minor-reject');
-    Route::post('purchase-orders/{purchase_order}/minor-observe', [PurchaseOrderController::class, 'minorObserve'])->middleware('permission:purchase_orders.minor_observe')->name('purchase-orders.minor-observe');
+    Route::post('purchase-orders/{purchase_order}/minor-approve', [PurchaseOrderController::class, 'minorApprove'])
+        ->middleware(['permission:purchase_orders.minor_approve', 'filter.zonals.by.user'])
+        ->name('purchase-orders.minor-approve');
+    Route::post('purchase-orders/{purchase_order}/minor-reject', [PurchaseOrderController::class, 'minorReject'])
+        ->middleware(['permission:purchase_orders.minor_approve', 'filter.zonals.by.user'])
+        ->name('purchase-orders.minor-reject');
+    Route::post('purchase-orders/{purchase_order}/minor-observe', [PurchaseOrderController::class, 'minorObserve'])
+        ->middleware(['permission:purchase_orders.minor_observe', 'filter.zonals.by.user'])
+        ->name('purchase-orders.minor-observe');
     Route::post('purchase-orders/{purchase_order}/quotes/{purchase_quote}/select', [PurchaseOrderController::class, 'selectQuote'])->middleware('permission:purchase_quotes.select')->name('purchase-orders.quotes.select');
 
     Route::get('users', [UserController::class, 'index'])->middleware('permission:users.view')->name('users.index');
