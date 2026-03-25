@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Notification;
 use App\Models\PurchaseOrder;
 use App\Models\User;
+use App\Models\Zonal;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -28,7 +29,11 @@ class PurchaseOrderFlowNotifier
             return true;
         }
 
-        return $user->zonals()->where('zonals.id', $zonalId)->exists();
+        if ($user->zonals()->where('zonals.id', $zonalId)->exists()) {
+            return true;
+        }
+
+        return Zonal::query()->whereKey($zonalId)->where('manager_id', $user->id)->exists();
     }
 
     /**

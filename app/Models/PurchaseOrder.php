@@ -115,4 +115,18 @@ class PurchaseOrder extends Model
     {
         $builder->whereHas('office', fn ($q) => $q->whereIn('zonal_id', $allowedZonalIds));
     }
+
+    /**
+     * Resolver la OC sin el scope global de zonales: el orden de middleware puede aplicar el scope
+     * durante el route model binding y devolver 404 aunque el usuario sí pueda actuar (según permisos).
+     * La autorización por zonal se hace en el controlador con una consulta con scope.
+     */
+    public function resolveRouteBinding($value, $field = null)
+    {
+        $field = $field ?? $this->getRouteKeyName();
+
+        return static::withoutGlobalScopes()
+            ->where($field, $value)
+            ->firstOrFail();
+    }
 }

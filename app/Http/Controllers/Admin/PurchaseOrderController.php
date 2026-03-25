@@ -259,6 +259,7 @@ class PurchaseOrderController extends Controller
             abort(403, 'No tiene permiso para ver el detalle de órdenes de compra.');
         }
 
+        $this->authorizePurchaseOrderZonalAccess($user, $purchaseOrder);
         $this->authorizePurchaseOrderView($user, $purchaseOrder);
 
         $purchaseOrder->load([
@@ -292,6 +293,7 @@ class PurchaseOrderController extends Controller
 
     public function selectQuote(Request $request, PurchaseOrder $purchaseOrder, PurchaseQuote $purchaseQuote): RedirectResponse
     {
+        $this->authorizePurchaseOrderZonalAccess($request->user(), $purchaseOrder);
         abort_unless($request->user()?->can('purchase_quotes.select'), 403);
 
         if ($purchaseQuote->purchase_order_id !== $purchaseOrder->id) {
@@ -424,6 +426,7 @@ class PurchaseOrderController extends Controller
 
     public function edit(Request $request, PurchaseOrder $purchaseOrder): Response
     {
+        $this->authorizePurchaseOrderZonalAccess($request->user(), $purchaseOrder);
         if (! in_array($purchaseOrder->status, ['pending_minor', 'observed_minor', 'pending', 'observed'], true)) {
             abort(403, 'Solo se pueden editar órdenes en estado pendiente (zonal o general) u observado.');
         }
@@ -458,6 +461,7 @@ class PurchaseOrderController extends Controller
 
     public function update(PurchaseOrderRequest $request, PurchaseOrder $purchaseOrder): RedirectResponse
     {
+        $this->authorizePurchaseOrderZonalAccess($request->user(), $purchaseOrder);
         if (! in_array($purchaseOrder->status, ['pending_minor', 'observed_minor', 'pending', 'observed'], true)) {
             abort(403, 'Solo se pueden modificar órdenes en estado pendiente (zonal o general) u observado.');
         }
@@ -600,6 +604,7 @@ class PurchaseOrderController extends Controller
 
     public function destroy(PurchaseOrder $purchaseOrder): RedirectResponse
     {
+        $this->authorizePurchaseOrderZonalAccess(request()->user(), $purchaseOrder);
         if ($purchaseOrder->status !== 'pending_minor') {
             abort(403, 'Solo se pueden eliminar órdenes en espera de aprobación zonal (pendiente zonal).');
         }
@@ -619,6 +624,7 @@ class PurchaseOrderController extends Controller
 
     public function approve(Request $request, PurchaseOrder $purchaseOrder): RedirectResponse
     {
+        $this->authorizePurchaseOrderZonalAccess($request->user(), $purchaseOrder);
         if ($purchaseOrder->status !== 'pending') {
             abort(422, 'Solo se puede aprobar una orden en cola de aprobación general.');
         }
@@ -645,6 +651,7 @@ class PurchaseOrderController extends Controller
 
     public function reject(Request $request, PurchaseOrder $purchaseOrder): RedirectResponse
     {
+        $this->authorizePurchaseOrderZonalAccess($request->user(), $purchaseOrder);
         if ($purchaseOrder->status !== 'pending') {
             abort(422, 'Solo se puede rechazar una orden en cola de aprobación general.');
         }
@@ -671,6 +678,7 @@ class PurchaseOrderController extends Controller
 
     public function observe(Request $request, PurchaseOrder $purchaseOrder): RedirectResponse
     {
+        $this->authorizePurchaseOrderZonalAccess($request->user(), $purchaseOrder);
         if ($purchaseOrder->status !== 'pending') {
             abort(422, 'Solo se puede poner en observación una orden en cola de aprobación general.');
         }
@@ -697,6 +705,7 @@ class PurchaseOrderController extends Controller
 
     public function minorApprove(Request $request, PurchaseOrder $purchaseOrder): RedirectResponse
     {
+        $this->authorizePurchaseOrderZonalAccess($request->user(), $purchaseOrder);
         $u = $request->user();
         abort_unless($u && ($u->can('purchase_orders.minor_approve') || $u->hasRole('superadmin', 'web')), 403);
         if ($purchaseOrder->status !== 'pending_minor') {
@@ -728,6 +737,7 @@ class PurchaseOrderController extends Controller
 
     public function minorReject(Request $request, PurchaseOrder $purchaseOrder): RedirectResponse
     {
+        $this->authorizePurchaseOrderZonalAccess($request->user(), $purchaseOrder);
         $u = $request->user();
         abort_unless($u && ($u->can('purchase_orders.minor_approve') || $u->hasRole('superadmin', 'web')), 403);
         if ($purchaseOrder->status !== 'pending_minor') {
@@ -758,6 +768,7 @@ class PurchaseOrderController extends Controller
 
     public function minorObserve(Request $request, PurchaseOrder $purchaseOrder): RedirectResponse
     {
+        $this->authorizePurchaseOrderZonalAccess($request->user(), $purchaseOrder);
         $u = $request->user();
         abort_unless($u && ($u->can('purchase_orders.minor_observe') || $u->hasRole('superadmin', 'web')), 403);
         if ($purchaseOrder->status !== 'pending_minor') {
@@ -779,6 +790,27 @@ class PurchaseOrderController extends Controller
 
         return redirect()->route('admin.purchase-orders.index')
             ->with('toast', ['type' => 'success', 'message' => 'Observación zonal registrada.']);
+    }
+
+    /**
+     * Misma visibilidad que el listado (scope AllowedZonalsScope + FilterZonalsByUser),
+     * más el solicitante de la OC (puede ver su pedido aunque el zonal de la oficina no esté en su pivot).
+     */
+    private function authorizePurchaseOrderZonalAccess(?User $user, PurchaseOrder $purchaseOrder): void
+    {
+        if (! $user) {
+            abort(403);
+        }
+        if ($user->hasRole('superadmin', 'web')) {
+            return;
+        }
+        if (PurchaseOrder::query()->whereKey($purchaseOrder->getKey())->exists()) {
+            return;
+        }
+        if ($purchaseOrder->requested_by === $user->id) {
+            return;
+        }
+        abort(403, 'No tiene acceso a esta orden de compra.');
     }
 
     private function applyPurchaseOrderMinorStageVisibility(Builder $query, ?User $user): void

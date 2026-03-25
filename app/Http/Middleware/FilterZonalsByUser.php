@@ -24,7 +24,7 @@ class FilterZonalsByUser
             return $next($request);
         }
 
-        if ($user->hasRole('superadmin')) {
+        if ($user->hasRole('superadmin', 'web')) {
             $request->attributes->set('allowed_zonal_ids', null);
 
             return $next($request);

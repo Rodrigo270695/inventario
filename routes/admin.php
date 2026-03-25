@@ -440,11 +440,21 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::get('purchase-orders/{purchase_order}/edit', [PurchaseOrderController::class, 'edit'])
         ->middleware(['permission:purchase_orders.update', 'filter.zonals.by.user'])
         ->name('purchase-orders.edit');
-    Route::put('purchase-orders/{purchase_order}', [PurchaseOrderController::class, 'update'])->middleware('permission:purchase_orders.update')->name('purchase-orders.update');
-    Route::delete('purchase-orders/{purchase_order}', [PurchaseOrderController::class, 'destroy'])->middleware('permission:purchase_orders.delete')->name('purchase-orders.destroy');
-    Route::post('purchase-orders/{purchase_order}/approve', [PurchaseOrderController::class, 'approve'])->middleware('permission:purchase_orders.approve')->name('purchase-orders.approve');
-    Route::post('purchase-orders/{purchase_order}/reject', [PurchaseOrderController::class, 'reject'])->middleware('permission:purchase_orders.approve')->name('purchase-orders.reject');
-    Route::post('purchase-orders/{purchase_order}/observe', [PurchaseOrderController::class, 'observe'])->middleware('permission:purchase_orders.observe')->name('purchase-orders.observe');
+    Route::put('purchase-orders/{purchase_order}', [PurchaseOrderController::class, 'update'])
+        ->middleware(['permission:purchase_orders.update', 'filter.zonals.by.user'])
+        ->name('purchase-orders.update');
+    Route::delete('purchase-orders/{purchase_order}', [PurchaseOrderController::class, 'destroy'])
+        ->middleware(['permission:purchase_orders.delete', 'filter.zonals.by.user'])
+        ->name('purchase-orders.destroy');
+    Route::post('purchase-orders/{purchase_order}/approve', [PurchaseOrderController::class, 'approve'])
+        ->middleware(['permission:purchase_orders.approve', 'filter.zonals.by.user'])
+        ->name('purchase-orders.approve');
+    Route::post('purchase-orders/{purchase_order}/reject', [PurchaseOrderController::class, 'reject'])
+        ->middleware(['permission:purchase_orders.approve', 'filter.zonals.by.user'])
+        ->name('purchase-orders.reject');
+    Route::post('purchase-orders/{purchase_order}/observe', [PurchaseOrderController::class, 'observe'])
+        ->middleware(['permission:purchase_orders.observe', 'filter.zonals.by.user'])
+        ->name('purchase-orders.observe');
     Route::post('purchase-orders/{purchase_order}/minor-approve', [PurchaseOrderController::class, 'minorApprove'])
         ->middleware(['permission:purchase_orders.minor_approve', 'filter.zonals.by.user'])
         ->name('purchase-orders.minor-approve');
@@ -454,7 +464,9 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::post('purchase-orders/{purchase_order}/minor-observe', [PurchaseOrderController::class, 'minorObserve'])
         ->middleware(['permission:purchase_orders.minor_observe', 'filter.zonals.by.user'])
         ->name('purchase-orders.minor-observe');
-    Route::post('purchase-orders/{purchase_order}/quotes/{purchase_quote}/select', [PurchaseOrderController::class, 'selectQuote'])->middleware('permission:purchase_quotes.select')->name('purchase-orders.quotes.select');
+    Route::post('purchase-orders/{purchase_order}/quotes/{purchase_quote}/select', [PurchaseOrderController::class, 'selectQuote'])
+        ->middleware(['permission:purchase_quotes.select', 'filter.zonals.by.user'])
+        ->name('purchase-orders.quotes.select');
 
     Route::get('users', [UserController::class, 'index'])->middleware('permission:users.view')->name('users.index');
     Route::post('users', [UserController::class, 'store'])->middleware('permission:users.create')->name('users.store');
