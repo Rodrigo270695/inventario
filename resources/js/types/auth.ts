@@ -22,11 +22,14 @@ export type AdminUser = {
     phone: string | null;
     is_active: boolean;
     created_at?: string;
+    /** Fecha de última modificación (listado admin). */
     updated_at?: string;
     creator?: { id: string; name: string; last_name?: string } | null;
     updater?: { id: string; name: string; last_name?: string } | null;
     zonals?: Array<{ id: string; name: string; code: string }>;
     roles?: Array<{ id: number; name: string }>;
+    /** Primer zonal (por nombre) y cuántos más tiene (pivot + gestión). */
+    zonal_summary?: { first: string | null; rest_count: number };
 };
 
 export type Auth = {

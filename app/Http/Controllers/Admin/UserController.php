@@ -65,6 +65,8 @@ class UserController extends Controller
             'roles:id,name',
             'creator:id,name,last_name',
             'updater:id,name,last_name',
+            'zonals' => fn ($q) => $q->select('zonals.id', 'zonals.name', 'zonals.code')->orderBy('zonals.name'),
+            'managedZonals' => fn ($q) => $q->select('zonals.id', 'zonals.name', 'zonals.code', 'zonals.manager_id')->orderBy('zonals.name'),
         ]);
 
         if ($trashed === '1') {
@@ -96,6 +98,22 @@ class UserController extends Controller
         $query->orderBy($sortBy, $sortOrder);
 
         $users = $query->paginate($perPage)->withQueryString();
+
+        $users->through(function (User $user) {
+            $merged = $user->zonals
+                ->concat($user->managedZonals)
+                ->unique('id')
+                ->sortBy('name')
+                ->values();
+            $first = $merged->first();
+            $user->setAttribute('zonal_summary', [
+                'first' => $first?->name,
+                'rest_count' => max(0, $merged->count() - 1),
+            ]);
+            $user->makeHidden(['zonals', 'managedZonals']);
+
+            return $user;
+        });
 
         $totalActive = User::where('is_active', true)->count();
         $totalTrashed = User::onlyTrashed()->count();

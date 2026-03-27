@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -133,6 +134,12 @@ class User extends Authenticatable
     public function zonals(): BelongsToMany
     {
         return $this->belongsToMany(Zonal::class, 'user_zonals');
+    }
+
+    /** Zonales donde este usuario es gestor (además de los asignados en user_zonals). */
+    public function managedZonals(): HasMany
+    {
+        return $this->hasMany(Zonal::class, 'manager_id');
     }
 
     public function creator(): BelongsTo

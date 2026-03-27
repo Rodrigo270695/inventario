@@ -231,10 +231,63 @@ export default function UsersIndex({
         ruc: 'RUC',
     };
 
+    const formatDocumentLine = (row: AdminUser) => {
+        const type = documentLabel[row.document_type] ?? row.document_type ?? '';
+        const num = row.document_number?.trim() ?? '';
+        return [type, num].filter(Boolean).join(' ') || '—';
+    };
+
+    const formatShortDate = (iso?: string) =>
+        iso
+            ? new Date(iso).toLocaleDateString('es', {
+                  day: '2-digit',
+                  month: 'short',
+                  year: 'numeric',
+              })
+            : '—';
+
+    const formatPersonName = (
+        p: { name?: string; last_name?: string } | null | undefined
+    ) => (p ? [p.name, p.last_name].filter(Boolean).join(' ') : '—');
+
+    const renderAuditCell = (row: AdminUser) => (
+        <div className="flex flex-col gap-0.5">
+            <span className="font-medium text-foreground">{formatPersonName(row.creator)}</span>
+            <span className="text-muted-foreground text-[11px] tabular-nums leading-tight">
+                {formatShortDate(row.created_at)}
+            </span>
+            <div className="mt-1 text-[11px] leading-tight">
+                <span className="text-muted-foreground">Actualizado por </span>
+                <span className="text-foreground">{formatPersonName(row.updater)}</span>
+            </div>
+            <span className="text-muted-foreground text-[11px] tabular-nums leading-tight">
+                {formatShortDate(row.updated_at)}
+            </span>
+        </div>
+    );
+
+    const renderZonalCell = (row: AdminUser) => {
+        const s = row.zonal_summary;
+        if (!s?.first) {
+            return <span className="text-muted-foreground">—</span>;
+        }
+        return (
+            <span className="text-foreground">
+                {s.first}
+                {s.rest_count > 0 ? (
+                    <span className="text-muted-foreground text-[11px] font-medium tabular-nums">
+                        {' '}
+                        +{s.rest_count}
+                    </span>
+                ) : null}
+            </span>
+        );
+    };
+
     const columns: DataTableColumn<AdminUser>[] = [
         {
             key: 'name',
-            label: 'Nombre',
+            label: 'Nombre completo',
             sortable: true,
             className: 'text-foreground text-xs',
             render: (row) => (
@@ -248,17 +301,13 @@ export default function UsersIndex({
             label: 'Usuario',
             sortable: true,
             className: 'text-foreground text-xs',
-            render: (row) => <span className="tabular-nums">{row.usuario}</span>,
-        },
-        {
-            key: 'document',
-            label: 'Documento',
-            sortable: false,
-            className: 'text-foreground text-xs',
             render: (row) => (
-                <span>
-                    {documentLabel[row.document_type] ?? row.document_type} {row.document_number}
-                </span>
+                <div className="flex flex-col gap-0.5">
+                    <span className="tabular-nums">{row.usuario}</span>
+                    <span className="text-muted-foreground text-[11px] tabular-nums leading-tight">
+                        {formatDocumentLine(row)}
+                    </span>
+                </div>
             ),
         },
         {
@@ -271,6 +320,13 @@ export default function UsersIndex({
                     {row.roles?.length ? row.roles.map((r) => r.name).join(', ') : '—'}
                 </span>
             ),
+        },
+        {
+            key: 'zonals',
+            label: 'Zonales',
+            sortable: false,
+            className: 'text-foreground text-xs max-w-[200px]',
+            render: (row) => renderZonalCell(row),
         },
         {
             key: 'is_active',
@@ -300,39 +356,10 @@ export default function UsersIndex({
         },
         {
             key: 'created_at',
-            label: 'Creado',
-            sortable: true,
-            className: 'text-foreground text-xs',
-            render: (row) =>
-                row.created_at
-                    ? new Date(row.created_at).toLocaleDateString('es', {
-                          day: '2-digit',
-                          month: 'short',
-                          year: 'numeric',
-                      })
-                    : '—',
-        },
-        {
-            key: 'creator',
             label: 'Creado por',
-            sortable: false,
-            className: 'text-foreground text-xs',
-            render: (row) => {
-                const c = row.creator;
-                if (!c) return '—';
-                return [c.name, c.last_name].filter(Boolean).join(' ');
-            },
-        },
-        {
-            key: 'updater',
-            label: 'Actualizado por',
-            sortable: false,
-            className: 'text-foreground text-xs',
-            render: (row) => {
-                const u = row.updater;
-                if (!u) return '—';
-                return [u.name, u.last_name].filter(Boolean).join(' ');
-            },
+            sortable: true,
+            className: 'text-foreground text-xs min-w-[140px]',
+            render: (row) => renderAuditCell(row),
         },
         {
             key: 'actions',
@@ -592,7 +619,14 @@ export default function UsersIndex({
                                                     )}
                                                     <div className="flex flex-wrap gap-x-2">
                                                         <dt className="text-muted-foreground shrink-0">Usuario:</dt>
-                                                        <dd className="text-foreground">{row.usuario}</dd>
+                                                        <dd className="text-foreground">
+                                                            <div className="flex flex-col gap-0.5">
+                                                                <span>{row.usuario}</span>
+                                                                <span className="text-muted-foreground text-xs tabular-nums">
+                                                                    {formatDocumentLine(row)}
+                                                                </span>
+                                                            </div>
+                                                        </dd>
                                                     </div>
                                                     <div className="flex flex-wrap gap-x-2">
                                                         <dt className="text-muted-foreground shrink-0">Rol:</dt>
@@ -600,32 +634,14 @@ export default function UsersIndex({
                                                             {row.roles?.length ? row.roles.map((r) => r.name).join(', ') : '—'}
                                                         </dd>
                                                     </div>
-                                                    {row.created_at && (
-                                                        <div className="flex flex-wrap gap-x-2">
-                                                            <dt className="text-muted-foreground shrink-0">Creado:</dt>
-                                                            <dd className="text-foreground">
-                                                                {new Date(row.created_at).toLocaleDateString('es', {
-                                                                    day: '2-digit',
-                                                                    month: 'short',
-                                                                    year: 'numeric',
-                                                                })}
-                                                            </dd>
-                                                        </div>
-                                                    )}
                                                     <div className="flex flex-wrap gap-x-2">
-                                                        <dt className="text-muted-foreground shrink-0">Creado por:</dt>
-                                                        <dd className="text-foreground">
-                                                            {row.creator
-                                                                ? [row.creator.name, row.creator.last_name].filter(Boolean).join(' ')
-                                                                : '—'}
-                                                        </dd>
+                                                        <dt className="text-muted-foreground shrink-0">Zonales:</dt>
+                                                        <dd className="text-foreground">{renderZonalCell(row)}</dd>
                                                     </div>
                                                     <div className="flex flex-wrap gap-x-2">
-                                                        <dt className="text-muted-foreground shrink-0">Actualizado por:</dt>
-                                                        <dd className="text-foreground">
-                                                            {row.updater
-                                                                ? [row.updater.name, row.updater.last_name].filter(Boolean).join(' ')
-                                                                : '—'}
+                                                        <dt className="text-muted-foreground shrink-0">Creado por:</dt>
+                                                        <dd className="text-foreground w-full min-w-0">
+                                                            {renderAuditCell(row)}
                                                         </dd>
                                                     </div>
                                                 </dl>
