@@ -41,6 +41,7 @@ type Filters = {
     q: string;
     is_active: string;
     trashed: string;
+    role_id: string;
     sort_by: string;
     sort_order: SortOrder;
     per_page: number;
@@ -75,6 +76,7 @@ function buildUrl(params: Partial<Filters> & { page?: number }) {
     if (params.q !== undefined) search.set('q', params.q);
     if (params.is_active !== undefined) search.set('is_active', params.is_active);
     if (params.trashed !== undefined) search.set('trashed', params.trashed);
+    if (params.role_id !== undefined) search.set('role_id', params.role_id);
     if (params.sort_by !== undefined) search.set('sort_by', params.sort_by);
     if (params.sort_order !== undefined)
         search.set('sort_order', params.sort_order);
@@ -523,6 +525,29 @@ export default function UsersIndex({
                             <SelectContent>
                                 <SelectItem value="0">Activos</SelectItem>
                                 <SelectItem value="1">Eliminados</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <Select
+                            value={
+                                (filters.role_id ?? '') === '' ? '_' : String(filters.role_id)
+                            }
+                            onValueChange={(v) =>
+                                applyFilters({
+                                    role_id: v === '_' ? '' : v,
+                                    page: 1,
+                                })
+                            }
+                        >
+                            <SelectTrigger className="min-w-[200px] max-w-[280px] border-border bg-background">
+                                <SelectValue placeholder="Rol" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="_">Todos los roles</SelectItem>
+                                {roles.map((r) => (
+                                    <SelectItem key={r.id} value={String(r.id)}>
+                                        {r.name}
+                                    </SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                     </div>

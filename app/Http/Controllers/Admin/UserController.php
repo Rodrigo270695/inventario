@@ -41,6 +41,16 @@ class UserController extends Controller
             $trashed = '0';
         }
 
+        $roleIdParam = $request->input('role_id', '');
+        $roleIdParam = ($roleIdParam === null || $roleIdParam === 'null') ? '' : trim((string) $roleIdParam);
+        $roleIdFilter = '';
+        if ($roleIdParam !== '') {
+            $rid = (int) $roleIdParam;
+            if ($rid > 0 && Role::query()->where('guard_name', 'web')->whereKey($rid)->exists()) {
+                $roleIdFilter = (string) $rid;
+            }
+        }
+
         if (! in_array($sortBy, self::VALID_SORT, true)) {
             $sortBy = 'name';
         }
@@ -78,6 +88,11 @@ class UserController extends Controller
             $query->where('is_active', false);
         }
 
+        if ($roleIdFilter !== '') {
+            $rid = (int) $roleIdFilter;
+            $query->whereHas('roles', fn ($rq) => $rq->where('roles.id', $rid));
+        }
+
         $query->orderBy($sortBy, $sortOrder);
 
         $users = $query->paginate($perPage)->withQueryString();
@@ -94,6 +109,7 @@ class UserController extends Controller
                 'q' => $q,
                 'is_active' => $isActive,
                 'trashed' => $trashed,
+                'role_id' => $roleIdFilter,
                 'sort_by' => $sortBy,
                 'sort_order' => $sortOrder,
                 'per_page' => $perPage,
