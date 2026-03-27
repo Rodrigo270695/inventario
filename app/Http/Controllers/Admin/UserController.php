@@ -61,6 +61,8 @@ class UserController extends Controller
             $perPage = 25;
         }
 
+        $viewerIsSuperadmin = $request->user()?->hasRole('superadmin', 'web');
+
         $query = User::query()->with([
             'roles:id,name',
             'creator:id,name,last_name',
@@ -71,6 +73,11 @@ class UserController extends Controller
 
         if ($trashed === '1') {
             $query->onlyTrashed();
+        }
+
+        if (! $viewerIsSuperadmin) {
+            $query->whereRaw('LOWER(COALESCE(usuario, \'\')) <> ?', ['superadmin'])
+                ->whereDoesntHave('roles', fn ($rq) => $rq->where('name', 'superadmin')->where('guard_name', 'web'));
         }
 
         if ($q !== '') {
@@ -115,10 +122,23 @@ class UserController extends Controller
             return $user;
         });
 
-        $totalActive = User::where('is_active', true)->count();
-        $totalTrashed = User::onlyTrashed()->count();
+        $statsQuery = User::query();
+        $trashedStatsQuery = User::onlyTrashed();
+        if (! $viewerIsSuperadmin) {
+            $statsQuery->whereRaw('LOWER(COALESCE(usuario, \'\')) <> ?', ['superadmin'])
+                ->whereDoesntHave('roles', fn ($rq) => $rq->where('name', 'superadmin')->where('guard_name', 'web'));
+            $trashedStatsQuery->whereRaw('LOWER(COALESCE(usuario, \'\')) <> ?', ['superadmin'])
+                ->whereDoesntHave('roles', fn ($rq) => $rq->where('name', 'superadmin')->where('guard_name', 'web'));
+        }
 
-        $roles = Role::query()->where('guard_name', 'web')->orderBy('name')->get(['id', 'name']);
+        $totalActive = (clone $statsQuery)->where('is_active', true)->count();
+        $totalTrashed = $trashedStatsQuery->count();
+
+        $rolesQuery = Role::query()->where('guard_name', 'web')->orderBy('name');
+        if (! $viewerIsSuperadmin) {
+            $rolesQuery->where('name', '!=', 'superadmin');
+        }
+        $roles = $rolesQuery->get(['id', 'name']);
 
         return Inertia::render('admin/users/index', [
             'users' => $users,
@@ -133,7 +153,7 @@ class UserController extends Controller
                 'per_page' => $perPage,
             ],
             'stats' => [
-                'total' => User::count(),
+                'total' => (clone $statsQuery)->count(),
                 'total_active' => $totalActive,
                 'total_trashed' => $totalTrashed,
             ],
@@ -169,6 +189,7 @@ class UserController extends Controller
         $user = User::create($validated);
         $role = Role::findById($roleId, 'web');
         if ($role) {
+            $this->assertCanAssignSuperadminRole($request->user(), $role);
             $user->syncRoles([$role->name]);
         }
 
@@ -178,10 +199,7 @@ class UserController extends Controller
 
     public function update(UserRequest $request, User $user): RedirectResponse
     {
-        if (strtolower((string) $user->usuario) === 'superadmin') {
-            return redirect()->back()
-                ->with('toast', ['type' => 'error', 'message' => 'No se puede editar el usuario superadmin.']);
-        }
+        $this->denyUnlessSuperadminViewer($request->user(), $user);
 
         $validated = $request->validated();
         $roleId = (int) $validated['role_id'];
@@ -196,6 +214,7 @@ class UserController extends Controller
         $user->update($validated);
         $role = Role::findById($roleId, 'web');
         if ($role) {
+            $this->assertCanAssignSuperadminRole($request->user(), $role);
             $user->syncRoles([$role->name]);
         }
 
@@ -205,10 +224,7 @@ class UserController extends Controller
 
     public function destroy(Request $request, User $user): RedirectResponse
     {
-        if (strtolower((string) $user->usuario) === 'superadmin') {
-            return redirect()->back()
-                ->with('toast', ['type' => 'error', 'message' => 'No se puede eliminar el usuario superadmin.']);
-        }
+        $this->denyUnlessSuperadminViewer($request->user(), $user);
 
         if ($user->id === $request->user()?->id) {
             return redirect()->back()
@@ -225,10 +241,7 @@ class UserController extends Controller
     {
         $user = User::onlyTrashed()->findOrFail($id);
 
-        if (strtolower((string) $user->usuario) === 'superadmin') {
-            return redirect()->back()
-                ->with('toast', ['type' => 'error', 'message' => 'No se puede restaurar el usuario superadmin.']);
-        }
+        $this->denyUnlessSuperadminViewer($request->user(), $user);
 
         $exists = User::where('document_type', $user->document_type)
             ->where('document_number', $user->document_number)
@@ -247,8 +260,10 @@ class UserController extends Controller
             ->with('toast', ['type' => 'success', 'message' => 'Usuario restaurado correctamente.']);
     }
 
-    public function configure(User $user): Response
+    public function configure(Request $request, User $user): Response
     {
+        $this->denyUnlessSuperadminViewer($request->user(), $user);
+
         $user->load('zonals:id,name,code');
         $zonals = Zonal::query()->orderBy('name')->get(['id', 'name', 'code']);
         $userZonalIds = $user->zonals->pluck('id')->all();
@@ -276,6 +291,8 @@ class UserController extends Controller
 
     public function updateZonals(Request $request, User $user): RedirectResponse
     {
+        $this->denyUnlessSuperadminViewer($request->user(), $user);
+
         $validated = $request->validate([
             'zonal_ids' => ['array'],
             'zonal_ids.*' => ['uuid', Rule::exists('zonals', 'id')],
@@ -297,10 +314,7 @@ class UserController extends Controller
      */
     public function updatePermissions(Request $request, User $user): RedirectResponse
     {
-        if (strtolower((string) $user->usuario) === 'superadmin') {
-            return redirect()->back()
-                ->with('toast', ['type' => 'error', 'message' => 'No se pueden modificar los permisos del usuario superadmin.']);
-        }
+        $this->denyUnlessSuperadminViewer($request->user(), $user);
 
         $validated = $request->validate([
             'permission_ids' => ['array'],
@@ -321,5 +335,36 @@ class UserController extends Controller
 
         return redirect()->back()
             ->with('toast', ['type' => 'success', 'message' => 'Permisos del usuario actualizados correctamente.']);
+    }
+
+    private function viewerIsSuperadmin(?User $auth): bool
+    {
+        return $auth !== null && $auth->hasRole('superadmin', 'web');
+    }
+
+    /**
+     * Usuario con login superadmin o rol superadmin: solo otro superadmin puede verlo o mutarlo.
+     */
+    private function isProtectedSuperadminUser(User $user): bool
+    {
+        return strtolower((string) $user->usuario) === 'superadmin'
+            || $user->hasRole('superadmin', 'web');
+    }
+
+    private function denyUnlessSuperadminViewer(?User $auth, User $target): void
+    {
+        if ($this->isProtectedSuperadminUser($target) && ! $this->viewerIsSuperadmin($auth)) {
+            abort(403, 'No autorizado a gestionar este usuario.');
+        }
+    }
+
+    private function assertCanAssignSuperadminRole(?User $auth, Role $role): void
+    {
+        if ($role->name !== 'superadmin' || $role->guard_name !== 'web') {
+            return;
+        }
+        if (! $this->viewerIsSuperadmin($auth)) {
+            abort(403, 'Solo un superadmin puede asignar el rol superadmin.');
+        }
     }
 }

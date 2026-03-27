@@ -35,6 +35,8 @@ export type AdminUser = {
 export type Auth = {
     user: User | null;
     permissions: string[];
+    /** Solo el rol superadmin ve y gestiona al usuario superadmin en administración. */
+    is_superadmin?: boolean;
 };
 
 export type TwoFactorSetupData = {

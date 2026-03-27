@@ -114,8 +114,18 @@ export default function UsersIndex({
     });
     const [restoring, setRestoring] = useState(false);
     const [restoreUser, setRestoreUser] = useState<AdminUser | null>(null);
-    const auth = (props as { auth?: { permissions?: string[] } }).auth;
+    const auth = (props as { auth?: { permissions?: string[]; is_superadmin?: boolean } }).auth;
     const permissions = auth?.permissions ?? [];
+    const isAuthSuperadmin = auth?.is_superadmin === true;
+
+    const isRowSuperadminRecord = (row: AdminUser) => {
+        if (row.usuario?.toLowerCase() === 'superadmin') return true;
+        return Boolean(row.roles?.some((r) => r.name === 'superadmin'));
+    };
+
+    /** Fila superadmin: acciones solo si la sesión es superadmin (el listado ya oculta la fila al resto). */
+    const canActOnUserRow = (row: AdminUser) =>
+        !isRowSuperadminRecord(row) || isAuthSuperadmin;
     const canCreate = permissions.includes('users.create');
     const canUpdate = permissions.includes('users.update');
     const canDelete = permissions.includes('users.delete');
@@ -372,11 +382,10 @@ export default function UsersIndex({
             label: '',
             className: 'w-0 text-right',
             render: (row) => {
-                const isSuperadmin = row.usuario?.toLowerCase() === 'superadmin';
                 if (viewingTrashed) {
                     return (
                         <div className="flex justify-end gap-1">
-                            {canRestore && !isSuperadmin && (
+                            {canRestore && canActOnUserRow(row) && (
                                 <Button
                                     type="button"
                                     variant="outline"
@@ -394,7 +403,7 @@ export default function UsersIndex({
                 }
                 return (
                     <div className="flex justify-end gap-1">
-                        {canConfigure && !isSuperadmin && (
+                        {canConfigure && canActOnUserRow(row) && (
                             <Link
                                 href={`/admin/users/${row.id}/configure`}
                                 className="inline-flex shrink-0 items-center justify-center rounded-md size-8 text-slate-600 hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
@@ -403,7 +412,7 @@ export default function UsersIndex({
                                 <Settings className="size-4" />
                             </Link>
                         )}
-                        {canUpdate && !isSuperadmin && (
+                        {canUpdate && canActOnUserRow(row) && (
                             <Button
                                 type="button"
                                 variant="ghost"
@@ -418,7 +427,7 @@ export default function UsersIndex({
                                 <Pencil className="size-4" />
                             </Button>
                         )}
-                        {canDelete && !isSuperadmin && (
+                        {canDelete && canActOnUserRow(row) && (
                             <Button
                                 type="button"
                                 variant="ghost"
@@ -662,7 +671,7 @@ export default function UsersIndex({
                                             <div className="flex flex-wrap justify-end gap-2 border-t border-border bg-muted/30 px-4 py-3">
                                                 {viewingTrashed ? (
                                                     canRestore &&
-                                                    row.usuario?.toLowerCase() !== 'superadmin' && (
+                                                    canActOnUserRow(row) && (
                                                         <Button
                                                             type="button"
                                                             variant="outline"
@@ -677,7 +686,7 @@ export default function UsersIndex({
                                                     )
                                                 ) : (
                                                     <>
-                                                        {canConfigure && row.usuario?.toLowerCase() !== 'superadmin' && (
+                                                        {canConfigure && canActOnUserRow(row) && (
                                                             <Link
                                                                 href={`/admin/users/${row.id}/configure`}
                                                                 className="inline-flex shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
@@ -686,7 +695,7 @@ export default function UsersIndex({
                                                                 <span>Configurar</span>
                                                             </Link>
                                                         )}
-                                                        {canUpdate && row.usuario?.toLowerCase() !== 'superadmin' && (
+                                                        {canUpdate && canActOnUserRow(row) && (
                                                             <Button
                                                                 type="button"
                                                                 variant="outline"
@@ -702,7 +711,7 @@ export default function UsersIndex({
                                                                 <span>Editar</span>
                                                             </Button>
                                                         )}
-                                                        {canDelete && row.usuario?.toLowerCase() !== 'superadmin' && (
+                                                        {canDelete && canActOnUserRow(row) && (
                                                             <Button
                                                                 type="button"
                                                                 variant="outline"
