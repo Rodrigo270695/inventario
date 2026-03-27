@@ -33,6 +33,17 @@ type Props = {
 const DNI_LENGTH = 8;
 const DOCUMENT_NUMBER_MAX_LENGTH = 20;
 
+/** Primera letra del nombre + primera palabra del apellido + inicial de la segunda palabra del apellido (si existe). Minúsculas. */
+function usuarioFromNameAndLastName(name: string, lastName: string): string {
+    const nameWords = name.trim().split(/\s+/).filter(Boolean);
+    const lastWords = lastName.trim().split(/\s+/).filter(Boolean);
+    const firstOfName = (nameWords[0]?.[0] ?? '').toLowerCase();
+    const firstLast = (lastWords[0] ?? '').toLowerCase();
+    const secondLastInitial =
+        lastWords.length > 1 ? (lastWords[1]?.[0] ?? '').toLowerCase() : '';
+    return `${firstOfName}${firstLast}${secondLastInitial}`;
+}
+
 export function UserFormModal({ open, onOpenChange, user, roles }: Props) {
     const isEdit = user != null;
     const [showPassword, setShowPassword] = useState(false);
@@ -162,7 +173,18 @@ export function UserFormModal({ open, onOpenChange, user, roles }: Props) {
                         <Label>Nombre <span className="text-red-500">*</span></Label>
                         <Input
                             value={data.name}
-                            onChange={(e) => setData('name', e.target.value.toUpperCase())}
+                            onChange={(e) => {
+                                const name = e.target.value.toUpperCase();
+                                if (isEdit) {
+                                    setData('name', name);
+                                } else {
+                                    setData((prev) => ({
+                                        ...prev,
+                                        name,
+                                        usuario: usuarioFromNameAndLastName(name, prev.last_name),
+                                    }));
+                                }
+                            }}
                             maxLength={255}
                             className={errors.name ? 'border-destructive' : ''}
                             placeholder="Nombre (mayúsculas)"
@@ -175,7 +197,18 @@ export function UserFormModal({ open, onOpenChange, user, roles }: Props) {
                         <Label>Apellido <span className="text-red-500">*</span></Label>
                         <Input
                             value={data.last_name}
-                            onChange={(e) => setData('last_name', e.target.value.toUpperCase())}
+                            onChange={(e) => {
+                                const lastName = e.target.value.toUpperCase();
+                                if (isEdit) {
+                                    setData('last_name', lastName);
+                                } else {
+                                    setData((prev) => ({
+                                        ...prev,
+                                        last_name: lastName,
+                                        usuario: usuarioFromNameAndLastName(prev.name, lastName),
+                                    }));
+                                }
+                            }}
                             maxLength={255}
                             className={errors.last_name ? 'border-destructive' : ''}
                             placeholder="Apellido (mayúsculas)"
