@@ -271,14 +271,17 @@ export default function UsersIndex({
     const renderZonalCell = (row: AdminUser) => {
         const s = row.zonal_summary;
         if (!s?.first) {
-            return <span className="text-muted-foreground">—</span>;
+            return (
+                <span className="inline-flex rounded-full border border-dashed border-muted-foreground/35 bg-muted/40 px-2 py-0.5 text-[11px] text-muted-foreground">
+                    —
+                </span>
+            );
         }
         return (
-            <span className="text-foreground">
-                {s.first}
+            <span className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-inv-primary/35 bg-inv-primary/10 px-2.5 py-1 text-[11px] font-semibold text-inv-primary shadow-sm dark:border-inv-primary/45 dark:bg-inv-primary/15 dark:text-inv-primary dark:shadow-inv-primary/10">
+                <span className="min-w-0 truncate">{s.first}</span>
                 {s.rest_count > 0 ? (
-                    <span className="text-muted-foreground text-[11px] font-medium tabular-nums">
-                        {' '}
+                    <span className="shrink-0 rounded-md bg-inv-primary/25 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-inv-primary ring-1 ring-inv-primary/20 dark:bg-inv-primary/35 dark:ring-inv-primary/30">
                         +{s.rest_count}
                     </span>
                 ) : null}
@@ -325,7 +328,7 @@ export default function UsersIndex({
             key: 'zonals',
             label: 'Zonales',
             sortable: false,
-            className: 'text-foreground text-xs max-w-[200px]',
+            className: 'text-foreground text-xs max-w-[240px]',
             render: (row) => renderZonalCell(row),
         },
         {
