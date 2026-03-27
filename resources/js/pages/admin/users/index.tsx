@@ -311,17 +311,13 @@ export default function UsersIndex({
             label: 'Usuario',
             sortable: true,
             className: 'text-foreground text-xs',
-            render: (row) => <span className="tabular-nums">{row.usuario}</span>,
-        },
-        {
-            key: 'roles',
-            label: 'Rol',
-            sortable: false,
-            className: 'text-foreground text-xs',
             render: (row) => (
-                <span>
-                    {row.roles?.length ? row.roles.map((r) => r.name).join(', ') : '—'}
-                </span>
+                <div className="flex flex-col gap-0.5">
+                    <span className="tabular-nums">{row.usuario}</span>
+                    <span className="text-muted-foreground text-[11px] leading-tight">
+                        {row.roles?.length ? row.roles.map((r) => r.name).join(', ') : '—'}
+                    </span>
+                </div>
             ),
         },
         {
@@ -634,12 +630,15 @@ export default function UsersIndex({
                                                     )}
                                                     <div className="flex flex-wrap gap-x-2">
                                                         <dt className="text-muted-foreground shrink-0">Usuario:</dt>
-                                                        <dd className="text-foreground">{row.usuario}</dd>
-                                                    </div>
-                                                    <div className="flex flex-wrap gap-x-2">
-                                                        <dt className="text-muted-foreground shrink-0">Rol:</dt>
                                                         <dd className="text-foreground">
-                                                            {row.roles?.length ? row.roles.map((r) => r.name).join(', ') : '—'}
+                                                            <div className="flex flex-col gap-0.5">
+                                                                <span>{row.usuario}</span>
+                                                                <span className="text-muted-foreground text-xs leading-tight">
+                                                                    {row.roles?.length
+                                                                        ? row.roles.map((r) => r.name).join(', ')
+                                                                        : '—'}
+                                                                </span>
+                                                            </div>
                                                         </dd>
                                                     </div>
                                                     <div className="flex flex-wrap gap-x-2">
