@@ -250,16 +250,18 @@ export default function UsersIndex({
         p: { name?: string; last_name?: string } | null | undefined
     ) => (p ? [p.name, p.last_name].filter(Boolean).join(' ') : '—');
 
-    const renderAuditCell = (row: AdminUser) => (
+    const renderCreatedByCell = (row: AdminUser) => (
         <div className="flex flex-col gap-0.5">
             <span className="font-medium text-foreground">{formatPersonName(row.creator)}</span>
             <span className="text-muted-foreground text-[11px] tabular-nums leading-tight">
                 {formatShortDate(row.created_at)}
             </span>
-            <div className="mt-1 text-[11px] leading-tight">
-                <span className="text-muted-foreground">Actualizado por </span>
-                <span className="text-foreground">{formatPersonName(row.updater)}</span>
-            </div>
+        </div>
+    );
+
+    const renderUpdatedByCell = (row: AdminUser) => (
+        <div className="flex flex-col gap-0.5">
+            <span className="font-medium text-foreground">{formatPersonName(row.updater)}</span>
             <span className="text-muted-foreground text-[11px] tabular-nums leading-tight">
                 {formatShortDate(row.updated_at)}
             </span>
@@ -291,9 +293,14 @@ export default function UsersIndex({
             sortable: true,
             className: 'text-foreground text-xs',
             render: (row) => (
-                <span className="font-medium text-foreground">
-                    {[row.name, row.last_name].filter(Boolean).join(' ')}
-                </span>
+                <div className="flex flex-col gap-0.5">
+                    <span className="font-medium text-foreground">
+                        {[row.name, row.last_name].filter(Boolean).join(' ')}
+                    </span>
+                    <span className="text-muted-foreground text-[11px] tabular-nums leading-tight">
+                        {formatDocumentLine(row)}
+                    </span>
+                </div>
             ),
         },
         {
@@ -301,14 +308,7 @@ export default function UsersIndex({
             label: 'Usuario',
             sortable: true,
             className: 'text-foreground text-xs',
-            render: (row) => (
-                <div className="flex flex-col gap-0.5">
-                    <span className="tabular-nums">{row.usuario}</span>
-                    <span className="text-muted-foreground text-[11px] tabular-nums leading-tight">
-                        {formatDocumentLine(row)}
-                    </span>
-                </div>
-            ),
+            render: (row) => <span className="tabular-nums">{row.usuario}</span>,
         },
         {
             key: 'roles',
@@ -358,8 +358,15 @@ export default function UsersIndex({
             key: 'created_at',
             label: 'Creado por',
             sortable: true,
-            className: 'text-foreground text-xs min-w-[140px]',
-            render: (row) => renderAuditCell(row),
+            className: 'text-foreground text-xs min-w-[120px]',
+            render: (row) => renderCreatedByCell(row),
+        },
+        {
+            key: 'updated_at',
+            label: 'Actualizado por',
+            sortable: true,
+            className: 'text-foreground text-xs min-w-[120px]',
+            render: (row) => renderUpdatedByCell(row),
         },
         {
             key: 'actions',
@@ -607,9 +614,14 @@ export default function UsersIndex({
                                     <li key={row.id}>
                                         <article className="rounded-lg border border-border bg-card shadow-[0_1px_2px_0_rgba(15,23,42,0.05)] dark:shadow-none overflow-hidden">
                                             <div className="space-y-2 p-4">
-                                                <p className="font-medium text-foreground text-base">
-                                                    {row.name} {row.last_name}
-                                                </p>
+                                                <div className="space-y-0.5">
+                                                    <p className="font-medium text-foreground text-base">
+                                                        {row.name} {row.last_name}
+                                                    </p>
+                                                    <p className="text-muted-foreground text-xs tabular-nums">
+                                                        {formatDocumentLine(row)}
+                                                    </p>
+                                                </div>
                                                 <dl className="grid grid-cols-1 gap-1.5 text-sm">
                                                     {viewingTrashed && (
                                                         <div className="flex flex-wrap gap-x-2">
@@ -619,14 +631,7 @@ export default function UsersIndex({
                                                     )}
                                                     <div className="flex flex-wrap gap-x-2">
                                                         <dt className="text-muted-foreground shrink-0">Usuario:</dt>
-                                                        <dd className="text-foreground">
-                                                            <div className="flex flex-col gap-0.5">
-                                                                <span>{row.usuario}</span>
-                                                                <span className="text-muted-foreground text-xs tabular-nums">
-                                                                    {formatDocumentLine(row)}
-                                                                </span>
-                                                            </div>
-                                                        </dd>
+                                                        <dd className="text-foreground">{row.usuario}</dd>
                                                     </div>
                                                     <div className="flex flex-wrap gap-x-2">
                                                         <dt className="text-muted-foreground shrink-0">Rol:</dt>
@@ -641,7 +646,13 @@ export default function UsersIndex({
                                                     <div className="flex flex-wrap gap-x-2">
                                                         <dt className="text-muted-foreground shrink-0">Creado por:</dt>
                                                         <dd className="text-foreground w-full min-w-0">
-                                                            {renderAuditCell(row)}
+                                                            {renderCreatedByCell(row)}
+                                                        </dd>
+                                                    </div>
+                                                    <div className="flex flex-wrap gap-x-2">
+                                                        <dt className="text-muted-foreground shrink-0">Actualizado por:</dt>
+                                                        <dd className="text-foreground w-full min-w-0">
+                                                            {renderUpdatedByCell(row)}
                                                         </dd>
                                                     </div>
                                                 </dl>

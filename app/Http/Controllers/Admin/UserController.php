@@ -17,7 +17,7 @@ use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
 {
-    private const VALID_SORT = ['name', 'usuario', 'email', 'created_at'];
+    private const VALID_SORT = ['name', 'usuario', 'email', 'created_at', 'updated_at'];
 
     private const VALID_ORDER = ['asc', 'desc'];
 
