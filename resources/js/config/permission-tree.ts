@@ -286,6 +286,7 @@ export const PERMISSION_TREE: PermissionTreeNode[] = [
                             { key: 'users.restore', label: 'Restaurar', permission: 'users.restore' },
                             { key: 'users.configure', label: 'Configurar', permission: 'users.configure' },
                             { key: 'users.send_credentials', label: 'Enviar credenciales por correo', permission: 'users.send_credentials' },
+                            { key: 'users.duplicate', label: 'Duplicar usuario (zonales y permisos)', permission: 'users.duplicate' },
                         ],
                     },
                 ],

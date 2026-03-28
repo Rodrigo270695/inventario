@@ -1,6 +1,7 @@
 import { Head, router, usePage } from '@inertiajs/react';
 import {
     CheckCircle2,
+    Copy,
     LayoutGrid,
     Mail,
     Pencil,
@@ -107,6 +108,7 @@ export default function UsersIndex({
     const [deleting, setDeleting] = useState(false);
     const [formOpen, setFormOpen] = useState(false);
     const [formUser, setFormUser] = useState<AdminUser | null>(null);
+    const [formDuplicateFrom, setFormDuplicateFrom] = useState<AdminUser | null>(null);
 
     type RestoreUserFlash = { id: string; name: string; last_name: string; usuario: string };
     const [restoreUserFlash, setRestoreUserFlash] = useState<RestoreUserFlash | null>(() => {
@@ -138,6 +140,7 @@ export default function UsersIndex({
     const canRestore = permissions.includes('users.restore');
     const canConfigure = permissions.includes('users.configure');
     const canSendCredentials = permissions.includes('users.send_credentials');
+    const canDuplicateUser = canCreate && permissions.includes('users.duplicate');
     const flash = props.flash as { toast?: ToastMessage } | undefined;
     const [toastQueue, setToastQueue] = useState<
         Array<ToastMessage & { id: number }>
@@ -470,6 +473,23 @@ export default function UsersIndex({
                                     ) : null}
                                 </Button>
                             )}
+                        {canDuplicateUser && canActOnUserRow(row) && (
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                title="Duplicar usuario (mismo rol, zonales y permisos por usuario)"
+                                className="cursor-pointer shrink-0 size-8 text-teal-600 hover:bg-teal-50 hover:text-teal-700 dark:text-teal-400 dark:hover:bg-teal-950/30"
+                                aria-label={`Duplicar usuario ${row.usuario}`}
+                                onClick={() => {
+                                    setFormUser(null);
+                                    setFormDuplicateFrom(row);
+                                    setFormOpen(true);
+                                }}
+                            >
+                                <Copy className="size-4" />
+                            </Button>
+                        )}
                         {canConfigure && canActOnUserRow(row) && (
                             <Link
                                 href={`/admin/users/${row.id}/configure`}
@@ -487,6 +507,7 @@ export default function UsersIndex({
                                 className="cursor-pointer shrink-0 size-8 text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:text-blue-400 dark:hover:bg-blue-950/30"
                                 aria-label={`Editar ${row.usuario}`}
                                 onClick={() => {
+                                    setFormDuplicateFrom(null);
                                     setFormUser(row);
                                     setFormOpen(true);
                                 }}
@@ -576,6 +597,7 @@ export default function UsersIndex({
                         <button
                             type="button"
                             onClick={() => {
+                                setFormDuplicateFrom(null);
                                 setFormUser(null);
                                 setFormOpen(true);
                             }}
@@ -779,6 +801,24 @@ export default function UsersIndex({
                                                                     </span>
                                                                 </Button>
                                                             )}
+                                                        {canDuplicateUser && canActOnUserRow(row) && (
+                                                            <Button
+                                                                type="button"
+                                                                variant="outline"
+                                                                size="sm"
+                                                                title="Duplicar usuario (mismo rol, zonales y permisos por usuario)"
+                                                                className="cursor-pointer shrink-0 border-teal-200 text-teal-700 hover:bg-teal-50 dark:border-teal-800 dark:text-teal-400 dark:hover:bg-teal-950/30"
+                                                                aria-label={`Duplicar usuario ${row.usuario}`}
+                                                                onClick={() => {
+                                                                    setFormUser(null);
+                                                                    setFormDuplicateFrom(row);
+                                                                    setFormOpen(true);
+                                                                }}
+                                                            >
+                                                                <Copy className="size-3.5 shrink-0 mr-1" />
+                                                                <span>Duplicar</span>
+                                                            </Button>
+                                                        )}
                                                         {canConfigure && canActOnUserRow(row) && (
                                                             <Link
                                                                 href={`/admin/users/${row.id}/configure`}
@@ -796,6 +836,7 @@ export default function UsersIndex({
                                                                 className="cursor-pointer shrink-0 border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-950/30"
                                                                 aria-label={`Editar ${row.usuario}`}
                                                                 onClick={() => {
+                                                                    setFormDuplicateFrom(null);
                                                                     setFormUser(row);
                                                                     setFormOpen(true);
                                                                 }}
@@ -849,9 +890,13 @@ export default function UsersIndex({
                 open={formOpen}
                 onOpenChange={(open) => {
                     setFormOpen(open);
-                    if (!open) setFormUser(null);
+                    if (!open) {
+                        setFormUser(null);
+                        setFormDuplicateFrom(null);
+                    }
                 }}
                 user={formUser}
+                duplicateFrom={formDuplicateFrom}
                 roles={roles}
             />
 

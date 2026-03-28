@@ -474,6 +474,9 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::put('users/{user}', [UserController::class, 'update'])->middleware('permission:users.update')->name('users.update');
     Route::delete('users/{user}', [UserController::class, 'destroy'])->middleware('permission:users.delete')->name('users.destroy');
     Route::post('users/restore/{id}', [UserController::class, 'restore'])->middleware('permission:users.restore')->name('users.restore');
+    Route::get('users/{user}/duplicate-template', [UserController::class, 'duplicateTemplate'])
+        ->middleware(['permission:users.duplicate', 'permission:users.create'])
+        ->name('users.duplicate-template');
     Route::get('users/{user}/configure', [UserController::class, 'configure'])->middleware('permission:users.configure')->name('users.configure');
     Route::put('users/{user}/zonals', [UserController::class, 'updateZonals'])->middleware('permission:users.configure')->name('users.zonals.update');
     Route::put('users/{user}/permissions', [UserController::class, 'updatePermissions'])->middleware('permission:users.configure')->name('users.permissions.update');

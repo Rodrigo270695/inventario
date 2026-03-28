@@ -9,6 +9,7 @@ use App\Mail\UserCredentialsSentConfirmationMail;
 use App\Models\User;
 use App\Models\Zonal;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -186,7 +187,29 @@ class UserController extends Controller
                 ]);
         }
 
-        $roleId = (int) $validated['role_id'];
+        $duplicateFromId = $validated['duplicate_from_user_id'] ?? null;
+        unset($validated['duplicate_from_user_id']);
+
+        $template = null;
+        if (is_string($duplicateFromId) && $duplicateFromId !== '') {
+            $template = User::with(['zonals:id', 'roles'])->find($duplicateFromId);
+            if ($template === null) {
+                return redirect()->back()
+                    ->withInput($request->except('password', 'password_confirmation'))
+                    ->withErrors(['duplicate_from_user_id' => 'El usuario de referencia no existe o no está disponible.']);
+            }
+            $this->denyUnlessSuperadminViewer($request->user(), $template);
+            $roleFromTemplate = $template->roles->firstWhere('guard_name', 'web');
+            if ($roleFromTemplate === null) {
+                return redirect()->back()
+                    ->withInput($request->except('password', 'password_confirmation'))
+                    ->withErrors(['duplicate_from_user_id' => 'El usuario de referencia no tiene un rol web asignado.']);
+            }
+            $roleId = (int) $roleFromTemplate->id;
+        } else {
+            $roleId = (int) $validated['role_id'];
+        }
+
         unset($validated['role_id'], $validated['password_confirmation']);
 
         $plainPassword = Str::password(14, symbols: false);
@@ -208,6 +231,12 @@ class UserController extends Controller
         if ($role) {
             $this->assertCanAssignSuperadminRole($request->user(), $role);
             $user->syncRoles([$role->name]);
+        }
+
+        if ($template !== null) {
+            $template->loadMissing('zonals:id');
+            $user->zonals()->sync($template->zonals->pluck('id')->all());
+            $this->applyEffectivePermissionsFromTemplate($user, $template);
         }
 
         $auth = $request->user();
@@ -267,8 +296,28 @@ class UserController extends Controller
             }
         }
 
+        $successMessage = $template !== null
+            ? 'Usuario duplicado correctamente (mismo rol, zonales y permisos efectivos que el origen). Las credenciales se enviaron a su correo.'.($actorEmail === '' ? '' : ' Recibirás un correo de confirmación.')
+            : 'Usuario registrado correctamente. Las credenciales se enviaron a su correo.'.($actorEmail === '' ? '' : ' Recibirás un correo de confirmación.');
+
         return redirect()->back()
-            ->with('toast', ['type' => 'success', 'message' => 'Usuario registrado correctamente. Las credenciales se enviaron a su correo.'.($actorEmail === '' ? '' : ' Recibirás un correo de confirmación.')]);
+            ->with('toast', ['type' => 'success', 'message' => $successMessage]);
+    }
+
+    public function duplicateTemplate(Request $request, User $user): JsonResponse
+    {
+        $this->denyUnlessSuperadminViewer($request->user(), $user);
+
+        $user->load(['zonals:id,name,code', 'roles:id,name,guard_name']);
+        $role = $user->roles->firstWhere('guard_name', 'web');
+
+        return response()->json([
+            'role_name' => $role?->name,
+            'zonal_labels' => $user->zonals
+                ->map(fn (Zonal $z) => trim($z->code.' · '.$z->name))
+                ->values()
+                ->all(),
+        ]);
     }
 
     public function update(UserRequest $request, User $user): RedirectResponse
@@ -481,16 +530,40 @@ class UserController extends Controller
         ]);
 
         $selectedIds = array_map('intval', $validated['permission_ids'] ?? []);
-        $roleIds = $user->getPermissionsViaRoles()->pluck('id')->all();
+        $this->syncUserPermissionsFromEffectiveSelection($user, $selectedIds);
+
+        return redirect()->back()
+            ->with('toast', ['type' => 'success', 'message' => 'Permisos del usuario actualizados correctamente.']);
+    }
+
+    /**
+     * @param  array<int, int>  $selectedIds
+     */
+    private function syncUserPermissionsFromEffectiveSelection(User $user, array $selectedIds): void
+    {
+        $user->refresh();
+        $roleIds = $user->getPermissionsViaRoles()->pluck('id')->map(fn ($id) => (int) $id)->all();
 
         $directIds = array_values(array_diff($selectedIds, $roleIds));
         $revokedIds = array_values(array_diff($roleIds, $selectedIds));
 
         $user->syncPermissions($directIds);
         $user->revokedPermissions()->sync($revokedIds);
+    }
 
-        return redirect()->back()
-            ->with('toast', ['type' => 'success', 'message' => 'Permisos del usuario actualizados correctamente.']);
+    private function applyEffectivePermissionsFromTemplate(User $newUser, User $template): void
+    {
+        $selectedIds = Permission::query()
+            ->where('guard_name', 'web')
+            ->orderBy('name')
+            ->get()
+            ->filter(fn (Permission $p) => $template->hasPermissionTo($p->name, 'web'))
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+
+        $this->syncUserPermissionsFromEffectiveSelection($newUser, $selectedIds);
     }
 
     private function sendCredentialsEmailToUser(User $user, string $plainPassword): void

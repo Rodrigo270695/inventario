@@ -11,9 +11,15 @@ class UserRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->isMethod('POST')
-            ? $this->user()?->can('users.create')
-            : $this->user()?->can('users.update');
+        if ($this->isMethod('POST')) {
+            if ($this->filled('duplicate_from_user_id')) {
+                return $this->user()?->can('users.create') && $this->user()?->can('users.duplicate');
+            }
+
+            return $this->user()?->can('users.create');
+        }
+
+        return $this->user()?->can('users.update');
     }
 
     protected function prepareForValidation(): void
@@ -78,10 +84,18 @@ class UserRequest extends FormRequest
             ],
             'phone' => ['nullable', 'string', 'max:9', 'regex:/^[0-9]{9}$/'],
             'is_active' => ['required', 'boolean'],
-            'role_id' => ['required', 'integer', 'exists:roles,id'],
         ];
 
-        if (! $this->isMethod('POST')) {
+        if ($this->isMethod('POST')) {
+            $rules['role_id'] = [
+                Rule::requiredIf(fn () => ! $this->filled('duplicate_from_user_id')),
+                'nullable',
+                'integer',
+                Rule::exists('roles', 'id'),
+            ];
+            $rules['duplicate_from_user_id'] = ['nullable', 'uuid', Rule::exists('users', 'id')];
+        } else {
+            $rules['role_id'] = ['required', 'integer', Rule::exists('roles', 'id')];
             $rules['password'] = ['nullable', 'string', 'min:8', 'confirmed'];
         }
 
@@ -103,6 +117,7 @@ class UserRequest extends FormRequest
             'phone' => 'teléfono',
             'is_active' => 'activo',
             'role_id' => 'rol',
+            'duplicate_from_user_id' => 'usuario de referencia',
         ];
     }
 

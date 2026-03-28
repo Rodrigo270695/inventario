@@ -23,10 +23,22 @@ const DOCUMENT_TYPES = [
     { value: 'ruc', label: 'RUC' },
 ];
 
+function getCsrfToken(): string {
+    const match = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
+    return match ? decodeURIComponent(match[1]) : '';
+}
+
+type DuplicateTemplatePreview = {
+    role_name: string | null;
+    zonal_labels: string[];
+};
+
 type Props = {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     user: AdminUser | null;
+    /** Usuario origen: mismo rol, zonales y permisos efectivos (no los datos personales). */
+    duplicateFrom: AdminUser | null;
     roles: RoleOption[];
 };
 
@@ -44,10 +56,13 @@ function usuarioFromNameAndLastName(name: string, lastName: string): string {
     return `${firstOfName}${firstLast}${secondLastInitial}`;
 }
 
-export function UserFormModal({ open, onOpenChange, user, roles }: Props) {
+export function UserFormModal({ open, onOpenChange, user, duplicateFrom, roles }: Props) {
     const isEdit = user != null;
+    const isDuplicate = !isEdit && duplicateFrom != null;
     const [showPassword, setShowPassword] = useState(false);
     const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
+    const [dupPreview, setDupPreview] = useState<DuplicateTemplatePreview | null>(null);
+    const [dupPreviewLoading, setDupPreviewLoading] = useState(false);
     const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
         name: user?.name ?? '',
         last_name: user?.last_name ?? '',
@@ -105,6 +120,32 @@ export function UserFormModal({ open, onOpenChange, user, roles }: Props) {
         user?.roles,
     ]);
 
+    useEffect(() => {
+        if (!open || !isDuplicate || !duplicateFrom) {
+            setDupPreview(null);
+            setDupPreviewLoading(false);
+            return;
+        }
+        setDupPreview(null);
+        setDupPreviewLoading(true);
+        fetch(`/admin/users/${duplicateFrom.id}/duplicate-template`, {
+            method: 'GET',
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-XSRF-TOKEN': getCsrfToken(),
+            },
+            credentials: 'same-origin',
+        })
+            .then((r) => {
+                if (!r.ok) throw new Error('fetch');
+                return r.json() as Promise<DuplicateTemplatePreview>;
+            })
+            .then((data) => setDupPreview(data))
+            .catch(() => setDupPreview(null))
+            .finally(() => setDupPreviewLoading(false));
+    }, [open, isDuplicate, duplicateFrom?.id]);
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         const payload: Record<string, unknown> = {
@@ -116,8 +157,12 @@ export function UserFormModal({ open, onOpenChange, user, roles }: Props) {
             document_number: data.document_number,
             phone: data.phone || null,
             is_active: data.is_active,
-            role_id: data.role_id === '' ? undefined : Number(data.role_id),
         };
+        if (isDuplicate && duplicateFrom) {
+            payload.duplicate_from_user_id = duplicateFrom.id;
+        } else {
+            payload.role_id = data.role_id === '' ? undefined : Number(data.role_id);
+        }
         if (isEdit && user) {
             if (data.password) {
                 payload.password = data.password;
@@ -155,17 +200,52 @@ export function UserFormModal({ open, onOpenChange, user, roles }: Props) {
         data.usuario.trim() !== '' &&
         data.email.trim() !== '' &&
         data.document_number.trim() !== '' &&
-        data.role_id !== '' &&
+        (isDuplicate || data.role_id !== '') &&
         passwordOk;
 
     return (
         <AppModal
             open={open}
             onOpenChange={onOpenChange}
-            title={isEdit ? 'Editar usuario' : 'Nuevo usuario'}
+            title={
+                isEdit
+                    ? 'Editar usuario'
+                    : isDuplicate
+                      ? `Duplicar usuario (${duplicateFrom?.usuario ?? 'origen'})`
+                      : 'Nuevo usuario'
+            }
             contentClassName="space-y-4"
         >
             <form onSubmit={handleSubmit} className="space-y-4">
+                {isDuplicate && duplicateFrom ? (
+                    <div className="space-y-2 rounded-md border border-inv-primary/30 bg-inv-primary/5 px-3 py-2 text-sm text-foreground dark:border-inv-primary/40 dark:bg-inv-primary/10">
+                        <p className="font-medium">
+                            Se copiarán el rol, los zonales y los permisos efectivos de{' '}
+                            <span className="text-inv-primary">
+                                {[duplicateFrom.name, duplicateFrom.last_name].filter(Boolean).join(' ')}
+                            </span>{' '}
+                            (<span className="tabular-nums">{duplicateFrom.usuario}</span>).
+                        </p>
+                        {dupPreviewLoading ? (
+                            <p className="text-muted-foreground text-xs">Cargando resumen…</p>
+                        ) : dupPreview ? (
+                            <ul className="text-muted-foreground list-inside list-disc space-y-0.5 text-xs">
+                                <li>
+                                    Rol:{' '}
+                                    <span className="font-medium text-foreground">
+                                        {dupPreview.role_name ?? '—'}
+                                    </span>
+                                </li>
+                                <li>
+                                    Zonales:{' '}
+                                    {dupPreview.zonal_labels.length > 0
+                                        ? dupPreview.zonal_labels.join(', ')
+                                        : 'ninguno'}
+                                </li>
+                            </ul>
+                        ) : null}
+                    </div>
+                ) : null}
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
                         <Label>Nombre <span className="text-red-500">*</span></Label>
@@ -391,28 +471,33 @@ export function UserFormModal({ open, onOpenChange, user, roles }: Props) {
                         <p className="text-sm text-destructive">{errors.phone}</p>
                     )}
                 </div>
-                <div className="space-y-2">
-                    <Label>Rol <span className="text-red-500">*</span></Label>
-                    <Select
-                        value={data.role_id === '' ? '_' : String(data.role_id)}
-                        onValueChange={(v) => setData('role_id', v === '_' ? '' : v)}
-                    >
-                        <SelectTrigger className="w-full border-border bg-background">
-                            <SelectValue placeholder="Seleccione rol" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="_">Seleccione rol</SelectItem>
-                            {roles.map((r) => (
-                                <SelectItem key={r.id} value={String(r.id)}>
-                                    {r.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    {errors.role_id && (
-                        <p className="text-sm text-destructive">{errors.role_id}</p>
-                    )}
-                </div>
+                {!isDuplicate ? (
+                    <div className="space-y-2">
+                        <Label>Rol <span className="text-red-500">*</span></Label>
+                        <Select
+                            value={data.role_id === '' ? '_' : String(data.role_id)}
+                            onValueChange={(v) => setData('role_id', v === '_' ? '' : v)}
+                        >
+                            <SelectTrigger className="w-full border-border bg-background">
+                                <SelectValue placeholder="Seleccione rol" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="_">Seleccione rol</SelectItem>
+                                {roles.map((r) => (
+                                    <SelectItem key={r.id} value={String(r.id)}>
+                                        {r.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {errors.role_id && (
+                            <p className="text-sm text-destructive">{errors.role_id}</p>
+                        )}
+                    </div>
+                ) : null}
+                {errors.duplicate_from_user_id && (
+                    <p className="text-sm text-destructive">{errors.duplicate_from_user_id}</p>
+                )}
                 <div
                     className="flex items-center gap-2 cursor-pointer"
                     onClick={() => setData('is_active', !data.is_active)}
@@ -446,7 +531,9 @@ export function UserFormModal({ open, onOpenChange, user, roles }: Props) {
                             ? 'Guardando…'
                             : isEdit
                               ? 'Guardar'
-                              : 'Crear usuario'}
+                              : isDuplicate
+                                ? 'Crear usuario duplicado'
+                                : 'Crear usuario'}
                     </Button>
                 </div>
             </form>
