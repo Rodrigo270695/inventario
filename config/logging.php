@@ -127,6 +127,13 @@ return [
             'path' => storage_path('logs/laravel.log'),
         ],
 
+        'inertia_auth' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/inertia-auth.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'replace_placeholders' => true,
+        ],
+
     ],
 
 ];

@@ -2,12 +2,14 @@
 
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
-use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
@@ -39,6 +41,34 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->report(function (\Throwable $e): void {
+            if (app()->runningInConsole()) {
+                return;
+            }
+            if ($e instanceof ValidationException) {
+                return;
+            }
+            if (! auth()->check()) {
+                return;
+            }
+
+            try {
+                $u = auth()->user();
+                Log::channel('inertia_auth')->error('Excepción con sesión activa', [
+                    'exception' => $e::class,
+                    'message' => $e->getMessage(),
+                    'user_id' => $u?->getAuthIdentifier(),
+                    'usuario' => $u instanceof \App\Models\User ? $u->usuario : null,
+                    'url' => request()->fullUrl(),
+                    'method' => request()->method(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                ]);
+            } catch (\Throwable) {
+                // Evitar fallos secundarios al registrar.
+            }
+        });
+
         $exceptions->render(function (\Throwable $e, Request $request) {
             if (! $request->expectsJson()) {
                 $status = $e instanceof HttpExceptionInterface ? $e->getStatusCode() : Response::HTTP_INTERNAL_SERVER_ERROR;
