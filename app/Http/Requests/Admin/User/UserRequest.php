@@ -81,9 +81,7 @@ class UserRequest extends FormRequest
             'role_id' => ['required', 'integer', 'exists:roles,id'],
         ];
 
-        if ($this->isMethod('POST')) {
-            $rules['password'] = ['required', 'string', 'min:8', 'confirmed'];
-        } else {
+        if (! $this->isMethod('POST')) {
             $rules['password'] = ['nullable', 'string', 'min:8', 'confirmed'];
         }
 

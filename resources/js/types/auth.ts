@@ -30,6 +30,8 @@ export type AdminUser = {
     roles?: Array<{ id: number; name: string }>;
     /** Primer zonal (por nombre) y cuántos más tiene (pivot + gestión). */
     zonal_summary?: { first: string | null; rest_count: number };
+    /** Última vez que se enviaron credenciales por correo desde el panel. */
+    credentials_email_sent_at?: string | null;
 };
 
 export type Auth = {

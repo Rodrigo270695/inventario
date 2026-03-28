@@ -188,7 +188,9 @@ class UserController extends Controller
 
         $roleId = (int) $validated['role_id'];
         unset($validated['role_id'], $validated['password_confirmation']);
-        $validated['password'] = Hash::make($validated['password']);
+
+        $plainPassword = Str::password(14, symbols: false);
+        $validated['password'] = Hash::make($plainPassword);
         $validated['created_by'] = $request->user()?->id;
         $validated['updated_by'] = $request->user()?->id;
 
@@ -208,8 +210,65 @@ class UserController extends Controller
             $user->syncRoles([$role->name]);
         }
 
+        $auth = $request->user();
+        if (! $auth instanceof User) {
+            $user->syncRoles([]);
+            $user->forceDelete();
+
+            return redirect()->back()
+                ->with('toast', ['type' => 'error', 'message' => 'Sesión no válida. No se creó el usuario.']);
+        }
+
+        $email = trim((string) $user->email);
+        if ($email === '') {
+            $user->syncRoles([]);
+            $user->forceDelete();
+
+            return redirect()->back()
+                ->withInput($request->except('password', 'password_confirmation'))
+                ->with('toast', ['type' => 'error', 'message' => 'El usuario debe tener correo para enviar credenciales. No se creó el registro.']);
+        }
+
+        try {
+            $this->sendCredentialsEmailToUser($user->fresh(), $plainPassword);
+        } catch (Throwable $e) {
+            report($e);
+            try {
+                $user->syncRoles([]);
+                $user->forceDelete();
+            } catch (Throwable $e2) {
+                report($e2);
+            }
+
+            return redirect()->back()
+                ->withInput($request->except('password', 'password_confirmation'))
+                ->with('toast', ['type' => 'error', 'message' => 'No se pudo enviar el correo con las credenciales. El usuario no se creó. Revisa SMTP o el correo del destinatario.']);
+        }
+
+        $user->update([
+            'credentials_email_sent_at' => now(),
+            'updated_by' => $auth->id,
+        ]);
+
+        $actorEmail = trim((string) $auth->email);
+        if ($actorEmail !== '') {
+            try {
+                Mail::to($actorEmail)->send(new UserCredentialsSentConfirmationMail(
+                    $auth,
+                    $user->fresh(),
+                    $email,
+                    true
+                ));
+            } catch (Throwable $e) {
+                report($e);
+
+                return redirect()->back()
+                    ->with('toast', ['type' => 'success', 'message' => 'Usuario registrado y credenciales enviadas a su correo. No se pudo enviar la confirmación a tu bandeja.']);
+            }
+        }
+
         return redirect()->back()
-            ->with('toast', ['type' => 'success', 'message' => 'Usuario creado correctamente.']);
+            ->with('toast', ['type' => 'success', 'message' => 'Usuario registrado correctamente. Las credenciales se enviaron a su correo.'.($actorEmail === '' ? '' : ' Recibirás un correo de confirmación.')]);
     }
 
     public function update(UserRequest $request, User $user): RedirectResponse
@@ -287,7 +346,6 @@ class UserController extends Controller
         }
 
         $plainPassword = Str::password(14, symbols: false);
-        $loginUrl = route('home');
 
         $previousHash = $user->password;
 
@@ -297,7 +355,7 @@ class UserController extends Controller
         ]);
 
         try {
-            Mail::to($email)->send(new UserCredentialsMail($user->fresh(), $plainPassword, $loginUrl));
+            $this->sendCredentialsEmailToUser($user->fresh(), $plainPassword);
         } catch (Throwable $e) {
             report($e);
             $user->update([
@@ -309,24 +367,30 @@ class UserController extends Controller
                 ->with('toast', ['type' => 'error', 'message' => 'No se pudo enviar el correo al usuario. La contraseña no se modificó. Revisa SMTP o el correo del destinatario.']);
         }
 
+        $user->update([
+            'credentials_email_sent_at' => now(),
+            'updated_by' => $auth->id,
+        ]);
+
         $actorEmail = trim((string) $auth->email);
         if ($actorEmail !== '') {
             try {
                 Mail::to($actorEmail)->send(new UserCredentialsSentConfirmationMail(
                     $auth,
                     $user->fresh(),
-                    $email
+                    $email,
+                    false
                 ));
             } catch (Throwable $e) {
                 report($e);
 
                 return redirect()->back()
-                    ->with('toast', ['type' => 'success', 'message' => 'Credenciales enviadas al usuario, pero no se pudo enviar el correo de confirmación a tu bandeja.']);
+                    ->with('toast', ['type' => 'success', 'message' => 'Credenciales enviadas al usuario (registrado en el sistema). No se pudo enviar el correo de confirmación a tu bandeja.']);
             }
         }
 
         return redirect()->back()
-            ->with('toast', ['type' => 'success', 'message' => 'Credenciales enviadas al correo del usuario.'.($actorEmail === '' ? ' No se envió confirmación: tu usuario no tiene email configurado.' : '')]);
+            ->with('toast', ['type' => 'success', 'message' => 'Credenciales enviadas al correo del usuario.'.($actorEmail === '' ? ' No se envió confirmación: tu usuario no tiene email configurado.' : ' Recibirás un correo de confirmación.')]);
     }
 
     public function restore(Request $request, string $id): RedirectResponse
@@ -427,6 +491,12 @@ class UserController extends Controller
 
         return redirect()->back()
             ->with('toast', ['type' => 'success', 'message' => 'Permisos del usuario actualizados correctamente.']);
+    }
+
+    private function sendCredentialsEmailToUser(User $user, string $plainPassword): void
+    {
+        $to = trim((string) $user->email);
+        Mail::to($to)->send(new UserCredentialsMail($user, $plainPassword, route('home')));
     }
 
     private function redirectBackForUserUniqueViolation(Request $request, QueryException $e): ?RedirectResponse

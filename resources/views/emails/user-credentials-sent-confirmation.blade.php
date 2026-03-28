@@ -7,7 +7,13 @@
 </head>
 <body style="font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; line-height: 1.5; color: #1e293b; max-width: 560px; margin: 0 auto; padding: 24px;">
     <p>Hola <strong>{{ $actor->name }} {{ $actor->last_name }}</strong>,</p>
-    <p>Confirmamos que se enviaron credenciales de acceso desde el panel de administración de <strong>{{ config('app.name') }}</strong>.</p>
+    <p>
+        @if($isNewUser)
+            Confirmamos que diste de alta un usuario en <strong>{{ config('app.name') }}</strong> y se enviaron sus credenciales de acceso al correo indicado.
+        @else
+            Confirmamos que se enviaron credenciales de acceso desde el panel de administración de <strong>{{ config('app.name') }}</strong>.
+        @endif
+    </p>
     <ul style="padding-left: 1.25rem; margin: 16px 0;">
         <li><strong>Usuario afectado:</strong> {{ $targetUser->name }} {{ $targetUser->last_name }} (<code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">{{ $targetUser->usuario }}</code>)</li>
         <li><strong>Correo destino:</strong> {{ $sentToEmail }}</li>

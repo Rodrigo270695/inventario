@@ -3,13 +3,13 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
@@ -19,6 +19,7 @@ class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, HasUuids, Notifiable, SoftDeletes, TwoFactorAuthenticatable;
+
     use HasRoles {
         HasRoles::hasPermissionTo as spatieHasPermissionTo;
     }
@@ -48,6 +49,7 @@ class User extends Authenticatable
         try {
             $permissionModel = $this->filterPermission($permission, $guardName);
             $revoked = $this->revokedPermissions()->where('permission_id', $permissionModel->id)->exists();
+
             return ! $revoked;
         } catch (\Throwable) {
             return true;
@@ -71,6 +73,7 @@ class User extends Authenticatable
         'is_active',
         'created_by',
         'updated_by',
+        'credentials_email_sent_at',
     ];
 
     /**
@@ -96,6 +99,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
+            'credentials_email_sent_at' => 'datetime',
         ];
     }
 

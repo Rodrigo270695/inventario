@@ -16,7 +16,8 @@ class UserCredentialsSentConfirmationMail extends Mailable
     public function __construct(
         public User $actor,
         public User $targetUser,
-        public string $sentToEmail
+        public string $sentToEmail,
+        public bool $isNewUser = false
     ) {}
 
     public function envelope(): Envelope

@@ -279,6 +279,25 @@ export default function UsersIndex({
               })
             : '—';
 
+    const formatShortDateTime = (iso?: string | null) =>
+        iso
+            ? new Date(iso).toLocaleString('es', {
+                  day: '2-digit',
+                  month: 'short',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+              })
+            : '';
+
+    const credentialsMailTitle = (row: AdminUser) => {
+        const sent = row.credentials_email_sent_at;
+        if (sent) {
+            return `Credenciales enviadas el ${formatShortDateTime(sent)}. Clic para generar una contraseña nueva y reenviar.`;
+        }
+        return 'Enviar credenciales por correo (primera vez o sin registro de envío en el panel)';
+    };
+
     const formatPersonName = (
         p: { name?: string; last_name?: string } | null | undefined
     ) => (p ? [p.name, p.last_name].filter(Boolean).join(' ') : '—');
@@ -435,11 +454,20 @@ export default function UsersIndex({
                                     type="button"
                                     variant="ghost"
                                     size="icon"
-                                    className="cursor-pointer shrink-0 size-8 text-violet-600 hover:bg-violet-50 hover:text-violet-700 dark:text-violet-400 dark:hover:bg-violet-950/30"
-                                    aria-label={`Enviar credenciales por correo a ${row.usuario}`}
+                                    title={credentialsMailTitle(row)}
+                                    className={`relative cursor-pointer shrink-0 size-8 text-violet-600 hover:bg-violet-50 hover:text-violet-700 dark:text-violet-400 dark:hover:bg-violet-950/30 ${row.credentials_email_sent_at ? 'ring-2 ring-emerald-500/45 dark:ring-emerald-400/35 rounded-md' : ''}`}
+                                    aria-label={credentialsMailTitle(row)}
                                     onClick={() => setCredentialsUser(row)}
                                 >
                                     <Mail className="size-4" />
+                                    {row.credentials_email_sent_at ? (
+                                        <span
+                                            className="pointer-events-none absolute -bottom-0.5 -right-0.5 flex size-3.5 items-center justify-center rounded-full bg-emerald-600 text-white shadow-sm ring-2 ring-card dark:ring-card"
+                                            aria-hidden
+                                        >
+                                            <CheckCircle2 className="size-2.5 stroke-3" />
+                                        </span>
+                                    ) : null}
                                 </Button>
                             )}
                         {canConfigure && canActOnUserRow(row) && (
@@ -734,12 +762,21 @@ export default function UsersIndex({
                                                                     type="button"
                                                                     variant="outline"
                                                                     size="sm"
-                                                                    className="cursor-pointer shrink-0 border-violet-200 text-violet-700 hover:bg-violet-50 dark:border-violet-800 dark:text-violet-400 dark:hover:bg-violet-950/30"
-                                                                    aria-label={`Enviar credenciales a ${row.usuario}`}
+                                                                    title={credentialsMailTitle(row)}
+                                                                    className={`cursor-pointer shrink-0 border-violet-200 text-violet-700 hover:bg-violet-50 dark:border-violet-800 dark:text-violet-400 dark:hover:bg-violet-950/30 ${row.credentials_email_sent_at ? 'border-emerald-300/80 bg-emerald-50/50 dark:border-emerald-800 dark:bg-emerald-950/20' : ''}`}
+                                                                    aria-label={credentialsMailTitle(row)}
                                                                     onClick={() => setCredentialsUser(row)}
                                                                 >
-                                                                    <Mail className="size-3.5 shrink-0 mr-1" />
-                                                                    <span>Enviar credenciales</span>
+                                                                    {row.credentials_email_sent_at ? (
+                                                                        <CheckCircle2 className="size-3.5 shrink-0 mr-1 text-emerald-600 dark:text-emerald-400" />
+                                                                    ) : (
+                                                                        <Mail className="size-3.5 shrink-0 mr-1" />
+                                                                    )}
+                                                                    <span>
+                                                                        {row.credentials_email_sent_at
+                                                                            ? 'Credenciales enviadas'
+                                                                            : 'Enviar credenciales'}
+                                                                    </span>
                                                                 </Button>
                                                             )}
                                                         {canConfigure && canActOnUserRow(row) && (
@@ -824,7 +861,11 @@ export default function UsersIndex({
                 title="Enviar credenciales por correo"
                 description={
                     credentialsUser
-                        ? `Se generará una contraseña nueva y se enviará a ${credentialsUser.email} (usuario «${credentialsUser.usuario}»). Tu correo recibirá una confirmación del envío. ¿Continuar?`
+                        ? `Se generará una contraseña nueva y se enviará a ${credentialsUser.email} (usuario «${credentialsUser.usuario}»). Tu correo recibirá una confirmación del envío.${
+                              credentialsUser.credentials_email_sent_at
+                                  ? ` Último envío registrado: ${formatShortDateTime(credentialsUser.credentials_email_sent_at)}.`
+                                  : ''
+                          } ¿Continuar?`
                         : undefined
                 }
                 destructiveConfirm={false}

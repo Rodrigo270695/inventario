@@ -1,8 +1,7 @@
 import { useForm } from '@inertiajs/react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { AppModal } from '@/components/app-modal';
-import { Toast, type ToastMessage } from '@/components/toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -49,9 +48,7 @@ export function UserFormModal({ open, onOpenChange, user, roles }: Props) {
     const isEdit = user != null;
     const [showPassword, setShowPassword] = useState(false);
     const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
-    const [validationToast, setValidationToast] = useState<ToastMessage | null>(null);
-    const prevProcessingRef = useRef(false);
-    const { data, setData, post, put, processing, errors, reset, clearErrors, hasErrors } = useForm({
+    const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
         name: user?.name ?? '',
         last_name: user?.last_name ?? '',
         usuario: user?.usuario ?? '',
@@ -67,7 +64,6 @@ export function UserFormModal({ open, onOpenChange, user, roles }: Props) {
 
     useEffect(() => {
         if (!open) {
-            setValidationToast(null);
             clearErrors();
             return;
         }
@@ -109,24 +105,8 @@ export function UserFormModal({ open, onOpenChange, user, roles }: Props) {
         user?.roles,
     ]);
 
-    useEffect(() => {
-        if (
-            prevProcessingRef.current &&
-            !processing &&
-            open &&
-            hasErrors
-        ) {
-            setValidationToast({
-                type: 'error',
-                message: 'Revisa los campos marcados en el formulario.',
-            });
-        }
-        prevProcessingRef.current = processing;
-    }, [processing, hasErrors, open]);
-
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        setValidationToast(null);
         const payload: Record<string, unknown> = {
             name: data.name,
             last_name: data.last_name,
@@ -153,8 +133,6 @@ export function UserFormModal({ open, onOpenChange, user, roles }: Props) {
                 },
             });
         } else {
-            payload.password = data.password;
-            payload.password_confirmation = data.password_confirmation;
             post('/admin/users', {
                 preserveScroll: true,
                 data: payload,
@@ -170,7 +148,7 @@ export function UserFormModal({ open, onOpenChange, user, roles }: Props) {
     const passwordOk = isEdit
         ? (data.password === '' && data.password_confirmation === '') ||
           (data.password.length >= 8 && data.password === data.password_confirmation)
-        : data.password.length >= 8 && data.password === data.password_confirmation;
+        : true;
     const canSubmit =
         data.name.trim() !== '' &&
         data.last_name.trim() !== '' &&
@@ -187,15 +165,6 @@ export function UserFormModal({ open, onOpenChange, user, roles }: Props) {
             title={isEdit ? 'Editar usuario' : 'Nuevo usuario'}
             contentClassName="space-y-4"
         >
-            {validationToast ? (
-                <div className="relative z-10 -mt-1 mb-2">
-                    <Toast
-                        toast={validationToast}
-                        onDismiss={() => setValidationToast(null)}
-                        duration={5000}
-                    />
-                </div>
-            ) : null}
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
@@ -274,70 +243,11 @@ export function UserFormModal({ open, onOpenChange, user, roles }: Props) {
                         <p className="text-sm text-destructive">{errors.email}</p>
                     )}
                 </div>
-                {!isEdit && (
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <div className="space-y-2">
-                            <Label>Contraseña <span className="text-red-500">*</span></Label>
-                            <div className="relative">
-                                <Input
-                                    type={showPassword ? 'text' : 'password'}
-                                    value={data.password}
-                                    onChange={(e) => setData('password', e.target.value)}
-                                    className={`pr-10 ${errors.password ? 'border-destructive' : ''}`}
-                                    placeholder="Mínimo 8 caracteres"
-                                />
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="absolute right-0 top-0 h-full px-3 text-muted-foreground hover:text-foreground"
-                                    onClick={() => setShowPassword((v) => !v)}
-                                    aria-label={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
-                                >
-                                    {showPassword ? (
-                                        <EyeOff className="size-4" />
-                                    ) : (
-                                        <Eye className="size-4" />
-                                    )}
-                                </Button>
-                            </div>
-                            {errors.password && (
-                                <p className="text-sm text-destructive">{errors.password}</p>
-                            )}
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Confirmar contraseña <span className="text-red-500">*</span></Label>
-                            <div className="relative">
-                                <Input
-                                    type={showPasswordConfirm ? 'text' : 'password'}
-                                    value={data.password_confirmation}
-                                    onChange={(e) => setData('password_confirmation', e.target.value)}
-                                    className={`pr-10 ${errors.password_confirmation ? 'border-destructive' : ''}`}
-                                    placeholder="Repetir contraseña"
-                                />
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="absolute right-0 top-0 h-full px-3 text-muted-foreground hover:text-foreground"
-                                    onClick={() => setShowPasswordConfirm((v) => !v)}
-                                    aria-label={showPasswordConfirm ? 'Ocultar contraseña' : 'Ver contraseña'}
-                                >
-                                    {showPasswordConfirm ? (
-                                        <EyeOff className="size-4" />
-                                    ) : (
-                                        <Eye className="size-4" />
-                                    )}
-                                </Button>
-                            </div>
-                            {errors.password_confirmation && (
-                                <p className="text-sm text-destructive">
-                                    {errors.password_confirmation}
-                                </p>
-                            )}
-                        </div>
-                    </div>
-                )}
+                {!isEdit ? (
+                    <p className="text-muted-foreground text-sm rounded-md border border-border bg-muted/40 px-3 py-2">
+                        La contraseña se generará automáticamente y se enviará al correo indicado junto con el usuario de acceso.
+                    </p>
+                ) : null}
                 {isEdit && (
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div className="space-y-2">
