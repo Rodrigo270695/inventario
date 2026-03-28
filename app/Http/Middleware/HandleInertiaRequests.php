@@ -3,8 +3,10 @@
 namespace App\Http\Middleware;
 
 use App\Models\Notification;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
+use Throwable;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -37,9 +39,36 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         $user = $request->user();
-        $permissions = $user
-            ? $user->getAllPermissions()->pluck('name')->values()->all()
-            : [];
+
+        $permissions = [];
+        if ($user instanceof User) {
+            try {
+                $permissions = $user->getAllPermissions()->pluck('name')->values()->all();
+            } catch (Throwable $e) {
+                report($e);
+            }
+        }
+
+        $isSuperadmin = false;
+        if ($user instanceof User) {
+            try {
+                $isSuperadmin = $user->hasRole('superadmin', 'web');
+            } catch (Throwable $e) {
+                report($e);
+            }
+        }
+
+        $notificationsUnreadCount = 0;
+        if ($user instanceof User && in_array('alerts.view', $permissions, true)) {
+            try {
+                $notificationsUnreadCount = Notification::query()
+                    ->where('user_id', $user->id)
+                    ->whereNull('read_at')
+                    ->count();
+            } catch (Throwable $e) {
+                report($e);
+            }
+        }
 
         return [
             ...parent::share($request),
@@ -48,9 +77,9 @@ class HandleInertiaRequests extends Middleware
                 ? $request->attributes->get('allowed_zonal_ids')
                 : null,
             'auth' => [
-                'user' => $user,
+                'user' => $user instanceof User ? $this->sharedAuthUserPayload($user) : null,
                 'permissions' => $permissions,
-                'is_superadmin' => $user !== null && $user->hasRole('superadmin', 'web'),
+                'is_superadmin' => $isSuperadmin,
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'flash' => [
@@ -60,12 +89,26 @@ class HandleInertiaRequests extends Middleware
                 'restore_user' => $request->session()->get('restore_user'),
             ],
             'stockEntriesPendingConfirmCount' => 0,
-            'notificationsUnreadCount' => $user && in_array('alerts.view', $permissions, true)
-                ? Notification::query()
-                    ->where('user_id', $user->id)
-                    ->whereNull('read_at')
-                    ->count()
-                : 0,
+            'notificationsUnreadCount' => $notificationsUnreadCount,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function sharedAuthUserPayload(User $user): array
+    {
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'last_name' => $user->last_name,
+            'usuario' => $user->usuario,
+            'email' => $user->email,
+            'avatar' => null,
+            'email_verified_at' => $user->email_verified_at,
+            'two_factor_enabled' => $user->two_factor_confirmed_at !== null,
+            'created_at' => $user->created_at,
+            'updated_at' => $user->updated_at,
         ];
     }
 }
