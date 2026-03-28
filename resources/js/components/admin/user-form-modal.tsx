@@ -63,19 +63,21 @@ export function UserFormModal({ open, onOpenChange, user, duplicateFrom, roles }
     const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
     const [dupPreview, setDupPreview] = useState<DuplicateTemplatePreview | null>(null);
     const [dupPreviewLoading, setDupPreviewLoading] = useState(false);
-    const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
-        name: user?.name ?? '',
-        last_name: user?.last_name ?? '',
-        usuario: user?.usuario ?? '',
-        email: user?.email ?? '',
-        password: '',
-        password_confirmation: '',
-        document_type: user?.document_type ?? 'dni',
-        document_number: user?.document_number ?? '',
-        phone: user?.phone ?? '',
-        is_active: user?.is_active ?? true,
-        role_id: user?.roles?.[0]?.id ?? '',
-    });
+    const { data, setData, post, put, processing, errors, reset, clearErrors, transform } =
+        useForm({
+            name: user?.name ?? '',
+            last_name: user?.last_name ?? '',
+            usuario: user?.usuario ?? '',
+            email: user?.email ?? '',
+            password: '',
+            password_confirmation: '',
+            document_type: user?.document_type ?? 'dni',
+            document_number: user?.document_number ?? '',
+            phone: user?.phone ?? '',
+            is_active: user?.is_active ?? true,
+            role_id: user?.roles?.[0]?.id ?? '',
+            duplicate_from_user_id: '',
+        });
 
     useEffect(() => {
         if (!open) {
@@ -105,9 +107,12 @@ export function UserFormModal({ open, onOpenChange, user, duplicateFrom, roles }
             phone: user?.phone ?? '',
             is_active: user?.is_active ?? true,
             role_id: user?.roles?.[0]?.id ?? '',
+            duplicate_from_user_id:
+                user == null && duplicateFrom != null ? duplicateFrom.id : '',
         });
     }, [
         open,
+        duplicateFrom?.id,
         user?.id,
         user?.name,
         user?.last_name,
@@ -146,46 +151,69 @@ export function UserFormModal({ open, onOpenChange, user, duplicateFrom, roles }
             .finally(() => setDupPreviewLoading(false));
     }, [open, isDuplicate, duplicateFrom?.id]);
 
+    const resetFormTransform = () => {
+        transform((fd) => fd);
+    };
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        const payload: Record<string, unknown> = {
-            name: data.name,
-            last_name: data.last_name,
-            usuario: data.usuario,
-            email: data.email,
-            document_type: data.document_type,
-            document_number: data.document_number,
-            phone: data.phone || null,
-            is_active: data.is_active,
-        };
-        if (isDuplicate && duplicateFrom) {
-            payload.duplicate_from_user_id = duplicateFrom.id;
-        } else {
-            payload.role_id = data.role_id === '' ? undefined : Number(data.role_id);
-        }
+        /** Inertia v2: el cuerpo del POST es `transform(currentFormData)`; las opciones `data`/`transform` del visit no sustituyen el payload. */
         if (isEdit && user) {
-            if (data.password) {
-                payload.password = data.password;
-                payload.password_confirmation = data.password_confirmation;
-            }
+            transform((fd) => {
+                const next: Record<string, unknown> = {
+                    name: fd.name,
+                    last_name: fd.last_name,
+                    usuario: fd.usuario,
+                    email: fd.email,
+                    document_type: fd.document_type,
+                    document_number: fd.document_number,
+                    phone: fd.phone ? fd.phone : null,
+                    is_active: fd.is_active,
+                    role_id: fd.role_id === '' ? undefined : Number(fd.role_id),
+                };
+                if (fd.password) {
+                    next.password = fd.password;
+                    next.password_confirmation = fd.password_confirmation;
+                }
+                return next as typeof fd;
+            });
             put(`/admin/users/${user.id}`, {
                 preserveScroll: true,
-                data: payload,
-                transform: () => payload,
                 onSuccess: () => {
+                    resetFormTransform();
                     reset();
                     onOpenChange(false);
                 },
+                onFinish: () => resetFormTransform(),
             });
         } else {
+            transform((fd) => {
+                const next: Record<string, unknown> = {
+                    name: fd.name,
+                    last_name: fd.last_name,
+                    usuario: fd.usuario,
+                    email: fd.email,
+                    document_type: fd.document_type,
+                    document_number: fd.document_number,
+                    phone: fd.phone ? fd.phone : null,
+                    is_active: fd.is_active,
+                };
+                const dupId = fd.duplicate_from_user_id?.trim();
+                if (dupId) {
+                    next.duplicate_from_user_id = dupId;
+                } else {
+                    next.role_id = fd.role_id === '' ? undefined : Number(fd.role_id);
+                }
+                return next as typeof fd;
+            });
             post('/admin/users', {
                 preserveScroll: true,
-                data: payload,
-                transform: () => payload,
                 onSuccess: () => {
+                    resetFormTransform();
                     reset();
                     onOpenChange(false);
                 },
+                onFinish: () => resetFormTransform(),
             });
         }
     };
