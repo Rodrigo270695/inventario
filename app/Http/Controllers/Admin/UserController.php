@@ -8,6 +8,7 @@ use App\Mail\UserCredentialsMail;
 use App\Mail\UserCredentialsSentConfirmationMail;
 use App\Models\User;
 use App\Models\Zonal;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -191,7 +192,16 @@ class UserController extends Controller
         $validated['created_by'] = $request->user()?->id;
         $validated['updated_by'] = $request->user()?->id;
 
-        $user = User::create($validated);
+        try {
+            $user = User::create($validated);
+        } catch (QueryException $e) {
+            $dup = $this->redirectBackForUserUniqueViolation($request, $e);
+            if ($dup !== null) {
+                return $dup;
+            }
+            throw $e;
+        }
+
         $role = Role::findById($roleId, 'web');
         if ($role) {
             $this->assertCanAssignSuperadminRole($request->user(), $role);
@@ -216,7 +226,16 @@ class UserController extends Controller
         }
         $validated['updated_by'] = $request->user()?->id;
 
-        $user->update($validated);
+        try {
+            $user->update($validated);
+        } catch (QueryException $e) {
+            $dup = $this->redirectBackForUserUniqueViolation($request, $e);
+            if ($dup !== null) {
+                return $dup;
+            }
+            throw $e;
+        }
+
         $role = Role::findById($roleId, 'web');
         if ($role) {
             $this->assertCanAssignSuperadminRole($request->user(), $role);
@@ -408,6 +427,57 @@ class UserController extends Controller
 
         return redirect()->back()
             ->with('toast', ['type' => 'success', 'message' => 'Permisos del usuario actualizados correctamente.']);
+    }
+
+    private function redirectBackForUserUniqueViolation(Request $request, QueryException $e): ?RedirectResponse
+    {
+        if (! $this->isUniqueConstraintViolation($e)) {
+            return null;
+        }
+
+        $field = $this->guessUniqueFieldFromQueryException($e);
+        $message = match ($field) {
+            'email' => 'Este correo electrónico ya está registrado.',
+            'usuario' => 'Este usuario (login) ya está en uso.',
+            default => 'El correo o el usuario ya existe en el sistema.',
+        };
+
+        return redirect()->back()
+            ->withInput($request->except('password', 'password_confirmation'))
+            ->withErrors($field !== null ? [$field => $message] : ['email' => $message]);
+    }
+
+    private function isUniqueConstraintViolation(QueryException $e): bool
+    {
+        $sqlState = $e->errorInfo[0] ?? '';
+        $driverCode = $e->errorInfo[1] ?? null;
+        if ($sqlState === '23000') {
+            return true;
+        }
+        if ($driverCode === 1062 || $driverCode === 19) {
+            return true;
+        }
+
+        return str_contains(strtolower($e->getMessage()), 'duplicate');
+    }
+
+    private function guessUniqueFieldFromQueryException(QueryException $e): ?string
+    {
+        $msg = strtolower($e->getMessage());
+        if (str_contains($msg, 'users_email') || str_contains($msg, 'users.users_email_unique')) {
+            return 'email';
+        }
+        if (str_contains($msg, 'users_usuario') || str_contains($msg, 'users.users_usuario_unique')) {
+            return 'usuario';
+        }
+        if (str_contains($msg, 'email') && str_contains($msg, 'unique')) {
+            return 'email';
+        }
+        if (str_contains($msg, 'usuario') && str_contains($msg, 'unique')) {
+            return 'usuario';
+        }
+
+        return null;
     }
 
     private function viewerIsSuperadmin(?User $auth): bool

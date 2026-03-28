@@ -1,7 +1,8 @@
 import { useForm } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { AppModal } from '@/components/app-modal';
+import { Toast, type ToastMessage } from '@/components/toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -48,7 +49,9 @@ export function UserFormModal({ open, onOpenChange, user, roles }: Props) {
     const isEdit = user != null;
     const [showPassword, setShowPassword] = useState(false);
     const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
-    const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
+    const [validationToast, setValidationToast] = useState<ToastMessage | null>(null);
+    const prevProcessingRef = useRef(false);
+    const { data, setData, post, put, processing, errors, reset, clearErrors, hasErrors } = useForm({
         name: user?.name ?? '',
         last_name: user?.last_name ?? '',
         usuario: user?.usuario ?? '',
@@ -64,6 +67,7 @@ export function UserFormModal({ open, onOpenChange, user, roles }: Props) {
 
     useEffect(() => {
         if (!open) {
+            setValidationToast(null);
             clearErrors();
             return;
         }
@@ -105,8 +109,24 @@ export function UserFormModal({ open, onOpenChange, user, roles }: Props) {
         user?.roles,
     ]);
 
+    useEffect(() => {
+        if (
+            prevProcessingRef.current &&
+            !processing &&
+            open &&
+            hasErrors
+        ) {
+            setValidationToast({
+                type: 'error',
+                message: 'Revisa los campos marcados en el formulario.',
+            });
+        }
+        prevProcessingRef.current = processing;
+    }, [processing, hasErrors, open]);
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        setValidationToast(null);
         const payload: Record<string, unknown> = {
             name: data.name,
             last_name: data.last_name,
@@ -167,6 +187,15 @@ export function UserFormModal({ open, onOpenChange, user, roles }: Props) {
             title={isEdit ? 'Editar usuario' : 'Nuevo usuario'}
             contentClassName="space-y-4"
         >
+            {validationToast ? (
+                <div className="relative z-10 -mt-1 mb-2">
+                    <Toast
+                        toast={validationToast}
+                        onDismiss={() => setValidationToast(null)}
+                        duration={5000}
+                    />
+                </div>
+            ) : null}
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="space-y-2">

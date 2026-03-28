@@ -4,6 +4,7 @@ namespace App\Http\Requests\Admin\User;
 
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class UserRequest extends FormRequest
@@ -15,12 +16,31 @@ class UserRequest extends FormRequest
             : $this->user()?->can('users.update');
     }
 
+    protected function prepareForValidation(): void
+    {
+        $email = $this->input('email');
+        if (is_string($email)) {
+            $this->merge([
+                'email' => Str::lower(trim($email)),
+            ]);
+        }
+    }
+
     /**
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
-        $user = $this->route('user');
+        /** @var User|null $routeUser */
+        $routeUser = $this->route('user');
+        $routeUser = $routeUser instanceof User ? $routeUser : null;
+
+        $usuarioUnique = Rule::unique('users', 'usuario');
+        $emailUnique = Rule::unique('users', 'email');
+        if ($routeUser !== null) {
+            $usuarioUnique->ignore($routeUser);
+            $emailUnique->ignore($routeUser);
+        }
 
         $rules = [
             'name' => ['required', 'string', 'max:255'],
@@ -29,27 +49,27 @@ class UserRequest extends FormRequest
                 'required',
                 'string',
                 'max:255',
-                Rule::unique('users', 'usuario')->ignore($user?->id)->whereNull('deleted_at'),
+                $usuarioUnique,
             ],
             'email' => [
                 'required',
                 'string',
                 'email',
                 'max:255',
-                Rule::unique('users', 'email')->ignore($user?->id)->whereNull('deleted_at'),
+                $emailUnique,
             ],
             'document_type' => ['required', 'string', 'in:dni,ce,passport,ruc'],
             'document_number' => [
                 'required',
                 'string',
                 'max:20',
-                function (string $attribute, mixed $value, \Closure $fail) use ($user): void {
+                function (string $attribute, mixed $value, \Closure $fail) use ($routeUser): void {
                     $query = User::query()
                         ->whereNull('deleted_at')
                         ->where('document_type', $this->input('document_type'))
                         ->where('document_number', $value);
-                    if ($user !== null) {
-                        $query->where('id', '!=', $user->id);
+                    if ($routeUser !== null) {
+                        $query->where('id', '!=', $routeUser->id);
                     }
                     if ($query->exists()) {
                         $fail('Ya existe un usuario activo con este tipo y número de documento.');
@@ -85,6 +105,17 @@ class UserRequest extends FormRequest
             'phone' => 'teléfono',
             'is_active' => 'activo',
             'role_id' => 'rol',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'email.unique' => 'Este correo electrónico ya está registrado (puede estar asociado a un usuario eliminado).',
+            'usuario.unique' => 'Este usuario (login) ya está en uso.',
         ];
     }
 }

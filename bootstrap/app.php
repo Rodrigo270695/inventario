@@ -70,6 +70,12 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         $exceptions->render(function (\Throwable $e, Request $request) {
+            // ValidationException no implementa HttpExceptionInterface; si no se excluye,
+            // se clasifica como 500 y se muestra la vista errors/500 en lugar del redirect con errores (modal).
+            if ($e instanceof ValidationException) {
+                return null;
+            }
+
             if (! $request->expectsJson()) {
                 $status = $e instanceof HttpExceptionInterface ? $e->getStatusCode() : Response::HTTP_INTERNAL_SERVER_ERROR;
                 $handledStatuses = [Response::HTTP_FORBIDDEN, Response::HTTP_NOT_FOUND, Response::HTTP_INTERNAL_SERVER_ERROR];
