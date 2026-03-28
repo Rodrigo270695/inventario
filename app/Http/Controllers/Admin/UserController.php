@@ -4,16 +4,21 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\User\UserRequest;
+use App\Mail\UserCredentialsMail;
+use App\Mail\UserCredentialsSentConfirmationMail;
 use App\Models\User;
 use App\Models\Zonal;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Throwable;
 
 class UserController extends Controller
 {
@@ -235,6 +240,74 @@ class UserController extends Controller
 
         return redirect()->back()
             ->with('toast', ['type' => 'success', 'message' => 'Usuario eliminado correctamente.']);
+    }
+
+    public function sendCredentials(Request $request, User $user): RedirectResponse
+    {
+        $this->denyUnlessSuperadminViewer($request->user(), $user);
+
+        $auth = $request->user();
+        if (! $auth instanceof User) {
+            abort(403);
+        }
+
+        if ($user->id === $auth->id) {
+            return redirect()->back()
+                ->with('toast', ['type' => 'error', 'message' => 'No puedes enviarte credenciales a ti mismo desde aquí.']);
+        }
+
+        if (! $user->is_active) {
+            return redirect()->back()
+                ->with('toast', ['type' => 'error', 'message' => 'El usuario está inactivo; no se envían credenciales.']);
+        }
+
+        $email = trim((string) $user->email);
+        if ($email === '') {
+            return redirect()->back()
+                ->with('toast', ['type' => 'error', 'message' => 'El usuario no tiene correo corporativo configurado.']);
+        }
+
+        $plainPassword = Str::password(14, symbols: false);
+        $loginUrl = route('home');
+
+        $previousHash = $user->password;
+
+        $user->update([
+            'password' => Hash::make($plainPassword),
+            'updated_by' => $auth->id,
+        ]);
+
+        try {
+            Mail::to($email)->send(new UserCredentialsMail($user->fresh(), $plainPassword, $loginUrl));
+        } catch (Throwable $e) {
+            report($e);
+            $user->update([
+                'password' => $previousHash,
+                'updated_by' => $auth->id,
+            ]);
+
+            return redirect()->back()
+                ->with('toast', ['type' => 'error', 'message' => 'No se pudo enviar el correo al usuario. La contraseña no se modificó. Revisa SMTP o el correo del destinatario.']);
+        }
+
+        $actorEmail = trim((string) $auth->email);
+        if ($actorEmail !== '') {
+            try {
+                Mail::to($actorEmail)->send(new UserCredentialsSentConfirmationMail(
+                    $auth,
+                    $user->fresh(),
+                    $email
+                ));
+            } catch (Throwable $e) {
+                report($e);
+
+                return redirect()->back()
+                    ->with('toast', ['type' => 'success', 'message' => 'Credenciales enviadas al usuario, pero no se pudo enviar el correo de confirmación a tu bandeja.']);
+            }
+        }
+
+        return redirect()->back()
+            ->with('toast', ['type' => 'success', 'message' => 'Credenciales enviadas al correo del usuario.'.($actorEmail === '' ? ' No se envió confirmación: tu usuario no tiene email configurado.' : '')]);
     }
 
     public function restore(Request $request, string $id): RedirectResponse

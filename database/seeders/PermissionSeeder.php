@@ -25,6 +25,7 @@ class PermissionSeeder extends Seeder
         'users.delete',
         'users.restore',
         'users.configure',
+        'users.send_credentials',
         'zonals.view',
         'zonals.create',
         'zonals.update',

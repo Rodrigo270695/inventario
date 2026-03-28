@@ -285,6 +285,7 @@ export const PERMISSION_TREE: PermissionTreeNode[] = [
                             { key: 'users.delete', label: 'Eliminar', permission: 'users.delete' },
                             { key: 'users.restore', label: 'Restaurar', permission: 'users.restore' },
                             { key: 'users.configure', label: 'Configurar', permission: 'users.configure' },
+                            { key: 'users.send_credentials', label: 'Enviar credenciales por correo', permission: 'users.send_credentials' },
                         ],
                     },
                 ],

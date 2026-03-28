@@ -10,6 +10,8 @@ type DeleteConfirmModalProps = {
     description?: string | ReactNode;
     confirmLabel?: string;
     cancelLabel?: string;
+    /** Si es false, el botón de confirmación no usa estilo destructivo (p. ej. envío de correo). */
+    destructiveConfirm?: boolean;
     onConfirm: () => void;
     loading?: boolean;
 };
@@ -21,6 +23,7 @@ export function DeleteConfirmModal({
     description = '¿Está seguro? Esta acción no se puede deshacer.',
     confirmLabel = 'Eliminar',
     cancelLabel = 'Cancelar',
+    destructiveConfirm = true,
     onConfirm,
     loading = false,
 }: DeleteConfirmModalProps) {
@@ -47,10 +50,14 @@ export function DeleteConfirmModal({
                 </Button>
                 <Button
                     type="button"
-                    variant="destructive"
+                    variant={destructiveConfirm ? 'destructive' : 'default'}
                     disabled={loading}
                     onClick={onConfirm}
-                    className="cursor-pointer"
+                    className={
+                        destructiveConfirm
+                            ? 'cursor-pointer'
+                            : 'cursor-pointer bg-violet-600 text-white hover:bg-violet-700'
+                    }
                 >
                     {loading ? (
                         <Spinner className="size-4" />

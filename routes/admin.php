@@ -477,6 +477,7 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::get('users/{user}/configure', [UserController::class, 'configure'])->middleware('permission:users.configure')->name('users.configure');
     Route::put('users/{user}/zonals', [UserController::class, 'updateZonals'])->middleware('permission:users.configure')->name('users.zonals.update');
     Route::put('users/{user}/permissions', [UserController::class, 'updatePermissions'])->middleware('permission:users.configure')->name('users.permissions.update');
+    Route::post('users/{user}/send-credentials', [UserController::class, 'sendCredentials'])->middleware('permission:users.send_credentials')->name('users.send-credentials');
 
     Route::get('roles', [RoleController::class, 'index'])->middleware('permission:roles.view')->name('roles.index');
     Route::post('roles', [RoleController::class, 'store'])->middleware('permission:roles.create')->name('roles.store');

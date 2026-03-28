@@ -2,6 +2,7 @@ import { Head, router, usePage } from '@inertiajs/react';
 import {
     CheckCircle2,
     LayoutGrid,
+    Mail,
     Pencil,
     Plus,
     RotateCcw,
@@ -114,9 +115,14 @@ export default function UsersIndex({
     });
     const [restoring, setRestoring] = useState(false);
     const [restoreUser, setRestoreUser] = useState<AdminUser | null>(null);
-    const auth = (props as { auth?: { permissions?: string[]; is_superadmin?: boolean } }).auth;
+    const [credentialsUser, setCredentialsUser] = useState<AdminUser | null>(null);
+    const [sendingCredentials, setSendingCredentials] = useState(false);
+    const auth = (props as {
+        auth?: { permissions?: string[]; is_superadmin?: boolean; user?: { id: string; email?: string } | null };
+    }).auth;
     const permissions = auth?.permissions ?? [];
     const isAuthSuperadmin = auth?.is_superadmin === true;
+    const authUserId = auth?.user?.id ?? null;
 
     const isRowSuperadminRecord = (row: AdminUser) => {
         if (row.usuario?.toLowerCase() === 'superadmin') return true;
@@ -131,6 +137,7 @@ export default function UsersIndex({
     const canDelete = permissions.includes('users.delete');
     const canRestore = permissions.includes('users.restore');
     const canConfigure = permissions.includes('users.configure');
+    const canSendCredentials = permissions.includes('users.send_credentials');
     const flash = props.flash as { toast?: ToastMessage } | undefined;
     const [toastQueue, setToastQueue] = useState<
         Array<ToastMessage & { id: number }>
@@ -232,6 +239,22 @@ export default function UsersIndex({
                 setRestoreUser(null);
             },
         });
+    };
+
+    const handleSendCredentialsConfirm = () => {
+        if (!credentialsUser) return;
+        setSendingCredentials(true);
+        router.post(
+            `/admin/users/${credentialsUser.id}/send-credentials`,
+            {},
+            {
+                preserveScroll: true,
+                onFinish: () => {
+                    setSendingCredentials(false);
+                    setCredentialsUser(null);
+                },
+            }
+        );
     };
 
     const documentLabel: Record<string, string> = {
@@ -403,6 +426,22 @@ export default function UsersIndex({
                 }
                 return (
                     <div className="flex justify-end gap-1">
+                        {canSendCredentials &&
+                            canActOnUserRow(row) &&
+                            row.is_active &&
+                            authUserId !== null &&
+                            row.id !== authUserId && (
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="cursor-pointer shrink-0 size-8 text-violet-600 hover:bg-violet-50 hover:text-violet-700 dark:text-violet-400 dark:hover:bg-violet-950/30"
+                                    aria-label={`Enviar credenciales por correo a ${row.usuario}`}
+                                    onClick={() => setCredentialsUser(row)}
+                                >
+                                    <Mail className="size-4" />
+                                </Button>
+                            )}
                         {canConfigure && canActOnUserRow(row) && (
                             <Link
                                 href={`/admin/users/${row.id}/configure`}
@@ -686,6 +725,23 @@ export default function UsersIndex({
                                                     )
                                                 ) : (
                                                     <>
+                                                        {canSendCredentials &&
+                                                            canActOnUserRow(row) &&
+                                                            row.is_active &&
+                                                            authUserId !== null &&
+                                                            row.id !== authUserId && (
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    className="cursor-pointer shrink-0 border-violet-200 text-violet-700 hover:bg-violet-50 dark:border-violet-800 dark:text-violet-400 dark:hover:bg-violet-950/30"
+                                                                    aria-label={`Enviar credenciales a ${row.usuario}`}
+                                                                    onClick={() => setCredentialsUser(row)}
+                                                                >
+                                                                    <Mail className="size-3.5 shrink-0 mr-1" />
+                                                                    <span>Enviar credenciales</span>
+                                                                </Button>
+                                                            )}
                                                         {canConfigure && canActOnUserRow(row) && (
                                                             <Link
                                                                 href={`/admin/users/${row.id}/configure`}
@@ -760,6 +816,21 @@ export default function UsersIndex({
                 }}
                 user={formUser}
                 roles={roles}
+            />
+
+            <DeleteConfirmModal
+                open={!!credentialsUser}
+                onOpenChange={(open) => !open && setCredentialsUser(null)}
+                title="Enviar credenciales por correo"
+                description={
+                    credentialsUser
+                        ? `Se generará una contraseña nueva y se enviará a ${credentialsUser.email} (usuario «${credentialsUser.usuario}»). Tu correo recibirá una confirmación del envío. ¿Continuar?`
+                        : undefined
+                }
+                destructiveConfirm={false}
+                confirmLabel="Enviar"
+                onConfirm={handleSendCredentialsConfirm}
+                loading={sendingCredentials}
             />
 
             <DeleteConfirmModal
