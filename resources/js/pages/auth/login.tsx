@@ -1,11 +1,9 @@
-import { Form, Head, Link } from '@inertiajs/react';
+import { Form, Head } from '@inertiajs/react';
 import {
     AlertCircle,
-    Box,
     Eye,
     EyeOff,
     Lock,
-    Package,
     Server,
     ShieldCheck,
     User,
@@ -88,9 +86,11 @@ export default function Login({ status }: Props) {
 
                     {/* Logo */}
                     <header className="relative z-10 flex items-center gap-3 p-10 xl:p-14">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 text-inv-primary ring-1 ring-white/10 backdrop-blur-md transition-all duration-300 hover:scale-105 hover:bg-inv-surface/30 hover:shadow-lg hover:shadow-inv-primary/20 hover:ring-white/20">
-                            <Package className="h-6 w-6" aria-hidden />
-                        </div>
+                        <img
+                            src="/apple-touch-icon.png"
+                            alt="Logo Macga"
+                            className="h-12 w-12 rounded-2xl object-cover ring-1 ring-white/20 shadow-lg shadow-black/30"
+                        />
                         <div className="flex items-center gap-2">
                             <span className="text-lg font-semibold tracking-tight text-white">
                                 Inventario
@@ -132,7 +132,11 @@ export default function Login({ status }: Props) {
                     {/* Marca en móvil (cuando no se ve el panel izquierdo) */}
                     <div className="absolute left-0 right-0 top-6 z-0 flex justify-center lg:hidden">
                         <div className="flex items-center gap-2 rounded-xl bg-inv-section/50 px-4 py-2 backdrop-blur-sm ring-1 ring-white/10">
-                            <Package className="h-5 w-5 text-inv-primary" aria-hidden />
+                            <img
+                                src="/apple-touch-icon.png"
+                                alt="Logo Macga"
+                                className="h-5 w-5 rounded-md object-cover ring-1 ring-white/20"
+                            />
                             <span className="text-sm font-semibold text-white">Inventario TI</span>
                         </div>
                     </div>
@@ -157,7 +161,11 @@ export default function Login({ status }: Props) {
                                 <div className="border-b border-white/10 px-6 py-6 sm:px-8 sm:py-7">
                                     <div className="flex items-center gap-4">
                                         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-linear-to-br from-inv-surface to-inv-primary text-white shadow-lg shadow-inv-primary/30 ring-1 ring-white/20 transition-transform duration-300 group-hover/card:scale-105">
-                                            <Box className="h-6 w-6" aria-hidden />
+                                            <img
+                                                src="/apple-touch-icon.png"
+                                                alt="Logo Macga"
+                                                className="h-8 w-8 rounded-lg object-cover"
+                                            />
                                         </div>
                                         <div>
                                             <h1 className="text-xl font-bold tracking-tight text-white sm:text-2xl">
@@ -223,17 +231,9 @@ export default function Login({ status }: Props) {
 
                                                 {/* Contraseña — underline */}
                                                 <div className="space-y-1">
-                                                    <div className="flex items-center justify-between">
-                                                        <Label htmlFor="password" className="text-xs font-medium uppercase tracking-wider text-slate-400">
-                                                            Contraseña
-                                                        </Label>
-                                                        <Link
-                                                            href="/forgot-password"
-                                                            className="text-xs font-medium text-inv-primary underline-offset-2 transition-colors duration-200 hover:text-inv-primary/80 hover:underline focus:outline-none focus:ring-2 focus:ring-inv-primary/50 focus:ring-offset-2 focus:ring-offset-inv-section rounded"
-                                                        >
-                                                            ¿Olvidaste tu contraseña?
-                                                        </Link>
-                                                    </div>
+                                                    <Label htmlFor="password" className="text-xs font-medium uppercase tracking-wider text-slate-400">
+                                                        Contraseña
+                                                    </Label>
                                                     <div className="relative group rounded-sm transition-colors duration-200 hover:border-white/30">
                                                         <Lock className="absolute left-0 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 transition-colors duration-200 group-focus-within:text-inv-primary group-hover:text-slate-400" />
                                                         <Input

@@ -17,7 +17,6 @@ import {
     Trash2,
     Key,
 } from 'lucide-react';
-import AppLogo from '@/components/app-logo';
 import { NavAdministracion } from '@/components/nav-administracion';
 import { NavGroupCollapsible } from '@/components/nav-group-collapsible';
 import { NavGroupLinks } from '@/components/nav-group-links';
@@ -93,7 +92,19 @@ export function AppSidebar() {
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" asChild>
                             <Link href={dashboard()} prefetch>
-                                <AppLogo />
+                                <img
+                                    src="/apple-touch-icon.png"
+                                    alt="Logo Macga"
+                                    className="size-[19px] shrink-0 rounded object-cover ring-1 ring-inv-primary/20"
+                                />
+                                <span className="ml-1 flex min-w-0 flex-1 items-center gap-1.5">
+                                    <span className="truncate text-base font-semibold tracking-tight text-sidebar-foreground">
+                                        Inventario
+                                    </span>
+                                    <span className="shrink-0 text-base font-semibold text-inv-primary">
+                                        TI
+                                    </span>
+                                </span>
                             </Link>
                         </SidebarMenuButton>
                     </SidebarMenuItem>

@@ -29,7 +29,7 @@ class EnsureUserIsActive
                 ->with('status', 'Tu cuenta ha sido dada de baja. Contacta al administrador.');
         }
 
-        if (! $user->is_active) {
+        if ($user->is_active === false) {
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();

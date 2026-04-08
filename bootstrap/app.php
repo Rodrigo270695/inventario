@@ -6,6 +6,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
@@ -27,7 +28,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'filter.zonals.by.user' => \App\Http\Middleware\FilterZonalsByUser::class,
         ]);
 
-        $middleware->appendToGroup('auth', [
+        // Importante: no usar appendToGroup('auth', …): crearía un grupo "auth" que
+        // tiene prioridad sobre el alias middleware "auth" (Authenticate) y dejaría
+        // el panel accesible sin login. Estos middleware van en "web".
+        $middleware->appendToGroup('web', [
             \App\Http\Middleware\EnsureUserIsActive::class,
             \App\Http\Middleware\PreventSuperadminAssignment::class,
         ]);
@@ -73,6 +77,12 @@ return Application::configure(basePath: dirname(__DIR__))
             // ValidationException no implementa HttpExceptionInterface; si no se excluye,
             // se clasifica como 500 y se muestra la vista errors/500 en lugar del redirect con errores (modal).
             if ($e instanceof ValidationException) {
+                return null;
+            }
+
+            // AuthenticationException tampoco implementa HttpExceptionInterface; si no se excluye,
+            // se mostraría errors/500 en lugar del redirect al login (middleware auth).
+            if ($e instanceof AuthenticationException) {
                 return null;
             }
 

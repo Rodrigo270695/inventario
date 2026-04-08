@@ -1,7 +1,11 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { ArrowLeft, SearchX } from 'lucide-react';
 
 export default function Error404() {
+    const { auth } = usePage().props as { auth?: { user?: unknown } };
+    const primaryHref = auth?.user ? '/dashboard' : '/';
+    const primaryLabel = auth?.user ? 'Ir al panel' : 'Ir al inicio';
+
     return (
         <>
             <Head title="404 - Página no encontrada" />
@@ -40,10 +44,10 @@ export default function Error404() {
                                 Volver
                             </Link>
                             <Link
-                                href="/dashboard"
+                                href={primaryHref}
                                 className="inline-flex items-center rounded-xl bg-linear-to-r from-inv-surface to-inv-primary px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
                             >
-                                Ir al panel
+                                {primaryLabel}
                             </Link>
                         </div>
                     </div>

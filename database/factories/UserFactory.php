@@ -25,6 +25,10 @@ class UserFactory extends Factory
     {
         return [
             'name' => fake()->name(),
+            'last_name' => fake()->lastName(),
+            'document_type' => 'dni',
+            'document_number' => fake()->numerify('########'),
+            'is_active' => true,
             'usuario' => fake()->unique()->userName(),
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
