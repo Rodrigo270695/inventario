@@ -5,19 +5,19 @@ namespace App\Http\Controllers\Admin;
 use App\Exports\ComponentsExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\Component\ComponentRequest;
-use App\Models\Component;
-use App\Models\ComponentType;
 use App\Models\AssetBrand;
 use App\Models\AssetCategory;
 use App\Models\AssetSubcategory;
+use App\Models\Component;
+use App\Models\ComponentType;
 use App\Models\Office;
+use App\Models\RepairShop;
 use App\Models\Warehouse;
 use App\Models\Zonal;
-use App\Models\RepairShop;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
 use Maatwebsite\Excel\Facades\Excel;
@@ -73,7 +73,7 @@ class ComponentController extends Controller
         ]);
 
         if ($q !== '') {
-            $term = '%' . mb_strtolower($q) . '%';
+            $term = '%'.mb_strtolower($q).'%';
             $query->where(function ($qb) use ($term) {
                 $qb->whereRaw('LOWER(code) LIKE ?', [$term])
                     ->orWhereRaw('LOWER(COALESCE(serial_number, \'\')) LIKE ?', [$term])
@@ -112,8 +112,16 @@ class ComponentController extends Controller
 
         $typesForSelect = ComponentType::query()->orderBy('name')->get(['id', 'name', 'code']);
         $brandsForSelect = AssetBrand::query()->orderBy('name')->get(['id', 'name']);
-        $categoriesForSelect = AssetCategory::query()->where('is_active', true)->orderBy('name')->get(['id', 'name', 'code']);
-        $subcategoriesForSelect = AssetSubcategory::query()->where('is_active', true)->orderBy('name')->get(['id', 'asset_category_id', 'name', 'code']);
+        $categoriesForSelect = AssetCategory::query()
+            ->forMinorAssetForms()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'code']);
+        $subcategoriesForSelect = AssetSubcategory::query()
+            ->where('is_active', true)
+            ->whereHas('category', fn ($q) => $q->forMinorAssetForms())
+            ->orderBy('name')
+            ->get(['id', 'asset_category_id', 'name', 'code']);
         $warehousesForSelect = Warehouse::query()
             ->where('is_active', true)
             ->with('office:id,zonal_id,name,code')
@@ -125,7 +133,7 @@ class ComponentController extends Controller
 
         $baseCount = Component::query();
         if ($q !== '') {
-            $term = '%' . mb_strtolower($q) . '%';
+            $term = '%'.mb_strtolower($q).'%';
             $baseCount->where(function ($qb) use ($term) {
                 $qb->whereRaw('LOWER(code) LIKE ?', [$term])
                     ->orWhereRaw('LOWER(COALESCE(serial_number, \'\')) LIKE ?', [$term])
@@ -159,7 +167,7 @@ class ComponentController extends Controller
         foreach (['stored', 'active', 'in_repair', 'in_transit', 'disposed'] as $s) {
             $qCount = Component::query();
             if ($q !== '') {
-                $term = '%' . mb_strtolower($q) . '%';
+                $term = '%'.mb_strtolower($q).'%';
                 $qCount->where(function ($qb) use ($term) {
                     $qb->whereRaw('LOWER(code) LIKE ?', [$term])
                         ->orWhereRaw('LOWER(COALESCE(serial_number, \'\')) LIKE ?', [$term])
@@ -248,7 +256,7 @@ class ComponentController extends Controller
         ]);
 
         if ($q !== '') {
-            $term = '%' . mb_strtolower($q) . '%';
+            $term = '%'.mb_strtolower($q).'%';
             $query->where(function ($qb) use ($term) {
                 $qb->whereRaw('LOWER(code) LIKE ?', [$term])
                     ->orWhereRaw('LOWER(COALESCE(serial_number, \'\')) LIKE ?', [$term])
@@ -386,12 +394,12 @@ class ComponentController extends Controller
         if ($typeId) {
             $type = ComponentType::query()->find($typeId);
             if ($type && $type->code) {
-                $prefix = 'COMP-' . strtoupper($type->code);
+                $prefix = 'COMP-'.strtoupper($type->code);
             }
         }
 
         $last = Component::withTrashed()
-            ->where('code', 'LIKE', $prefix . '-%')
+            ->where('code', 'LIKE', $prefix.'-%')
             ->orderByDesc('code')
             ->value('code');
 
@@ -440,7 +448,7 @@ class ComponentController extends Controller
 
     private function makeBarcodePdfResponse(Collection $components, string $filename, bool $download): SymfonyResponse
     {
-        $generator = new BarcodeGeneratorPNG();
+        $generator = new BarcodeGeneratorPNG;
 
         $labels = $components->map(function (Component $component) use ($generator) {
             $barcode = base64_encode(

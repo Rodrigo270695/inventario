@@ -121,8 +121,16 @@ class AssetController extends Controller
 
         $assets = $query->paginate($perPage)->withQueryString();
 
-        $categoriesForSelect = AssetCategory::query()->where('is_active', true)->orderBy('name')->get(['id', 'name', 'code']);
-        $subcategoriesForSelect = AssetSubcategory::query()->where('is_active', true)->orderBy('name')->get(['id', 'asset_category_id', 'name', 'code']);
+        $categoriesForSelect = AssetCategory::query()
+            ->forFixedAssetForms()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'code']);
+        $subcategoriesForSelect = AssetSubcategory::query()
+            ->where('is_active', true)
+            ->whereHas('category', fn ($q) => $q->forFixedAssetForms())
+            ->orderBy('name')
+            ->get(['id', 'asset_category_id', 'name', 'code']);
         $modelsForSelect = AssetModel::query()
             ->where('is_active', true)
             ->with('brand:id,name')

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -61,5 +62,23 @@ class AssetCategory extends Model
     public function purchaseItems(): HasMany
     {
         return $this->hasMany(PurchaseItem::class, 'asset_category_id');
+    }
+
+    /** Categoría «A» — activo fijo (formularios de activos). */
+    public function scopeForFixedAssetForms(Builder $query): Builder
+    {
+        return $query->where('type', 'fixed_asset');
+    }
+
+    /** Categoría «B» — activo menor / complementos (formularios de componentes). */
+    public function scopeForMinorAssetForms(Builder $query): Builder
+    {
+        return $query->where('type', 'minor_asset');
+    }
+
+    /** Categoría «C» — servicios y mantenimiento (formularios de servicios). */
+    public function scopeForServiceMaintenanceForms(Builder $query): Builder
+    {
+        return $query->where('type', 'service_maintenance');
     }
 }

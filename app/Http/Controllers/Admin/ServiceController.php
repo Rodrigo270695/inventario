@@ -71,10 +71,10 @@ class ServiceController extends Controller
 
         if ($q !== '') {
             $query->where(function (Builder $qry) use ($q) {
-                $qry->where('services.name', 'ilike', '%' . $q . '%')
-                    ->orWhere('services.type', 'ilike', '%' . $q . '%')
+                $qry->where('services.name', 'ilike', '%'.$q.'%')
+                    ->orWhere('services.type', 'ilike', '%'.$q.'%')
                     ->orWhereHas('purchaseItem.purchaseOrder.supplier', function (Builder $s) use ($q) {
-                        $s->where('name', 'ilike', '%' . $q . '%');
+                        $s->where('name', 'ilike', '%'.$q.'%');
                     });
             });
         }
@@ -91,7 +91,7 @@ class ServiceController extends Controller
         if ($sortBy === 'remaining_days') {
             // Ordenar por fecha fin (más próximos primero). NULLS LAST para que sin fecha queden al final.
             $services = $query
-                ->orderByRaw('services.end_date ' . $sortOrder . ' NULLS LAST')
+                ->orderByRaw('services.end_date '.$sortOrder.' NULLS LAST')
                 ->paginate($perPage, ['services.*'], 'page')
                 ->withQueryString();
         } elseif ($sortBy === 'supplier') {
@@ -112,7 +112,7 @@ class ServiceController extends Controller
                 ->withQueryString();
         } else {
             $services = $query
-                ->orderBy('services.' . $sortBy, $sortOrder)
+                ->orderBy('services.'.$sortBy, $sortOrder)
                 ->paginate($perPage, ['services.*'], 'page')
                 ->withQueryString();
         }
@@ -123,6 +123,7 @@ class ServiceController extends Controller
             ->get(['id', 'name', 'code', 'office_id'])
             ->sortBy(function (Warehouse $w) {
                 $zonalName = $w->office?->zonal?->name ?? $w->office?->zonal?->code ?? '';
+
                 return sprintf('%s %s', mb_strtolower($zonalName), mb_strtolower($w->name));
             })
             ->values();
@@ -319,10 +320,14 @@ class ServiceController extends Controller
         $warehousesForSelect = $warehousesQuery->get(['id', 'name', 'code', 'office_id']);
 
         $assetCategories = AssetCategory::query()
+            ->forServiceMaintenanceForms()
+            ->where('is_active', true)
             ->orderBy('name')
             ->get(['id', 'name', 'code', 'type']);
 
         $assetSubcategories = AssetSubcategory::query()
+            ->where('is_active', true)
+            ->whereHas('category', fn ($q) => $q->forServiceMaintenanceForms())
             ->orderBy('name')
             ->get(['id', 'name', 'asset_category_id as category_id']);
 
