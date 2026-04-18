@@ -1,10 +1,20 @@
 import { Head, router, usePage } from '@inertiajs/react';
-import { Layers } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Layers, Plus } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { BrandFormModal } from '@/components/asset-catalog/brand-form-modal';
 import { SubcategoryFormModal } from '@/components/asset-catalog/subcategory-form-modal';
 import { ComponentTypeFormModal } from '@/components/asset-catalog/component-type-form-modal';
 import { ModelFormModal } from '@/components/asset-catalog/model-form-modal';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { DeleteConfirmModal } from '@/components/delete-confirm-modal';
 import type { RestoreCandidate } from '@/components/restore-confirm-modal';
 import { RestoreConfirmModal } from '@/components/restore-confirm-modal';
@@ -82,6 +92,11 @@ export default function AssetCatalogIndex({
     const [isNavigating, setIsNavigating] = useState(false);
     const [restoreModalOpen, setRestoreModalOpen] = useState(false);
     const [restoring, setRestoring] = useState(false);
+    const [subcategoryCategoryFilter, setSubcategoryCategoryFilter] = useState('');
+    const [subcategoryNameQuery, setSubcategoryNameQuery] = useState('');
+    const [brandNameQuery, setBrandNameQuery] = useState('');
+    const [modelNameQuery, setModelNameQuery] = useState('');
+    const [componentTypeNameQuery, setComponentTypeNameQuery] = useState('');
 
     const { props } = usePage();
     const flash = (props.flash as FlashWithRestore | undefined);
@@ -113,16 +128,77 @@ export default function AssetCatalogIndex({
         };
     }, []);
 
-    const modelsFiltered =
-        selectedSubcategoryId && selectedBrandId
-            ? models.filter(
-                  (m) => m.subcategory_id === selectedSubcategoryId && m.brand_id === selectedBrandId
-              )
-            : selectedSubcategoryId
-              ? models.filter((m) => m.subcategory_id === selectedSubcategoryId)
-              : selectedBrandId
-                ? models.filter((m) => m.brand_id === selectedBrandId)
-                : models;
+    const subcategoriesFiltered = useMemo(() => {
+        let list = subcategories;
+        if (subcategoryCategoryFilter) {
+            list = list.filter((s) => s.asset_category_id === subcategoryCategoryFilter);
+        }
+        const q = subcategoryNameQuery.trim().toLowerCase();
+        if (q) {
+            list = list.filter((s) => s.name.toLowerCase().includes(q));
+        }
+        return list;
+    }, [subcategories, subcategoryCategoryFilter, subcategoryNameQuery]);
+
+    useEffect(() => {
+        if (!selectedSubcategoryId) return;
+        if (!subcategoriesFiltered.some((s) => s.id === selectedSubcategoryId)) {
+            setSelectedSubcategoryId(null);
+            setSelectedBrandId(null);
+        }
+    }, [selectedSubcategoryId, subcategoriesFiltered]);
+
+    const modelsFiltered = useMemo(() => {
+        if (selectedSubcategoryId && selectedBrandId) {
+            return models.filter(
+                (m) => m.subcategory_id === selectedSubcategoryId && m.brand_id === selectedBrandId
+            );
+        }
+        if (selectedSubcategoryId) {
+            return models.filter((m) => m.subcategory_id === selectedSubcategoryId);
+        }
+        if (selectedBrandId) {
+            return models.filter((m) => m.brand_id === selectedBrandId);
+        }
+        return models;
+    }, [models, selectedSubcategoryId, selectedBrandId]);
+
+    const brandsFiltered = useMemo(() => {
+        const q = brandNameQuery.trim().toLowerCase();
+        if (!q) return brands;
+        return brands.filter((b) => b.name.toLowerCase().includes(q));
+    }, [brands, brandNameQuery]);
+
+    useEffect(() => {
+        if (!selectedBrandId) return;
+        if (!brandsFiltered.some((b) => b.id === selectedBrandId)) {
+            setSelectedBrandId(null);
+        }
+    }, [selectedBrandId, brandsFiltered]);
+
+    const modelsListDisplayed = useMemo(() => {
+        if (selectedSubcategoryId == null && selectedBrandId == null) {
+            return [];
+        }
+        const q = modelNameQuery.trim().toLowerCase();
+        if (!q) return modelsFiltered;
+        return modelsFiltered.filter((m) => {
+            const n = m.name.toLowerCase();
+            const b = (m.brand?.name ?? '').toLowerCase();
+            const s = (m.subcategory?.name ?? '').toLowerCase();
+            return n.includes(q) || b.includes(q) || s.includes(q);
+        });
+    }, [modelsFiltered, modelNameQuery, selectedSubcategoryId, selectedBrandId]);
+
+    const componentTypesFiltered = useMemo(() => {
+        const q = componentTypeNameQuery.trim().toLowerCase();
+        if (!q) return componentTypes;
+        return componentTypes.filter((ct) => {
+            const n = ct.name.toLowerCase();
+            const c = (ct.code ?? '').toLowerCase();
+            return n.includes(q) || c.includes(q);
+        });
+    }, [componentTypes, componentTypeNameQuery]);
 
     const openSubcategoryForm = (subcategory: AssetSubcategory | null) => {
         setEditingSubcategory(subcategory);
@@ -246,7 +322,7 @@ export default function AssetCatalogIndex({
 
                 <div className="border-t border-border pt-4" />
 
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <CatalogPanel
                         title="Subcategorías"
                         actionButton={
@@ -266,37 +342,86 @@ export default function AssetCatalogIndex({
                         }
                     >
                         {subcategories.length > 0 && (
-                            <ul className={LIST_CLASS}>
-                                {subcategories.map((s) => (
-                                    <CatalogListItem
-                                        key={s.id}
-                                        selected={selectedSubcategoryId === s.id}
-                                        disabled={!s.is_active}
-                                        onSelect={() => {
-                                            if (!s.is_active) return;
-                                            setSelectedSubcategoryId((prev) => (prev === s.id ? null : s.id));
-                                            setSelectedBrandId(null);
-                                        }}
-                                        name={s.name}
-                                        subtitle={s.asset_category?.name}
-                                        statusBadge={
-                                            <span
-                                                className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium uppercase ${
-                                                    s.is_active
-                                                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400'
-                                                        : 'bg-muted text-muted-foreground'
-                                                }`}
-                                            >
-                                                {s.is_active ? 'Activo' : 'Inactivo'}
-                                            </span>
-                                        }
-                                        canEdit={can.update_subcategory}
-                                        canDelete={can.delete_subcategory}
-                                        onEdit={() => openSubcategoryForm(s)}
-                                        onDelete={() => setDeleteTarget({ type: 'subcategory', item: s })}
-                                    />
-                                ))}
-                            </ul>
+                            <div className="space-y-3">
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs text-muted-foreground">Categoría</Label>
+                                        <Select
+                                            value={
+                                                subcategoryCategoryFilter === '' ? '_' : subcategoryCategoryFilter
+                                            }
+                                            onValueChange={(v) =>
+                                                setSubcategoryCategoryFilter(v === '_' ? '' : v)
+                                            }
+                                        >
+                                            <SelectTrigger className="w-full border-border bg-background h-9 text-sm">
+                                                <SelectValue placeholder="Todas" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="_">Todas las categorías</SelectItem>
+                                                {categories.map((c) => (
+                                                    <SelectItem key={c.id} value={c.id}>
+                                                        {c.name}
+                                                        {c.code ? ` (${c.code})` : ''}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs text-muted-foreground">Buscar por nombre</Label>
+                                        <Input
+                                            type="search"
+                                            value={subcategoryNameQuery}
+                                            onChange={(e) => setSubcategoryNameQuery(e.target.value)}
+                                            placeholder="Ej. laptop, impresora…"
+                                            className="h-9 text-sm"
+                                            autoComplete="off"
+                                        />
+                                    </div>
+                                </div>
+                                {subcategoriesFiltered.length === 0 ? (
+                                    <p className="py-6 text-center text-sm text-muted-foreground">
+                                        No hay subcategorías que coincidan con el filtro.
+                                    </p>
+                                ) : (
+                                    <ul className={LIST_CLASS}>
+                                        {subcategoriesFiltered.map((s) => (
+                                            <CatalogListItem
+                                                key={s.id}
+                                                selected={selectedSubcategoryId === s.id}
+                                                disabled={!s.is_active}
+                                                onSelect={() => {
+                                                    if (!s.is_active) return;
+                                                    setSelectedSubcategoryId((prev) =>
+                                                        prev === s.id ? null : s.id
+                                                    );
+                                                    setSelectedBrandId(null);
+                                                }}
+                                                name={s.name}
+                                                subtitle={s.asset_category?.name}
+                                                statusBadge={
+                                                    <span
+                                                        className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium uppercase ${
+                                                            s.is_active
+                                                                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400'
+                                                                : 'bg-muted text-muted-foreground'
+                                                        }`}
+                                                    >
+                                                        {s.is_active ? 'Activo' : 'Inactivo'}
+                                                    </span>
+                                                }
+                                                canEdit={can.update_subcategory}
+                                                canDelete={can.delete_subcategory}
+                                                onEdit={() => openSubcategoryForm(s)}
+                                                onDelete={() =>
+                                                    setDeleteTarget({ type: 'subcategory', item: s })
+                                                }
+                                            />
+                                        ))}
+                                    </ul>
+                                )}
+                            </div>
                         )}
                     </CatalogPanel>
 
@@ -322,22 +447,45 @@ export default function AssetCatalogIndex({
                         }
                     >
                         {brands.length > 0 && (
-                            <ul className={LIST_CLASS}>
-                                {brands.map((b) => (
-                                    <CatalogListItem
-                                        key={b.id}
-                                        selected={selectedBrandId === b.id}
-                                        onSelect={() =>
-                                            setSelectedBrandId((prev) => (prev === b.id ? null : b.id))
-                                        }
-                                        name={b.name}
-                                        canEdit={can.update_brand}
-                                        canDelete={can.delete_brand}
-                                        onEdit={() => openBrandForm(b)}
-                                        onDelete={() => setDeleteTarget({ type: 'brand', item: b })}
+                            <div className="space-y-3">
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs text-muted-foreground">Buscar por nombre</Label>
+                                    <Input
+                                        type="search"
+                                        value={brandNameQuery}
+                                        onChange={(e) => setBrandNameQuery(e.target.value)}
+                                        placeholder="Ej. Dell, HP…"
+                                        className="h-9 text-sm"
+                                        autoComplete="off"
                                     />
-                                ))}
-                            </ul>
+                                </div>
+                                {brandsFiltered.length === 0 ? (
+                                    <p className="py-6 text-center text-sm text-muted-foreground">
+                                        No hay marcas que coincidan con la búsqueda.
+                                    </p>
+                                ) : (
+                                    <ul className={LIST_CLASS}>
+                                        {brandsFiltered.map((b) => (
+                                            <CatalogListItem
+                                                key={b.id}
+                                                selected={selectedBrandId === b.id}
+                                                onSelect={() =>
+                                                    setSelectedBrandId((prev) =>
+                                                        prev === b.id ? null : b.id
+                                                    )
+                                                }
+                                                name={b.name}
+                                                canEdit={can.update_brand}
+                                                canDelete={can.delete_brand}
+                                                onEdit={() => openBrandForm(b)}
+                                                onDelete={() =>
+                                                    setDeleteTarget({ type: 'brand', item: b })
+                                                }
+                                            />
+                                        ))}
+                                    </ul>
+                                )}
+                            </div>
                         )}
                     </CatalogPanel>
 
@@ -354,36 +502,81 @@ export default function AssetCatalogIndex({
                                 : undefined
                         }
                         emptyState={
-                            selectedSubcategoryId == null && selectedBrandId == null
+                            models.length === 0
                                 ? {
-                                      icon: Layers,
-                                      message:
-                                          'Seleccione subcategoría y/o marca para filtrar modelos.',
+                                      message: 'No hay modelos.',
+                                      primaryButton: can.create_model
+                                          ? { label: 'Crear primero', onClick: () => openModelForm(null) }
+                                          : undefined,
                                   }
-                                : modelsFiltered.length === 0
-                                  ? {
-                                        message: 'No hay modelos.',
-                                        primaryButton: can.create_model
-                                            ? { label: 'Crear primero', onClick: () => openModelForm(null) }
-                                            : undefined,
-                                    }
-                                  : undefined
+                                : undefined
                         }
                     >
-                        {modelsFiltered.length > 0 && (
-                            <ul className={LIST_CLASS}>
-                                {modelsFiltered.map((m) => (
-                                    <CatalogListItem
-                                        key={m.id}
-                                        name={m.name}
-                                        subtitle={`${m.brand?.name ?? ''} · ${m.subcategory?.name ?? ''}`}
-                                        canEdit={can.update_model}
-                                        canDelete={can.delete_model}
-                                        onEdit={() => openModelForm(m)}
-                                        onDelete={() => setDeleteTarget({ type: 'model', item: m })}
+                        {models.length > 0 && (
+                            <div className="space-y-3">
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs text-muted-foreground">Buscar por nombre</Label>
+                                    <Input
+                                        type="search"
+                                        value={modelNameQuery}
+                                        onChange={(e) => setModelNameQuery(e.target.value)}
+                                        placeholder="Modelo, marca o subcategoría…"
+                                        className="h-9 text-sm"
+                                        autoComplete="off"
+                                        disabled={
+                                            selectedSubcategoryId == null && selectedBrandId == null
+                                        }
                                     />
-                                ))}
-                            </ul>
+                                </div>
+                                {selectedSubcategoryId == null && selectedBrandId == null ? (
+                                    <div className="flex flex-col items-center justify-center gap-3 py-8">
+                                        <Layers
+                                            className="size-10 text-muted-foreground/60"
+                                            aria-hidden
+                                        />
+                                        <span className="text-sm text-muted-foreground text-center px-2">
+                                            Seleccione subcategoría y/o marca para filtrar modelos.
+                                        </span>
+                                    </div>
+                                ) : modelsFiltered.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center gap-3 py-6">
+                                        <span className="text-sm text-muted-foreground">
+                                            No hay modelos.
+                                        </span>
+                                        {can.create_model && (
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                onClick={() => openModelForm(null)}
+                                                className="cursor-pointer bg-inv-primary hover:bg-inv-primary/90 text-white"
+                                            >
+                                                <Plus className="size-4 mr-1" />
+                                                Crear primero
+                                            </Button>
+                                        )}
+                                    </div>
+                                ) : modelsListDisplayed.length === 0 ? (
+                                    <p className="py-6 text-center text-sm text-muted-foreground">
+                                        Ningún modelo coincide con la búsqueda.
+                                    </p>
+                                ) : (
+                                    <ul className={LIST_CLASS}>
+                                        {modelsListDisplayed.map((m) => (
+                                            <CatalogListItem
+                                                key={m.id}
+                                                name={m.name}
+                                                subtitle={`${m.brand?.name ?? ''} · ${m.subcategory?.name ?? ''}`}
+                                                canEdit={can.update_model}
+                                                canDelete={can.delete_model}
+                                                onEdit={() => openModelForm(m)}
+                                                onDelete={() =>
+                                                    setDeleteTarget({ type: 'model', item: m })
+                                                }
+                                            />
+                                        ))}
+                                    </ul>
+                                )}
+                            </div>
                         )}
                     </CatalogPanel>
 
@@ -413,20 +606,39 @@ export default function AssetCatalogIndex({
                         }
                     >
                         {componentTypes.length > 0 && (
-                            <ul className={LIST_CLASS}>
-                                {componentTypes.map((ct) => (
-                                    <CatalogListItem
-                                        key={ct.id}
-                                        name={ct.name}
-                                        canEdit={can.update_component_type}
-                                        canDelete={can.delete_component_type}
-                                        onEdit={() => openComponentTypeForm(ct)}
-                                        onDelete={() =>
-                                            setDeleteTarget({ type: 'component_type', item: ct })
-                                        }
+                            <div className="space-y-3">
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs text-muted-foreground">Buscar por nombre</Label>
+                                    <Input
+                                        type="search"
+                                        value={componentTypeNameQuery}
+                                        onChange={(e) => setComponentTypeNameQuery(e.target.value)}
+                                        placeholder="Ej. RAM, SSD…"
+                                        className="h-9 text-sm"
+                                        autoComplete="off"
                                     />
-                                ))}
-                            </ul>
+                                </div>
+                                {componentTypesFiltered.length === 0 ? (
+                                    <p className="py-6 text-center text-sm text-muted-foreground">
+                                        No hay tipos que coincidan con la búsqueda.
+                                    </p>
+                                ) : (
+                                    <ul className={LIST_CLASS}>
+                                        {componentTypesFiltered.map((ct) => (
+                                            <CatalogListItem
+                                                key={ct.id}
+                                                name={ct.name}
+                                                canEdit={can.update_component_type}
+                                                canDelete={can.delete_component_type}
+                                                onEdit={() => openComponentTypeForm(ct)}
+                                                onDelete={() =>
+                                                    setDeleteTarget({ type: 'component_type', item: ct })
+                                                }
+                                            />
+                                        ))}
+                                    </ul>
+                                )}
+                            </div>
                         )}
                     </CatalogPanel>
                 </div>
