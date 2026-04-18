@@ -25,6 +25,7 @@ class Component extends Model
         'status',
         'condition',
         'purchase_item_id',
+        'acquisition_date',
         'specs',
         'notes',
     ];
@@ -32,6 +33,7 @@ class Component extends Model
     protected function casts(): array
     {
         return [
+            'acquisition_date' => 'date',
             'specs' => 'array',
         ];
     }
@@ -86,4 +88,3 @@ class Component extends Model
         return $this->hasMany(AssetDisposal::class, 'component_id');
     }
 }
-

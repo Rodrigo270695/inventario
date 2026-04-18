@@ -1,6 +1,7 @@
 import { router } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 import type { Component } from '@/types';
+import { formatDateShort } from '../../assets/config/utils';
 
 type Props = {
     component: Component & {
@@ -139,6 +140,14 @@ export function ComponentConfigGeneralTab({ component }: Props) {
                     <p className="text-muted-foreground text-xs font-medium">Condición</p>
                     <p className="text-foreground text-sm">
                         {CONDITION_LABELS[component.condition] ?? component.condition}
+                    </p>
+                </div>
+                <div>
+                    <p className="text-muted-foreground text-xs font-medium">Fecha de adquisición</p>
+                    <p className="text-foreground text-sm">
+                        {component.acquisition_date
+                            ? formatDateShort(component.acquisition_date)
+                            : '—'}
                     </p>
                 </div>
             </div>

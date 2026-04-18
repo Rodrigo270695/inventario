@@ -214,6 +214,7 @@ export type Component = {
     repair_shop_id: string | null;
     status: string;
     condition: string;
+    acquisition_date?: string | null;
     notes: string | null;
     specs?: Record<string, unknown> | null;
     created_at?: string;
@@ -241,6 +242,7 @@ export type Asset = {
     condition: string;
     warehouse_id: string | null;
     acquisition_value?: number | string | null;
+    acquisition_date?: string | null;
     current_value?: number | string | null;
     depreciation_rate?: number | string | null;
     warranty_until?: string | null;

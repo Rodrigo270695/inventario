@@ -29,6 +29,7 @@ class Asset extends Model
         'warehouse_id',
         'repair_shop_id',
         'acquisition_value',
+        'acquisition_date',
         'current_value',
         'depreciation_rate',
         'warranty_until',
@@ -42,6 +43,7 @@ class Asset extends Model
     {
         return [
             'acquisition_value' => 'decimal:2',
+            'acquisition_date' => 'date',
             'current_value' => 'decimal:2',
             'depreciation_rate' => 'decimal:2',
             'warranty_until' => 'date',

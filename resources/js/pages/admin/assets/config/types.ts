@@ -50,6 +50,7 @@ export type AssetConfigAsset = {
     status: string;
     condition: string;
     acquisition_value?: number | string | null;
+    acquisition_date?: string | null;
     current_value?: number | string | null;
     depreciation_rate?: number | string | null;
     warranty_until?: string | null;

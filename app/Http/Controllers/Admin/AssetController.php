@@ -582,7 +582,7 @@ class AssetController extends Controller
         $request->validate(['id' => ['required', 'uuid']]);
         $asset = Asset::withTrashed()->findOrFail($request->input('id'));
         $asset->restore();
-        $data = $request->only(['code', 'serial_number', 'model_id', 'brand_id', 'category_id', 'status', 'condition', 'warehouse_id', 'acquisition_value', 'current_value', 'depreciation_rate', 'warranty_until', 'notes']);
+        $data = $request->only(['code', 'serial_number', 'model_id', 'brand_id', 'category_id', 'status', 'condition', 'warehouse_id', 'acquisition_value', 'acquisition_date', 'current_value', 'depreciation_rate', 'warranty_until', 'notes']);
         $data['warehouse_id'] = ($data['warehouse_id'] ?? '') !== '' ? $data['warehouse_id'] : null;
         $data['model_id'] = ($data['model_id'] ?? '') !== '' ? $data['model_id'] : null;
         $data['brand_id'] = $this->resolveAssetBrandId($data['model_id'] ?? null, ($data['brand_id'] ?? '') !== '' ? $data['brand_id'] : null);

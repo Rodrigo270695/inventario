@@ -103,6 +103,12 @@ export function AssetConfigGeneralTab({ asset }: Props) {
                     <p className="text-foreground text-sm">{asset.acquisition_value ?? '—'}</p>
                 </div>
                 <div>
+                    <p className="text-muted-foreground text-xs font-medium">Fecha de adquisición</p>
+                    <p className="text-foreground text-sm">
+                        {asset.acquisition_date ? formatDateShort(asset.acquisition_date) : '—'}
+                    </p>
+                </div>
+                <div>
                     <p className="text-muted-foreground text-xs font-medium">Valor actual</p>
                     <p className="text-foreground text-sm">{asset.current_value ?? '—'}</p>
                 </div>

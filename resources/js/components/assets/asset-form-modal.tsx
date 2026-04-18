@@ -53,6 +53,13 @@ function toStr(v: number | string | null | undefined): string {
     return String(v);
 }
 
+/** Valor para `<input type="date">` (YYYY-MM-DD) aunque el API envíe ISO con hora. */
+function toDateInputValue(v: string | null | undefined): string {
+    if (v == null || v === '') return '';
+    const s = String(v);
+    return s.length >= 10 ? s.slice(0, 10) : s;
+}
+
 export function AssetFormModal({
     open,
     onOpenChange,
@@ -82,9 +89,10 @@ export function AssetFormModal({
         condition: asset?.condition ?? 'new',
         warehouse_id: asset?.warehouse_id ?? '',
         acquisition_value: toStr(asset?.acquisition_value),
+        acquisition_date: toDateInputValue(asset?.acquisition_date),
         current_value: toStr(asset?.current_value),
         depreciation_rate: toStr(asset?.depreciation_rate),
-        warranty_until: asset?.warranty_until ?? '',
+        warranty_until: toDateInputValue(asset?.warranty_until),
         notes: asset?.notes ?? '',
         new_model_name: '',
     });
@@ -194,9 +202,10 @@ export function AssetFormModal({
                 condition: asset.condition ?? 'new',
                 warehouse_id: asset.warehouse_id ?? '',
                 acquisition_value: toStr(asset.acquisition_value),
+                acquisition_date: toDateInputValue(asset.acquisition_date),
                 current_value: toStr(asset.current_value),
                 depreciation_rate: toStr(asset.depreciation_rate),
-                warranty_until: asset.warranty_until ?? '',
+                warranty_until: toDateInputValue(asset.warranty_until),
                 notes: asset.notes ?? '',
                 new_model_name: '',
             });
@@ -215,6 +224,7 @@ export function AssetFormModal({
                 condition: 'new',
                 warehouse_id: '',
                 acquisition_value: '',
+                acquisition_date: '',
                 current_value: '',
                 depreciation_rate: '',
                 warranty_until: '',
@@ -285,6 +295,8 @@ export function AssetFormModal({
                 depreciation_rate:
                     formData.depreciation_rate === '' ? null : Number(formData.depreciation_rate),
                 warranty_until: formData.warranty_until === '' ? null : formData.warranty_until,
+                acquisition_date:
+                    formData.acquisition_date === '' ? null : formData.acquisition_date,
             };
         });
         if (isEdit && asset) {
@@ -656,6 +668,19 @@ export function AssetFormModal({
                         />
                         {errors.acquisition_value && (
                             <p className="text-sm text-destructive">{errors.acquisition_value}</p>
+                        )}
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label>Fecha de adquisición</Label>
+                        <Input
+                            type="date"
+                            value={data.acquisition_date}
+                            onChange={(e) => setData('acquisition_date', e.target.value)}
+                            className={errors.acquisition_date ? 'border-destructive' : ''}
+                        />
+                        {errors.acquisition_date && (
+                            <p className="text-sm text-destructive">{errors.acquisition_date}</p>
                         )}
                     </div>
 

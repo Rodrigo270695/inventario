@@ -41,6 +41,12 @@ type Props = {
     subcategoriesForSelect: SubcategoryOption[];
 };
 
+function toDateInputValue(v: string | null | undefined): string {
+    if (v == null || v === '') return '';
+    const s = String(v);
+    return s.length >= 10 ? s.slice(0, 10) : s;
+}
+
 const STATUS_OPTIONS = [
     { value: 'stored', label: 'Almacenado' },
     { value: 'active', label: 'En uso' },
@@ -67,7 +73,7 @@ export function ComponentFormModal({
     const [categoryId, setCategoryId] = useState('');
     const [subcategoryId, setSubcategoryId] = useState('');
 
-    const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
+    const { data, setData, post, put, processing, errors, reset, clearErrors, transform } = useForm({
         serial_number: component?.serial_number ?? '',
         type_id: component?.type_id ?? '',
         brand_id: component?.brand_id ?? '',
@@ -76,6 +82,7 @@ export function ComponentFormModal({
         warehouse_id: component?.warehouse_id ?? '',
         status: component?.status ?? 'stored',
         condition: component?.condition ?? 'new',
+        acquisition_date: toDateInputValue(component?.acquisition_date),
         notes: component?.notes ?? '',
     });
 
@@ -126,6 +133,7 @@ export function ComponentFormModal({
             warehouse_id: component?.warehouse_id ?? '',
             status: component?.status ?? 'stored',
             condition: component?.condition ?? 'new',
+            acquisition_date: toDateInputValue(component?.acquisition_date),
             notes: component?.notes ?? '',
         });
     }, [
@@ -139,6 +147,7 @@ export function ComponentFormModal({
         component?.warehouse_id,
         component?.status,
         component?.condition,
+        component?.acquisition_date,
         component?.notes,
         warehousesForSelect,
         officesForSelect,
@@ -171,17 +180,16 @@ export function ComponentFormModal({
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        const payload = {
-            ...data,
-            brand_id: data.brand_id === '' ? null : data.brand_id,
-            warehouse_id: data.warehouse_id === '' ? null : data.warehouse_id,
-            subcategory_id: data.subcategory_id === '' ? null : data.subcategory_id,
-        };
+        transform((formData) => ({
+            ...formData,
+            brand_id: formData.brand_id === '' ? null : formData.brand_id,
+            warehouse_id: formData.warehouse_id === '' ? null : formData.warehouse_id,
+            subcategory_id: formData.subcategory_id === '' ? null : formData.subcategory_id,
+            acquisition_date: formData.acquisition_date === '' ? null : formData.acquisition_date,
+        }));
         if (isEdit && component) {
             put(`/admin/components/${component.id}`, {
                 preserveScroll: true,
-                data: payload,
-                transform: () => payload,
                 onSuccess: () => {
                     reset();
                     onOpenChange(false);
@@ -190,8 +198,6 @@ export function ComponentFormModal({
         } else {
             post('/admin/components', {
                 preserveScroll: true,
-                data: payload,
-                transform: () => payload,
                 onSuccess: () => {
                     reset();
                     onOpenChange(false);
@@ -437,6 +443,18 @@ export function ComponentFormModal({
                                 ))}
                             </SelectContent>
                         </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Fecha de adquisición</Label>
+                        <Input
+                            type="date"
+                            value={data.acquisition_date}
+                            onChange={(e) => setData('acquisition_date', e.target.value)}
+                            className={errors.acquisition_date ? 'border-destructive' : ''}
+                        />
+                        {errors.acquisition_date && (
+                            <p className="text-sm text-destructive">{errors.acquisition_date}</p>
+                        )}
                     </div>
                 </div>
                 <div className="space-y-2">
