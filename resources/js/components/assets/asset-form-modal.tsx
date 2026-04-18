@@ -12,7 +12,6 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { CONDITION_OPTIONS } from '@/constants/conditions';
-import { SUBCATEGORY_CODES_WITH_COMPUTER_TAB } from '@/constants/asset-config';
 import type { Asset } from '@/types';
 
 type CategoryOption = { id: string; name: string; code: string };
@@ -102,20 +101,14 @@ export function AssetFormModal({
         [data.category_id, subcategoriesForSelect]
     );
 
-    const showMarcaColumn = useMemo(() => {
-        const sub = subcategoriesForSelect.find((s) => s.id === subcategoryId);
-        return !!(sub?.code && SUBCATEGORY_CODES_WITH_COMPUTER_TAB.includes(sub.code));
-    }, [subcategoryId, subcategoriesForSelect]);
-
     const modelsFiltered = useMemo(() => {
         if (!subcategoryId) return [];
         let list = modelsForSelect.filter((m) => m.subcategory_id === subcategoryId);
-        if (showMarcaColumn) {
-            if (!data.brand_id) return [];
+        if (data.brand_id) {
             list = list.filter((m) => m.brand?.id === data.brand_id);
         }
         return list;
-    }, [subcategoryId, modelsForSelect, showMarcaColumn, data.brand_id]);
+    }, [subcategoryId, modelsForSelect, data.brand_id]);
 
     const isOtherModel = data.model_id === MODEL_OTHER;
 
@@ -252,15 +245,15 @@ export function AssetFormModal({
         setData((prev) => ({ ...prev, model_id: '', brand_id: '', new_model_name: '' }));
     };
 
+    /** Si ya está en «Otro (registrar nuevo)», solo actualiza marca sin quitar ese flujo. */
     const handleBrandChange = (v: string) => {
         const id = v === '_' ? '' : v;
-        setData((prev) => ({ ...prev, brand_id: id, model_id: '', new_model_name: '' }));
-    };
-
-    /** Marca en flujo «Otro» sin columna fija de marca: no resetea la opción Otro. */
-    const handleBrandChangeKeepOther = (v: string) => {
-        const id = v === '_' ? '' : v;
-        setData('brand_id', id);
+        setData((prev) => {
+            if (prev.model_id === MODEL_OTHER) {
+                return { ...prev, brand_id: id };
+            }
+            return { ...prev, brand_id: id, model_id: '', new_model_name: '' };
+        });
     };
 
     const handleModelSelectChange = (v: string) => {
@@ -418,13 +411,7 @@ export function AssetFormModal({
                     </div>
                 </div>
 
-                <div
-                    className={
-                        showMarcaColumn
-                            ? 'grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-4'
-                            : 'grid grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-3'
-                    }
-                >
+                <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-4">
                     <div className="space-y-2">
                         <Label>
                             Categoría <span className="text-red-500">*</span>
@@ -473,31 +460,32 @@ export function AssetFormModal({
                         </Select>
                     </div>
 
-                    {showMarcaColumn && (
-                        <div className="space-y-2">
-                            <Label>Marca</Label>
-                            <Select
-                                value={data.brand_id === '' ? '_' : data.brand_id}
-                                onValueChange={handleBrandChange}
-                                disabled={!subcategoryId}
-                            >
-                                <SelectTrigger className="w-full border-border bg-background">
-                                    <SelectValue placeholder="Seleccione marca" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="_">Seleccione marca</SelectItem>
-                                    {brandsForSelect.map((b) => (
-                                        <SelectItem key={b.id} value={b.id}>
-                                            {b.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            {errors.brand_id && (
-                                <p className="text-sm text-destructive">{errors.brand_id}</p>
-                            )}
-                        </div>
-                    )}
+                    <div className="space-y-2">
+                        <Label>
+                            Marca{' '}
+                            <span className="font-normal text-muted-foreground">(opcional)</span>
+                        </Label>
+                        <Select
+                            value={data.brand_id === '' ? '_' : data.brand_id}
+                            onValueChange={handleBrandChange}
+                            disabled={!subcategoryId}
+                        >
+                            <SelectTrigger className="w-full border-border bg-background">
+                                <SelectValue placeholder="—" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="_">— Sin marca</SelectItem>
+                                {brandsForSelect.map((b) => (
+                                    <SelectItem key={b.id} value={b.id}>
+                                        {b.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {errors.brand_id && (
+                            <p className="text-sm text-destructive">{errors.brand_id}</p>
+                        )}
+                    </div>
 
                     <div className="space-y-2">
                         <Label>Modelo (opcional)</Label>
@@ -510,18 +498,10 @@ export function AssetFormModal({
                                       : data.model_id
                             }
                             onValueChange={handleModelSelectChange}
-                            disabled={
-                                !subcategoryId || (showMarcaColumn && data.brand_id === '')
-                            }
+                            disabled={!subcategoryId}
                         >
                             <SelectTrigger className="w-full border-border bg-background">
-                                <SelectValue
-                                    placeholder={
-                                        showMarcaColumn && !data.brand_id
-                                            ? 'Primero elija marca'
-                                            : 'Seleccione modelo'
-                                    }
-                                />
+                                <SelectValue placeholder="Seleccione modelo" />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="_">Seleccione modelo</SelectItem>
@@ -541,36 +521,7 @@ export function AssetFormModal({
 
                 {isOtherModel && (
                     <div className="grid grid-cols-1 gap-x-6 gap-y-4 border-t border-border pt-4 md:grid-cols-2">
-                        {!showMarcaColumn && (
-                            <div className="space-y-2">
-                                <Label>
-                                    Marca <span className="text-red-500">*</span>
-                                </Label>
-                                <Select
-                                    value={data.brand_id === '' ? '_' : data.brand_id}
-                                    onValueChange={handleBrandChangeKeepOther}
-                                    disabled={!subcategoryId}
-                                >
-                                    <SelectTrigger className="w-full border-border bg-background">
-                                        <SelectValue placeholder="Seleccione marca" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="_">Seleccione marca</SelectItem>
-                                        {brandsForSelect.map((b) => (
-                                            <SelectItem key={b.id} value={b.id}>
-                                                {b.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                {errors.brand_id && (
-                                    <p className="text-sm text-destructive">{errors.brand_id}</p>
-                                )}
-                            </div>
-                        )}
-                        <div
-                            className={`space-y-2 ${showMarcaColumn ? 'md:col-span-2' : ''}`}
-                        >
+                        <div className="space-y-2 md:col-span-2">
                             <Label>
                                 Nombre del modelo <span className="text-red-500">*</span>
                             </Label>
