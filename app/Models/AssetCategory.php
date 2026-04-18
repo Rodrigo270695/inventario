@@ -76,9 +76,19 @@ class AssetCategory extends Model
         return $query->where('type', 'minor_asset');
     }
 
-    /** Categoría «C» — servicios y mantenimiento (formularios de servicios). */
+    /**
+     * Categoría «C» — servicios y mantenimiento (formularios de servicios).
+     * Incluye `service_maintenance` y, en ERP, filas «CATEGORÍA C» con tipo tributario `other`
+     * y código CAT-S… (p. ej. mant. muebles CAT-SEN).
+     */
     public function scopeForServiceMaintenanceForms(Builder $query): Builder
     {
-        return $query->where('type', 'service_maintenance');
+        return $query->where(function (Builder $q): void {
+            $q->where('type', 'service_maintenance')
+                ->orWhere(function (Builder $q2): void {
+                    $q2->where('type', 'other')
+                        ->whereRaw('UPPER(code) LIKE ?', ['CAT-S%']);
+                });
+        });
     }
 }
