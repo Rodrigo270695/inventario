@@ -362,6 +362,7 @@ export default function AssetsIndex({
             key: 'code',
             label: 'Código',
             sortable: true,
+            className: 'text-foreground',
             render: (row) => (
                 <span className="font-medium text-foreground">{row.code}</span>
             ),
@@ -370,7 +371,7 @@ export default function AssetsIndex({
             key: 'serial_number',
             label: 'Nº serie',
             sortable: false,
-            className: 'text-foreground text-xs',
+            className: 'text-foreground',
             render: (row) => (
                 <span>{row.serial_number ?? '—'}</span>
             ),
@@ -379,7 +380,7 @@ export default function AssetsIndex({
             key: 'model',
             label: 'Marca-Modelo',
             sortable: false,
-            className: 'text-foreground text-xs min-w-[9rem]',
+            className: 'text-foreground min-w-[9rem]',
             render: (row) => (
                 <span className="whitespace-nowrap">{formatAssetBrandModel(row)}</span>
             ),
@@ -388,14 +389,14 @@ export default function AssetsIndex({
             key: 'subcategory',
             label: 'Subcategoría',
             sortable: false,
-            className: 'text-foreground text-xs min-w-[6rem]',
+            className: 'text-foreground min-w-[6rem]',
             render: (row) => <span>{formatAssetSubcategory(row)}</span>,
         },
         {
             key: 'acquisition_date',
             label: 'F. adquisición',
             sortable: false,
-            className: 'text-foreground text-xs whitespace-nowrap',
+            className: 'text-foreground whitespace-nowrap',
             render: (row) => (
                 <span>{formatAcquisitionDate(row.acquisition_date)}</span>
             ),
@@ -404,7 +405,7 @@ export default function AssetsIndex({
             key: 'acquisition_value',
             label: 'Valor adq.',
             sortable: false,
-            className: 'text-foreground text-xs whitespace-nowrap tabular-nums',
+            className: 'text-foreground whitespace-nowrap tabular-nums',
             render: (row) => (
                 <span>{formatAcquisitionValue(row.acquisition_value)}</span>
             ),
@@ -413,9 +414,9 @@ export default function AssetsIndex({
             key: 'status',
             label: 'Estado',
             sortable: true,
-            className: 'text-foreground text-xs',
+            className: 'text-foreground',
             render: (row) => (
-                <span className="inline-flex rounded-full bg-blue-100 px-2.5 py-0.5 text-[11px] font-medium text-blue-700 dark:bg-blue-500/20 dark:text-blue-400">
+                <span className="inline-flex rounded-full bg-blue-100 px-1.5 py-px text-[10px] font-medium leading-tight text-blue-700 dark:bg-blue-500/20 dark:text-blue-400">
                     {STATUS_LABELS[row.status] ?? row.status}
                 </span>
             ),
@@ -424,7 +425,7 @@ export default function AssetsIndex({
             key: 'condition',
             label: 'Condición',
             sortable: false,
-            className: 'text-foreground text-xs',
+            className: 'text-foreground',
             render: (row) => (
                 <span>{conditionToLabel(row.condition)}</span>
             ),
@@ -433,7 +434,7 @@ export default function AssetsIndex({
             key: 'warehouse',
             label: 'Almacén',
             sortable: false,
-            className: 'text-foreground text-xs',
+            className: 'text-foreground',
             render: (row) => (
                 <span>{row.warehouse ? `${row.warehouse.name}${row.warehouse.code ? ` (${row.warehouse.code})` : ''}` : '—'}</span>
             ),
@@ -442,7 +443,7 @@ export default function AssetsIndex({
             key: 'created_at',
             label: 'Creado',
             sortable: true,
-            className: 'text-foreground text-xs',
+            className: 'text-foreground',
             render: (row) =>
                 row.created_at
                     ? new Date(row.created_at).toLocaleDateString('es', {
@@ -457,19 +458,19 @@ export default function AssetsIndex({
             label: '',
             className: 'w-0 text-right',
             render: (row) => (
-                <div className="flex justify-end gap-1">
+                <div className="flex justify-end gap-0.5">
                     {canBarcodeView && (
                         <Button
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="cursor-pointer shrink-0 size-8 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
+                            className="cursor-pointer shrink-0 size-7 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
                             aria-label={`Imprimir barcode de ${row.code}`}
                             onClick={() => {
                                 window.open(`/admin/assets/${row.id}/barcode/pdf`, '_blank', 'noopener,noreferrer');
                             }}
                         >
-                            <Printer className="size-4" />
+                            <Printer className="size-3.5" />
                         </Button>
                     )}
                     {canConfigure && (
@@ -477,13 +478,13 @@ export default function AssetsIndex({
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="cursor-pointer shrink-0 size-8 text-violet-600 hover:bg-violet-50 hover:text-violet-700 dark:text-violet-400 dark:hover:bg-violet-950/30"
+                            className="cursor-pointer shrink-0 size-7 text-violet-600 hover:bg-violet-50 hover:text-violet-700 dark:text-violet-400 dark:hover:bg-violet-950/30"
                             aria-label={`Configurar ${row.code}`}
                             onClick={() => {
                                 router.get(`/admin/assets/${row.id}/config`);
                             }}
                         >
-                            <Settings className="size-4" />
+                            <Settings className="size-3.5" />
                         </Button>
                     )}
                     {canUpdate && (
@@ -491,14 +492,14 @@ export default function AssetsIndex({
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="cursor-pointer shrink-0 size-8 text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:text-blue-400 dark:hover:bg-blue-950/30"
+                            className="cursor-pointer shrink-0 size-7 text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:text-blue-400 dark:hover:bg-blue-950/30"
                             aria-label={`Editar ${row.code}`}
                             onClick={() => {
                                 setFormAsset(row);
                                 setFormOpen(true);
                             }}
                         >
-                            <Pencil className="size-4" />
+                            <Pencil className="size-3.5" />
                         </Button>
                     )}
                     {canDelete && (
@@ -506,11 +507,11 @@ export default function AssetsIndex({
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="cursor-pointer shrink-0 size-8 text-rose-500 hover:bg-rose-50 hover:text-rose-600 dark:text-rose-400/80 dark:hover:bg-rose-900/20"
+                            className="cursor-pointer shrink-0 size-7 text-rose-500 hover:bg-rose-50 hover:text-rose-600 dark:text-rose-400/80 dark:hover:bg-rose-900/20"
                             aria-label={`Eliminar ${row.code}`}
                             onClick={() => setDeleteAsset(row)}
                         >
-                            <Trash2 className="size-4" />
+                            <Trash2 className="size-3.5" />
                         </Button>
                     )}
                 </div>
@@ -753,7 +754,7 @@ export default function AssetsIndex({
                     </div>
                     <div className="hidden md:block">
                         <DataTable
-                            className="[&_table]:min-w-[1100px]"
+                            className="[&_table]:min-w-[1000px] text-[11px] leading-snug [&_th]:px-2.5 [&_th]:py-1.5 [&_td]:px-2.5 [&_td]:py-1.5 [&_th_svg]:size-3"
                             columns={columns}
                             data={data}
                             keyExtractor={(r) => r.id}
