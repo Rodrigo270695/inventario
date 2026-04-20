@@ -393,9 +393,8 @@ class AssetController extends Controller
         unset($validated['subcategory_id']);
 
         if ($newModelName !== '') {
-            $brandId = $validated['brand_id'] ?? null;
             $validated['model_id'] = $this->resolveOrCreateAssetModelId(
-                (string) $brandId,
+                $validated['brand_id'] ?? null,
                 (string) $subcategoryIdForNew,
                 $newModelName
             );
@@ -438,13 +437,21 @@ class AssetController extends Controller
         return $brandId ?: null;
     }
 
-    private function resolveOrCreateAssetModelId(string $brandId, string $subcategoryId, string $modelName): string
+    private function resolveOrCreateAssetModelId(?string $brandId, string $subcategoryId, string $modelName): string
     {
-        $existing = AssetModel::withTrashed()
-            ->where('brand_id', $brandId)
+        $brandId = ($brandId !== null && $brandId !== '') ? $brandId : null;
+
+        $query = AssetModel::withTrashed()
             ->where('subcategory_id', $subcategoryId)
-            ->whereRaw('LOWER(name) = ?', [mb_strtolower($modelName)])
-            ->first();
+            ->whereRaw('LOWER(name) = ?', [mb_strtolower($modelName)]);
+
+        if ($brandId !== null) {
+            $query->where('brand_id', $brandId);
+        } else {
+            $query->whereNull('brand_id');
+        }
+
+        $existing = $query->first();
 
         if ($existing) {
             if ($existing->trashed()) {
@@ -559,9 +566,8 @@ class AssetController extends Controller
         unset($validated['subcategory_id']);
 
         if ($newModelName !== '') {
-            $brandId = $validated['brand_id'] ?? null;
             $validated['model_id'] = $this->resolveOrCreateAssetModelId(
-                (string) $brandId,
+                $validated['brand_id'] ?? null,
                 (string) $subcategoryIdForNew,
                 $newModelName
             );

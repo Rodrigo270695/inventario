@@ -83,12 +83,8 @@ class AssetRequest extends FormRequest
                     $validator->errors()->add('new_model_name', 'No puede indicar un modelo nuevo si ya seleccionó un modelo existente.');
                 }
                 $subcategoryId = $this->input('subcategory_id');
-                $brandId = $this->input('brand_id');
                 if (! $subcategoryId) {
                     $validator->errors()->add('subcategory_id', 'La subcategoría es obligatoria para registrar un modelo nuevo.');
-                }
-                if (! $brandId) {
-                    $validator->errors()->add('brand_id', 'La marca es obligatoria para registrar un modelo nuevo.');
                 }
                 if ($subcategoryId && $categoryId) {
                     $sub = AssetSubcategory::query()->find($subcategoryId);

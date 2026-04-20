@@ -313,9 +313,7 @@ export function AssetFormModal({
 
     const otherModelValid =
         !isOtherModel ||
-        (data.new_model_name.trim() !== '' &&
-            data.brand_id !== '' &&
-            subcategoryId !== '');
+        (data.new_model_name.trim() !== '' && subcategoryId !== '');
 
     const canSubmit = otherModelValid && (isEdit
         ? data.code.trim() !== '' && data.category_id !== '' && data.warehouse_id !== ''
