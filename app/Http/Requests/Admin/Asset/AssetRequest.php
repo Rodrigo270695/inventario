@@ -48,12 +48,7 @@ class AssetRequest extends FormRequest
                 'max:60',
                 Rule::unique('assets', 'code')->whereNull('deleted_at')->ignore($asset?->id),
             ],
-            'serial_number' => [
-                'nullable',
-                'string',
-                'max:200',
-                Rule::unique('assets', 'serial_number')->whereNull('deleted_at')->ignore($asset?->id),
-            ],
+            'serial_number' => ['nullable', 'string', 'max:200'],
             'model_id' => ['nullable', 'uuid', 'exists:asset_models,id'],
             'brand_id' => ['nullable', 'uuid', 'exists:asset_brands,id'],
             'subcategory_id' => ['nullable', 'uuid', 'exists:asset_subcategories,id'],
@@ -83,8 +78,12 @@ class AssetRequest extends FormRequest
                     $validator->errors()->add('new_model_name', 'No puede indicar un modelo nuevo si ya seleccionó un modelo existente.');
                 }
                 $subcategoryId = $this->input('subcategory_id');
+                $brandId = $this->input('brand_id');
                 if (! $subcategoryId) {
                     $validator->errors()->add('subcategory_id', 'La subcategoría es obligatoria para registrar un modelo nuevo.');
+                }
+                if (! $brandId) {
+                    $validator->errors()->add('brand_id', 'La marca es obligatoria para registrar un modelo nuevo.');
                 }
                 if ($subcategoryId && $categoryId) {
                     $sub = AssetSubcategory::query()->find($subcategoryId);

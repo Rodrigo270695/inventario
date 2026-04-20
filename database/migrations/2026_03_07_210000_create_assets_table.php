@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('assets', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->string('code', 60)->unique();
-            $table->string('serial_number', 200)->nullable()->unique();
+            $table->string('serial_number', 200)->nullable();
             $table->foreignUuid('model_id')->constrained('asset_models');
             $table->foreignUuid('category_id')->constrained('asset_categories');
             $table->foreignUuid('purchase_item_id')->nullable()->constrained('purchase_items')->nullOnDelete();
