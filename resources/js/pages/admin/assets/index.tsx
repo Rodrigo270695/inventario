@@ -436,7 +436,7 @@ export default function AssetsIndex({
             sortable: false,
             className: 'text-foreground',
             render: (row) => (
-                <span>{row.warehouse ? `${row.warehouse.name}${row.warehouse.code ? ` (${row.warehouse.code})` : ''}` : '—'}</span>
+                <span>{row.warehouse?.name ?? '—'}</span>
             ),
         },
         {
@@ -817,7 +817,7 @@ export default function AssetsIndex({
                                                     <div className="flex flex-wrap gap-x-2">
                                                         <dt className="text-muted-foreground shrink-0">Almacén:</dt>
                                                         <dd className="text-foreground">
-                                                            {row.warehouse ? `${row.warehouse.name}${row.warehouse.code ? ` (${row.warehouse.code})` : ''}` : '—'}
+                                                            {row.warehouse?.name ?? '—'}
                                                         </dd>
                                                     </div>
                                                     {row.created_at && (
