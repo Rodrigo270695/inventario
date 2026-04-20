@@ -198,6 +198,17 @@ function formatMoneyPen(value: number | string | null | undefined): string {
     return new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(n);
 }
 
+function formatDepreciationPercent(value: number | string | null | undefined): string {
+    if (value === null || value === undefined || value === '') {
+        return '—';
+    }
+    const n = typeof value === 'string' ? Number.parseFloat(value) : value;
+    if (Number.isNaN(n)) {
+        return '—';
+    }
+    return `${new Intl.NumberFormat('es-PE', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(n)} %`;
+}
+
 export default function AssetsIndex({
     assets,
     categoriesForSelect,
@@ -418,6 +429,15 @@ export default function AssetsIndex({
             className: 'text-foreground whitespace-nowrap tabular-nums',
             render: (row) => (
                 <span>{formatMoneyPen(row.current_value)}</span>
+            ),
+        },
+        {
+            key: 'depreciation_rate',
+            label: 'Deprec. %',
+            sortable: false,
+            className: 'text-foreground whitespace-nowrap tabular-nums',
+            render: (row) => (
+                <span>{formatDepreciationPercent(row.depreciation_rate)}</span>
             ),
         },
         {
@@ -764,7 +784,7 @@ export default function AssetsIndex({
                     </div>
                     <div className="hidden md:block">
                         <DataTable
-                            className="[&_table]:min-w-[1080px] text-[11px] leading-snug [&_th]:px-2.5 [&_th]:py-1.5 [&_td]:px-2.5 [&_td]:py-1.5 [&_th_svg]:size-3"
+                            className="[&_table]:min-w-[1160px] text-[11px] leading-snug [&_th]:px-2.5 [&_th]:py-1.5 [&_td]:px-2.5 [&_td]:py-1.5 [&_th_svg]:size-3"
                             columns={columns}
                             data={data}
                             keyExtractor={(r) => r.id}
@@ -820,6 +840,12 @@ export default function AssetsIndex({
                                                         <dt className="text-muted-foreground shrink-0">Valor actual:</dt>
                                                         <dd className="text-foreground tabular-nums">
                                                             {formatMoneyPen(row.current_value)}
+                                                        </dd>
+                                                    </div>
+                                                    <div className="flex flex-wrap gap-x-2">
+                                                        <dt className="text-muted-foreground shrink-0">Depreciación:</dt>
+                                                        <dd className="text-foreground tabular-nums">
+                                                            {formatDepreciationPercent(row.depreciation_rate)}
                                                         </dd>
                                                     </div>
                                                     <div className="flex flex-wrap gap-x-2">
