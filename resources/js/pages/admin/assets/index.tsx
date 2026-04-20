@@ -186,7 +186,8 @@ function formatAcquisitionDate(iso: string | null | undefined): string {
     });
 }
 
-function formatAcquisitionValue(value: number | string | null | undefined): string {
+/** Soles (PEN) para valor de adquisición, valor actual, etc. */
+function formatMoneyPen(value: number | string | null | undefined): string {
     if (value === null || value === undefined || value === '') {
         return '—';
     }
@@ -407,7 +408,16 @@ export default function AssetsIndex({
             sortable: false,
             className: 'text-foreground whitespace-nowrap tabular-nums',
             render: (row) => (
-                <span>{formatAcquisitionValue(row.acquisition_value)}</span>
+                <span>{formatMoneyPen(row.acquisition_value)}</span>
+            ),
+        },
+        {
+            key: 'current_value',
+            label: 'Valor actual',
+            sortable: false,
+            className: 'text-foreground whitespace-nowrap tabular-nums',
+            render: (row) => (
+                <span>{formatMoneyPen(row.current_value)}</span>
             ),
         },
         {
@@ -754,7 +764,7 @@ export default function AssetsIndex({
                     </div>
                     <div className="hidden md:block">
                         <DataTable
-                            className="[&_table]:min-w-[1000px] text-[11px] leading-snug [&_th]:px-2.5 [&_th]:py-1.5 [&_td]:px-2.5 [&_td]:py-1.5 [&_th_svg]:size-3"
+                            className="[&_table]:min-w-[1080px] text-[11px] leading-snug [&_th]:px-2.5 [&_th]:py-1.5 [&_td]:px-2.5 [&_td]:py-1.5 [&_th_svg]:size-3"
                             columns={columns}
                             data={data}
                             keyExtractor={(r) => r.id}
@@ -803,7 +813,13 @@ export default function AssetsIndex({
                                                     <div className="flex flex-wrap gap-x-2">
                                                         <dt className="text-muted-foreground shrink-0">Valor adq.:</dt>
                                                         <dd className="text-foreground tabular-nums">
-                                                            {formatAcquisitionValue(row.acquisition_value)}
+                                                            {formatMoneyPen(row.acquisition_value)}
+                                                        </dd>
+                                                    </div>
+                                                    <div className="flex flex-wrap gap-x-2">
+                                                        <dt className="text-muted-foreground shrink-0">Valor actual:</dt>
+                                                        <dd className="text-foreground tabular-nums">
+                                                            {formatMoneyPen(row.current_value)}
                                                         </dd>
                                                     </div>
                                                     <div className="flex flex-wrap gap-x-2">
