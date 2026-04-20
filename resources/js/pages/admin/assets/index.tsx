@@ -156,11 +156,46 @@ const STATUS_BADGE_CLASSES: Record<string, string> = {
     sold: 'bg-violet-100 text-violet-800 dark:bg-violet-500/25 dark:text-violet-300',
 };
 
-const CATEGORY_TYPE_LABELS: Record<string, string> = {
-    fixed_asset: 'Activo fijo',
-    minor_asset: 'Activo menor',
-    intangible: 'Intangible',
-};
+/** Marca y modelo en un solo texto (p. ej. `EPSON-M244A`). */
+function formatAssetBrandModel(row: Asset): string {
+    const brand = (row.model?.brand?.name ?? row.brand?.name ?? '').trim();
+    const modelName = (row.model?.name ?? '').trim();
+    if (brand !== '' && modelName !== '') {
+        return `${brand}-${modelName}`;
+    }
+    return brand || modelName || '—';
+}
+
+function formatAssetSubcategory(row: Asset): string {
+    const name = row.model?.subcategory?.name?.trim();
+    return name !== '' && name != null ? name : '—';
+}
+
+function formatAcquisitionDate(iso: string | null | undefined): string {
+    if (iso == null || iso === '') {
+        return '—';
+    }
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) {
+        return '—';
+    }
+    return d.toLocaleDateString('es', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+    });
+}
+
+function formatAcquisitionValue(value: number | string | null | undefined): string {
+    if (value === null || value === undefined || value === '') {
+        return '—';
+    }
+    const n = typeof value === 'string' ? Number.parseFloat(value) : value;
+    if (Number.isNaN(n)) {
+        return '—';
+    }
+    return new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(n);
+}
 
 export default function AssetsIndex({
     assets,
@@ -342,33 +377,37 @@ export default function AssetsIndex({
         },
         {
             key: 'model',
-            label: 'Modelo',
+            label: 'Marca-Modelo',
             sortable: false,
-            className: 'text-foreground text-xs',
+            className: 'text-foreground text-xs min-w-[9rem]',
             render: (row) => (
-                <span>{row.model?.name ?? '—'}</span>
+                <span className="whitespace-nowrap">{formatAssetBrandModel(row)}</span>
             ),
         },
         {
-            key: 'category',
-            label: 'Categoría',
+            key: 'subcategory',
+            label: 'Subcategoría',
             sortable: false,
-            className: 'text-foreground text-xs',
-            render: (row) => {
-                const rawType = (row.category as { type?: string } | null | undefined)?.type ?? '';
-                const catType =
-                    rawType !== ''
-                        ? CATEGORY_TYPE_LABELS[rawType] ?? rawType.replace(/_/g, ' ')
-                        : '';
-                const catName = row.category?.name ?? '';
-                const cat =
-                    catType && catName
-                        ? `${catType} - ${catName}`
-                        : catName || catType || '';
-                const sub = row.model?.subcategory?.name;
-                const text = sub ? `${cat} · ${sub}` : cat || '—';
-                return <span>{text}</span>;
-            },
+            className: 'text-foreground text-xs min-w-[6rem]',
+            render: (row) => <span>{formatAssetSubcategory(row)}</span>,
+        },
+        {
+            key: 'acquisition_date',
+            label: 'F. adquisición',
+            sortable: false,
+            className: 'text-foreground text-xs whitespace-nowrap',
+            render: (row) => (
+                <span>{formatAcquisitionDate(row.acquisition_date)}</span>
+            ),
+        },
+        {
+            key: 'acquisition_value',
+            label: 'Valor adq.',
+            sortable: false,
+            className: 'text-foreground text-xs whitespace-nowrap tabular-nums',
+            render: (row) => (
+                <span>{formatAcquisitionValue(row.acquisition_value)}</span>
+            ),
         },
         {
             key: 'status',
@@ -594,7 +633,7 @@ export default function AssetsIndex({
                         <SearchFilter
                             value={searchInput}
                             onChange={setSearchInput}
-                            placeholder="Buscar por código, serie, modelo o categoría…"
+                            placeholder="Buscar por código, serie, modelo, marca o categoría…"
                             className="w-full sm:max-w-xs [&_input]:bg-white [&_input]:border-border [&_input]:text-foreground"
                         />
                         {/* 1. Zonal */}
@@ -714,6 +753,7 @@ export default function AssetsIndex({
                     </div>
                     <div className="hidden md:block">
                         <DataTable
+                            className="[&_table]:min-w-[1100px]"
                             columns={columns}
                             data={data}
                             keyExtractor={(r) => r.id}
@@ -744,15 +784,25 @@ export default function AssetsIndex({
                                                         <dd className="text-foreground">{row.serial_number ?? '—'}</dd>
                                                     </div>
                                                     <div className="flex flex-wrap gap-x-2">
-                                                        <dt className="text-muted-foreground shrink-0">Modelo:</dt>
-                                                        <dd className="text-foreground">{row.model?.name ?? '—'}</dd>
+                                                        <dt className="text-muted-foreground shrink-0">Marca-Modelo:</dt>
+                                                        <dd className="text-foreground break-all">
+                                                            {formatAssetBrandModel(row)}
+                                                        </dd>
                                                     </div>
                                                     <div className="flex flex-wrap gap-x-2">
-                                                        <dt className="text-muted-foreground shrink-0">Categoría:</dt>
+                                                        <dt className="text-muted-foreground shrink-0">Subcategoría:</dt>
+                                                        <dd className="text-foreground">{formatAssetSubcategory(row)}</dd>
+                                                    </div>
+                                                    <div className="flex flex-wrap gap-x-2">
+                                                        <dt className="text-muted-foreground shrink-0">F. adquisición:</dt>
                                                         <dd className="text-foreground">
-                                                            {row.model?.subcategory?.name
-                                                                ? `${row.category?.name ?? ''} · ${row.model.subcategory.name}`
-                                                                : (row.category?.name ?? '—')}
+                                                            {formatAcquisitionDate(row.acquisition_date)}
+                                                        </dd>
+                                                    </div>
+                                                    <div className="flex flex-wrap gap-x-2">
+                                                        <dt className="text-muted-foreground shrink-0">Valor adq.:</dt>
+                                                        <dd className="text-foreground tabular-nums">
+                                                            {formatAcquisitionValue(row.acquisition_value)}
                                                         </dd>
                                                     </div>
                                                     <div className="flex flex-wrap gap-x-2">
