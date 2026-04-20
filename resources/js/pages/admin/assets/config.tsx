@@ -6,7 +6,7 @@ import type { BreadcrumbItem } from '@/types';
 import { cn } from '@/lib/utils';
 import { Toast } from '@/components/toast';
 import type { ToastMessage } from '@/components/toast';
-import { SUBCATEGORY_CODES_WITH_COMPUTER_TAB } from '@/constants/asset-config';
+import { shouldShowComputerTabs } from '@/constants/asset-config';
 import {
     AssetConfigAssignmentsTab,
     AssetConfigComputerComponentsTab,
@@ -41,9 +41,10 @@ export default function AssetConfigPage({
     computerComponents,
     componentsForComputer,
 }: AssetConfigProps) {
-    const showComputerTab =
-        !!asset.model?.subcategory?.code &&
-        SUBCATEGORY_CODES_WITH_COMPUTER_TAB.includes(asset.model.subcategory.code);
+    const showComputerTab = shouldShowComputerTabs({
+        subcategoryCode: asset.model?.subcategory?.code,
+        categoryName: asset.model?.subcategory?.category?.name,
+    });
 
     const [tab, setTab] = useState<TabId>('general');
     const [toastQueue, setToastQueue] = useState<Array<ToastMessage & { id: number }>>([]);
