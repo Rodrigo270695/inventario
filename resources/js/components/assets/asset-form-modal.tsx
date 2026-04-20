@@ -460,66 +460,65 @@ export function AssetFormModal({
                         </Select>
                     </div>
 
-                    <div className="space-y-4 min-w-0">
-                        <div className="space-y-2">
-                            <Label>
-                                Marca{' '}
-                                <span className="font-normal text-muted-foreground">(opcional)</span>
-                            </Label>
-                            <Select
-                                value={data.brand_id === '' ? '_' : data.brand_id}
-                                onValueChange={handleBrandChange}
-                                disabled={!subcategoryId}
-                            >
-                                <SelectTrigger className="w-full border-border bg-background">
-                                    <SelectValue placeholder="—" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="_">— Sin marca</SelectItem>
-                                    {brandsForSelect.map((b) => (
-                                        <SelectItem key={b.id} value={b.id}>
-                                            {b.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            {errors.brand_id && (
-                                <p className="text-sm text-destructive">{errors.brand_id}</p>
-                            )}
-                        </div>
-                        <div className="space-y-2">
-                            <Label>
-                                Modelo{' '}
-                                <span className="font-normal text-muted-foreground">(opcional)</span>
-                            </Label>
-                            <Select
-                                value={
-                                    data.model_id === ''
-                                        ? '_'
-                                        : data.model_id === MODEL_OTHER
-                                          ? MODEL_OTHER
-                                          : data.model_id
-                                }
-                                onValueChange={handleModelSelectChange}
-                                disabled={!subcategoryId}
-                            >
-                                <SelectTrigger className="w-full border-border bg-background">
-                                    <SelectValue placeholder="Seleccione modelo" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="_">Seleccione modelo</SelectItem>
-                                    {modelsFiltered.map((m) => (
-                                        <SelectItem key={m.id} value={m.id}>
-                                            {m.brand?.name ? `${m.brand.name} - ${m.name}` : m.name}
-                                        </SelectItem>
-                                    ))}
-                                    <SelectItem value={MODEL_OTHER}>Otro (registrar nuevo)</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            {errors.model_id && (
-                                <p className="text-sm text-destructive">{errors.model_id}</p>
-                            )}
-                        </div>
+                    <div className="space-y-2">
+                        <Label>
+                            Marca{' '}
+                            <span className="font-normal text-muted-foreground">(opcional)</span>
+                        </Label>
+                        <Select
+                            value={data.brand_id === '' ? '_' : data.brand_id}
+                            onValueChange={handleBrandChange}
+                            disabled={!subcategoryId}
+                        >
+                            <SelectTrigger className="w-full border-border bg-background">
+                                <SelectValue placeholder="—" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="_">— Sin marca</SelectItem>
+                                {brandsForSelect.map((b) => (
+                                    <SelectItem key={b.id} value={b.id}>
+                                        {b.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {errors.brand_id && (
+                            <p className="text-sm text-destructive">{errors.brand_id}</p>
+                        )}
+                    </div>
+
+                    <div className="space-y-2 md:col-span-3">
+                        <Label>
+                            Modelo{' '}
+                            <span className="font-normal text-muted-foreground">(opcional)</span>
+                        </Label>
+                        <Select
+                            value={
+                                data.model_id === ''
+                                    ? '_'
+                                    : data.model_id === MODEL_OTHER
+                                      ? MODEL_OTHER
+                                      : data.model_id
+                            }
+                            onValueChange={handleModelSelectChange}
+                            disabled={!subcategoryId}
+                        >
+                            <SelectTrigger className="w-full border-border bg-background">
+                                <SelectValue placeholder="Seleccione modelo" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="_">Seleccione modelo</SelectItem>
+                                {modelsFiltered.map((m) => (
+                                    <SelectItem key={m.id} value={m.id}>
+                                        {m.brand?.name ? `${m.brand.name} - ${m.name}` : m.name}
+                                    </SelectItem>
+                                ))}
+                                <SelectItem value={MODEL_OTHER}>Otro (registrar nuevo)</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        {errors.model_id && (
+                            <p className="text-sm text-destructive">{errors.model_id}</p>
+                        )}
                     </div>
                 </div>
 
