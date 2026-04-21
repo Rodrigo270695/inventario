@@ -15,7 +15,7 @@ export const SUBCATEGORY_CODES_WITH_COMPUTER_TAB: string[] = [
 
 /** Fragmentos de categoría que habilitan tabs de PC (normalizados). */
 export const CATEGORY_KEYWORDS_WITH_COMPUTER_TAB: string[] = [
-    'EQUIPOS DE COMPUTO',
+    'EQUIPOS DE CÓMPUTO',
 ];
 
 function normalizeKey(value: string | null | undefined): string {

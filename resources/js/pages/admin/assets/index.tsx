@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AssetFormModal } from '@/components/assets/asset-form-modal';
-import { conditionToLabel } from '@/constants/conditions';
+import { CONDITION_OPTIONS, conditionToLabel } from '@/constants/conditions';
 import type { DataTableColumn, SortOrder } from '@/components/data-table';
 import { DataTable } from '@/components/data-table';
 import { DeleteConfirmModal } from '@/components/delete-confirm-modal';
@@ -55,6 +55,7 @@ type Filters = {
     office_id: string;
     category_id: string;
     subcategory_id: string;
+    condition: string;
     status: string;
     sort_by: string;
     sort_order: SortOrder;
@@ -108,6 +109,7 @@ function buildUrl(params: Partial<Filters> & { page?: number }) {
     if (params.office_id !== undefined) search.set('office_id', paramStr(params.office_id));
     if (params.category_id !== undefined) search.set('category_id', paramStr(params.category_id));
     if (params.subcategory_id !== undefined) search.set('subcategory_id', paramStr(params.subcategory_id));
+    if (params.condition !== undefined) search.set('condition', paramStr(params.condition));
     if (params.status !== undefined) search.set('status', paramStr(params.status));
     if (params.sort_by !== undefined) search.set('sort_by', paramStr(params.sort_by) || 'code');
     if (params.sort_order !== undefined)
@@ -125,6 +127,7 @@ function buildExportUrl(filters: Filters): string {
     if (filters.office_id !== undefined && filters.office_id !== '') search.set('office_id', filters.office_id);
     if (filters.category_id !== undefined && filters.category_id !== '') search.set('category_id', filters.category_id);
     if (filters.subcategory_id !== undefined && filters.subcategory_id !== '') search.set('subcategory_id', filters.subcategory_id);
+    if (filters.condition !== undefined && filters.condition !== '') search.set('condition', filters.condition);
     if (filters.status !== undefined && filters.status !== '') search.set('status', filters.status);
     if (filters.sort_by !== undefined) search.set('sort_by', filters.sort_by);
     if (filters.sort_order !== undefined) search.set('sort_order', filters.sort_order);
@@ -660,13 +663,15 @@ export default function AssetsIndex({
                 />
 
                 <div className="rounded-xl border border-border bg-card shadow-sm">
-                    <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3 p-3 w-full">
-                        <SearchFilter
-                            value={searchInput}
-                            onChange={setSearchInput}
-                            placeholder="Buscar por código, serie, modelo, marca o categoría…"
-                            className="w-full sm:max-w-xs [&_input]:bg-white [&_input]:border-border [&_input]:text-foreground"
-                        />
+                    <div className="flex flex-col gap-3 p-3">
+                        <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:gap-3">
+                            <SearchFilter
+                                value={searchInput}
+                                onChange={setSearchInput}
+                                placeholder="Buscar por código, serie, modelo, marca o categoría…"
+                                className="w-full shrink-0 xl:w-72 xl:max-w-[22rem] [&_input]:bg-white [&_input]:border-border [&_input]:text-foreground"
+                            />
+                            <div className="grid min-w-0 flex-1 grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
                         {/* 1. Zonal */}
                         <Select
                             value={(filters.zonal_id ?? '') === '' ? '_' : filters.zonal_id}
@@ -678,7 +683,7 @@ export default function AssetsIndex({
                                 })
                             }
                         >
-                            <SelectTrigger className="w-full sm:w-[160px] border-border bg-background">
+                            <SelectTrigger className="h-9 w-full min-w-0 max-w-full border-border bg-background">
                                 <SelectValue placeholder="Zonal" />
                             </SelectTrigger>
                             <SelectContent>
@@ -701,7 +706,7 @@ export default function AssetsIndex({
                             }
                             disabled={!filters.zonal_id}
                         >
-                            <SelectTrigger className="w-full sm:w-[180px] border-border bg-background">
+                            <SelectTrigger className="h-9 w-full min-w-0 max-w-full border-border bg-background">
                                 <SelectValue placeholder="Oficina" />
                             </SelectTrigger>
                             <SelectContent>
@@ -724,7 +729,7 @@ export default function AssetsIndex({
                                 })
                             }
                         >
-                            <SelectTrigger className="w-full sm:w-[180px] border-border bg-background">
+                            <SelectTrigger className="h-9 w-full min-w-0 max-w-full border-border bg-background">
                                 <SelectValue placeholder="Categoría" />
                             </SelectTrigger>
                             <SelectContent>
@@ -747,7 +752,7 @@ export default function AssetsIndex({
                             }
                             disabled={!filters.category_id}
                         >
-                            <SelectTrigger className="w-full sm:w-[180px] border-border bg-background">
+                            <SelectTrigger className="h-9 w-full min-w-0 max-w-full border-border bg-background">
                                 <SelectValue placeholder="Subcategoría" />
                             </SelectTrigger>
                             <SelectContent>
@@ -759,7 +764,29 @@ export default function AssetsIndex({
                                 ))}
                             </SelectContent>
                         </Select>
-                        {/* 5. Estado */}
+                        {/* 5. Condición */}
+                        <Select
+                            value={(filters.condition ?? '') === '' ? '_' : filters.condition}
+                            onValueChange={(v) =>
+                                applyFilters({
+                                    condition: v === '_' ? '' : v,
+                                    page: 1,
+                                })
+                            }
+                        >
+                            <SelectTrigger className="h-9 w-full min-w-0 max-w-full border-border bg-background">
+                                <SelectValue placeholder="Condición" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="_">Todas las condiciones</SelectItem>
+                                {CONDITION_OPTIONS.map(({ value, label }) => (
+                                    <SelectItem key={value} value={value}>
+                                        {label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {/* 6. Estado */}
                         <Select
                             value={(filters.status ?? '') === '' ? '_' : filters.status}
                             onValueChange={(v) =>
@@ -769,7 +796,7 @@ export default function AssetsIndex({
                                 })
                             }
                         >
-                            <SelectTrigger className="w-full sm:w-[160px] border-border bg-background">
+                            <SelectTrigger className="h-9 w-full min-w-0 max-w-full border-border bg-background">
                                 <SelectValue placeholder="Estado" />
                             </SelectTrigger>
                             <SelectContent>
@@ -781,6 +808,8 @@ export default function AssetsIndex({
                                 ))}
                             </SelectContent>
                         </Select>
+                            </div>
+                        </div>
                     </div>
                     <div className="hidden md:block">
                         <DataTable

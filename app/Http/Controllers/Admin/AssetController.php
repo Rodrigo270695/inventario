@@ -36,6 +36,17 @@ class AssetController extends Controller
 
     private const VALID_ORDER = ['asc', 'desc'];
 
+    private const VALID_CONDITIONS = [
+        'new',
+        'good',
+        'regular',
+        'damaged',
+        'obsolete',
+        'broken',
+        'in_repair',
+        'pending_disposal',
+    ];
+
     private const PER_PAGE_OPTIONS = [5, 10, 15, 25, 50, 100];
 
     private const BARCODE_LABEL_WIDTH_MM = 50;
@@ -59,6 +70,11 @@ class AssetController extends Controller
         $categoryId = ($categoryId === null || $categoryId === 'null') ? '' : trim((string) $categoryId);
         $subcategoryId = $request->input('subcategory_id', '');
         $subcategoryId = ($subcategoryId === null || $subcategoryId === 'null') ? '' : trim((string) $subcategoryId);
+        $condition = $request->input('condition', '');
+        $condition = ($condition === null || $condition === 'null') ? '' : trim((string) $condition);
+        if ($condition !== '' && ! in_array($condition, self::VALID_CONDITIONS, true)) {
+            $condition = '';
+        }
 
         if (! in_array($sortBy, self::VALID_SORT, true)) {
             $sortBy = 'code';
@@ -115,6 +131,10 @@ class AssetController extends Controller
 
         if ($status !== '') {
             $query->where('status', $status);
+        }
+
+        if ($condition !== '') {
+            $query->where('condition', $condition);
         }
 
         $query->orderBy($sortBy, $sortOrder);
@@ -176,6 +196,9 @@ class AssetController extends Controller
         if ($status !== '') {
             $baseQuery->where('status', $status);
         }
+        if ($condition !== '') {
+            $baseQuery->where('condition', $condition);
+        }
         $totalFiltered = $baseQuery->count();
 
         $queryForStatusCounts = Asset::query();
@@ -206,6 +229,9 @@ class AssetController extends Controller
         if ($subcategoryId !== '') {
             $queryForStatusCounts->whereHas('model', fn ($m) => $m->where('subcategory_id', $subcategoryId));
         }
+        if ($condition !== '') {
+            $queryForStatusCounts->where('condition', $condition);
+        }
         $statusCounts = [];
         foreach (['stored', 'active', 'in_repair', 'in_transit', 'disposed', 'sold'] as $s) {
             $statusCounts[$s] = (clone $queryForStatusCounts)->where('status', $s)->count();
@@ -226,6 +252,7 @@ class AssetController extends Controller
                 'office_id' => $officeId,
                 'category_id' => $categoryId,
                 'subcategory_id' => $subcategoryId,
+                'condition' => $condition,
                 'status' => $status,
                 'sort_by' => $sortBy,
                 'sort_order' => $sortOrder,
@@ -233,7 +260,7 @@ class AssetController extends Controller
             ],
             'stats' => [
                 'total' => $totalFiltered,
-                'has_filters' => $q !== '' || $zonalId !== '' || $officeId !== '' || $categoryId !== '' || $subcategoryId !== '' || $status !== '',
+                'has_filters' => $q !== '' || $zonalId !== '' || $officeId !== '' || $categoryId !== '' || $subcategoryId !== '' || $condition !== '' || $status !== '',
                 'status_counts' => $statusCounts,
             ],
             'canBarcodeView' => $request->user()?->can('assets.barcodes.view') ?? false,
@@ -257,6 +284,11 @@ class AssetController extends Controller
         $categoryId = ($categoryId === null || $categoryId === 'null') ? '' : trim((string) $categoryId);
         $subcategoryId = $request->input('subcategory_id', '');
         $subcategoryId = ($subcategoryId === null || $subcategoryId === 'null') ? '' : trim((string) $subcategoryId);
+        $condition = $request->input('condition', '');
+        $condition = ($condition === null || $condition === 'null') ? '' : trim((string) $condition);
+        if ($condition !== '' && ! in_array($condition, self::VALID_CONDITIONS, true)) {
+            $condition = '';
+        }
 
         if (! in_array($sortBy, self::VALID_SORT, true)) {
             $sortBy = 'code';
@@ -306,6 +338,10 @@ class AssetController extends Controller
 
         if ($status !== '') {
             $query->where('status', $status);
+        }
+
+        if ($condition !== '') {
+            $query->where('condition', $condition);
         }
 
         $query->orderBy($sortBy, $sortOrder);
