@@ -1,6 +1,6 @@
-import { Head, usePage } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { AlertCircle, AlertTriangle, Bell, LayoutGrid } from 'lucide-react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { DataTableColumn } from '@/components/data-table';
 import { DataTable } from '@/components/data-table';
 import AppLayout from '@/layouts/app-layout';
@@ -80,6 +80,60 @@ export default function AlertsIndex({ rules, events, notifications }: AlertsInde
     const auth = (props as { auth?: { permissions?: string[] } }).auth;
     const permissions = auth?.permissions ?? [];
     const canView = permissions.includes('alerts.view');
+    const [markingAll, setMarkingAll] = useState(false);
+    const [markingNotificationId, setMarkingNotificationId] = useState<string | null>(null);
+    const unreadNotificationsCount = useMemo(
+        () => notifications.filter((notification) => !notification.read_at).length,
+        [notifications]
+    );
+
+    const getNotificationHref = (notification: NotificationRow): string | null => {
+        const href = notification.data?.href;
+        return typeof href === 'string' && href.trim() !== '' ? href : null;
+    };
+
+    const markAllNotificationsAsRead = () => {
+        if (markingAll || unreadNotificationsCount === 0) return;
+
+        router.post(
+            '/admin/alerts/notifications/read-all',
+            {},
+            {
+                preserveScroll: true,
+                onStart: () => setMarkingAll(true),
+                onFinish: () => setMarkingAll(false),
+            }
+        );
+    };
+
+    const openNotification = (notification: NotificationRow) => {
+        const href = getNotificationHref(notification);
+
+        if (!notification.read_at) {
+            setMarkingNotificationId(notification.id);
+            router.post(
+                `/admin/alerts/notifications/${notification.id}/read`,
+                {},
+                {
+                    preserveScroll: true,
+                    onFinish: () => {
+                        setMarkingNotificationId((current) => (current === notification.id ? null : current));
+                    },
+                    onSuccess: () => {
+                        if (href) {
+                            router.visit(href);
+                        }
+                    },
+                }
+            );
+
+            return;
+        }
+
+        if (href) {
+            router.visit(href);
+        }
+    };
 
     const eventColumns: DataTableColumn<AlertEvent>[] = useMemo(
         () => [
@@ -228,11 +282,21 @@ export default function AlertsIndex({ rules, events, notifications }: AlertsInde
                             </div>
 
                             <div className="rounded-xl border border-border/70 bg-card p-4 shadow-sm">
-                                <div className="mb-2 flex items-center gap-2">
-                                    <Bell className="size-4 text-inv-primary" />
-                                    <h2 className="text-sm font-semibold tracking-tight text-foreground">
-                                        Tus notificaciones
-                                    </h2>
+                                <div className="mb-2 flex items-center justify-between gap-3">
+                                    <div className="flex items-center gap-2">
+                                        <Bell className="size-4 text-inv-primary" />
+                                        <h2 className="text-sm font-semibold tracking-tight text-foreground">
+                                            Tus notificaciones
+                                        </h2>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={markAllNotificationsAsRead}
+                                        disabled={markingAll || unreadNotificationsCount === 0}
+                                        className="inline-flex items-center rounded-md border border-border px-2 py-1 text-[11px] font-medium text-muted-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        Marcar todas
+                                    </button>
                                 </div>
                                 {notifications.length === 0 ? (
                                     <p className="text-xs text-muted-foreground">
@@ -243,24 +307,33 @@ export default function AlertsIndex({ rules, events, notifications }: AlertsInde
                                         {notifications.map((n) => (
                                             <li
                                                 key={n.id}
-                                                className="rounded-lg border border-border/60 px-3 py-2"
+                                                className={`rounded-lg border border-border/60 px-3 py-2 transition ${
+                                                    !n.read_at ? 'bg-inv-primary/5' : ''
+                                                }`}
                                             >
-                                                <div className="flex items-center justify-between gap-2">
-                                                    <p className="text-xs font-medium text-foreground truncate">
-                                                        {n.data?.title ?? n.type}
+                                                <button
+                                                    type="button"
+                                                    className="w-full cursor-pointer text-left disabled:cursor-not-allowed"
+                                                    onClick={() => openNotification(n)}
+                                                    disabled={markingNotificationId === n.id}
+                                                >
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <p className="text-xs font-medium text-foreground truncate">
+                                                            {n.data?.title ?? n.type}
+                                                        </p>
+                                                        {!n.read_at && (
+                                                            <span className="inline-flex h-5 items-center rounded-full bg-inv-primary/10 px-2 text-[10px] font-medium text-inv-primary">
+                                                                Nueva
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <p className="mt-0.5 text-[11px] text-muted-foreground truncate">
+                                                        {n.data?.message ?? ''}
                                                     </p>
-                                                    {!n.read_at && (
-                                                        <span className="inline-flex h-5 items-center rounded-full bg-inv-primary/10 px-2 text-[10px] font-medium text-inv-primary">
-                                                            Nueva
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <p className="mt-0.5 text-[11px] text-muted-foreground truncate">
-                                                    {n.data?.message ?? ''}
-                                                </p>
-                                                <p className="mt-0.5 text-[10px] text-muted-foreground">
-                                                    {formatDateTime(n.created_at)}
-                                                </p>
+                                                    <p className="mt-0.5 text-[10px] text-muted-foreground">
+                                                        {formatDateTime(n.created_at)}
+                                                    </p>
+                                                </button>
                                             </li>
                                         ))}
                                     </ul>

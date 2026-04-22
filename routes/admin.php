@@ -38,6 +38,12 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::get('alerts', [AlertController::class, 'index'])
         ->middleware('permission:alerts.view')
         ->name('alerts.index');
+    Route::post('alerts/notifications/read-all', [AlertController::class, 'markAllNotificationsRead'])
+        ->middleware('permission:alerts.view')
+        ->name('alerts.notifications.read-all');
+    Route::post('alerts/notifications/{notification}/read', [AlertController::class, 'markNotificationRead'])
+        ->middleware('permission:alerts.view')
+        ->name('alerts.notifications.read');
     Route::get('depreciation', [DepreciationController::class, 'index'])
         ->middleware('permission:depreciation.view')
         ->name('depreciation.index');

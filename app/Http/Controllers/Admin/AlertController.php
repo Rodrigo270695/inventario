@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AlertEvent;
 use App\Models\AlertRule;
 use App\Models\Notification;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -45,5 +46,26 @@ class AlertController extends Controller
             'events' => $events,
             'notifications' => $notifications,
         ]);
+    }
+
+    public function markNotificationRead(Request $request, Notification $notification): RedirectResponse
+    {
+        abort_unless($notification->user_id === $request->user()->id, 403);
+
+        if (! $notification->read_at) {
+            $notification->forceFill(['read_at' => now()])->save();
+        }
+
+        return back();
+    }
+
+    public function markAllNotificationsRead(Request $request): RedirectResponse
+    {
+        Notification::query()
+            ->where('user_id', $request->user()->id)
+            ->whereNull('read_at')
+            ->update(['read_at' => now()]);
+
+        return back();
     }
 }
