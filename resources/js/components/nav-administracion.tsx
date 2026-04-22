@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/sidebar';
 import { useCurrentUrl } from '@/hooks/use-current-url';
 import { useSidebarSection } from '@/components/sidebar-section-context';
+import { AUDIT_NAV_PERMISSIONS } from '@/config/permission-tree';
 
 function hasPermission(permissions: string[], permission: string): boolean {
     return permissions.includes(permission);
@@ -88,7 +89,7 @@ export function NavAdministracion() {
         [permissions]
     );
     const showAuditoria = useMemo(
-        () => hasPermission(permissions, 'audit.view'),
+        () => AUDIT_NAV_PERMISSIONS.some((p) => hasPermission(permissions, p)),
         [permissions]
     );
 

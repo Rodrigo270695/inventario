@@ -99,6 +99,7 @@ class HandleInertiaRequests extends Middleware
                     'restore_candidate' => $request->session()->get('restore_candidate'),
                     'restore_payload' => $request->session()->get('restore_payload'),
                     'restore_user' => $request->session()->get('restore_user'),
+                    'created_agent_token' => $request->session()->get('created_agent_token'),
                 ],
                 'stockEntriesPendingConfirmCount' => 0,
                 'notificationsUnreadCount' => $notificationsUnreadCount,
@@ -134,6 +135,7 @@ class HandleInertiaRequests extends Middleware
                 'restore_candidate' => $request->session()->get('restore_candidate'),
                 'restore_payload' => $request->session()->get('restore_payload'),
                 'restore_user' => $request->session()->get('restore_user'),
+                'created_agent_token' => $request->session()->get('created_agent_token'),
             ];
         } catch (Throwable) {
             return [
@@ -141,6 +143,7 @@ class HandleInertiaRequests extends Middleware
                 'restore_candidate' => null,
                 'restore_payload' => null,
                 'restore_user' => null,
+                'created_agent_token' => null,
             ];
         }
     }

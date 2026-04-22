@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Services\EloquentModelAuditor;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -26,6 +27,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
         $this->configureGates();
+        EloquentModelAuditor::register();
     }
 
     /**

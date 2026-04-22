@@ -230,7 +230,14 @@ export const PERMISSION_TREE: PermissionTreeNode[] = [
     {
         key: 'licencias',
         label: 'Licencias',
-        children: [{ key: 'licenses.view', label: 'Ver', permission: 'licenses.view' }],
+        children: [
+            { key: 'licenses.view', label: 'Ver módulo', permission: 'licenses.view' },
+            { key: 'licenses.create', label: 'Crear registros', permission: 'licenses.create' },
+            { key: 'licenses.update', label: 'Editar registros', permission: 'licenses.update' },
+            { key: 'licenses.delete', label: 'Eliminar registros', permission: 'licenses.delete' },
+            { key: 'licenses.assign', label: 'Asignar licencias a activos', permission: 'licenses.assign' },
+            { key: 'licenses.revoke', label: 'Revocar asignaciones', permission: 'licenses.revoke' },
+        ],
     },
     {
         key: 'alertas-reportes',
@@ -422,6 +429,16 @@ export const PERMISSION_TREE: PermissionTreeNode[] = [
                                 label: 'Ver',
                                 permission: 'security.backups.view',
                             },
+                            {
+                                key: 'security.backups.create',
+                                label: 'Generar backup',
+                                permission: 'security.backups.create',
+                            },
+                            {
+                                key: 'security.backups.verify',
+                                label: 'Verificar backup',
+                                permission: 'security.backups.verify',
+                            },
                         ],
                     },
                 ],
@@ -429,7 +446,12 @@ export const PERMISSION_TREE: PermissionTreeNode[] = [
             {
                 key: 'auditoria',
                 label: 'Auditoría',
-                children: [{ key: 'audit.view', label: 'Ver', permission: 'audit.view' }],
+                children: [
+                    { key: 'audit.view', label: 'Entrar al módulo', permission: 'audit.view' },
+                    { key: 'audit.logs.view', label: 'Ver registro de cambios', permission: 'audit.logs.view' },
+                    { key: 'audit.reports.view', label: 'Ver reportes del agente', permission: 'audit.reports.view' },
+                    { key: 'audit.tokens.manage', label: 'Gestionar tokens del agente', permission: 'audit.tokens.manage' },
+                ],
             },
         ],
     },
@@ -495,10 +517,13 @@ export const ADMIN_SEGURIDAD_ITEMS: Array<{ title: string; permission: string }>
     { title: 'Backups', permission: 'security.backups.view' },
 ];
 
-/** Ítem Auditoría (Administración). Mismo permiso que el enlace en nav-administracion. */
-export const ADMIN_AUDITORIA_ITEMS: Array<{ title: string; permission: string }> = [
-    { title: 'Auditoría', permission: 'audit.view' },
-];
+/** Permisos que permiten ver el enlace «Auditoría» en Administración (cualquiera basta). */
+export const AUDIT_NAV_PERMISSIONS = [
+    'audit.view',
+    'audit.logs.view',
+    'audit.reports.view',
+    'audit.tokens.manage',
+] as const;
 
 /** Ítems del menú Usuario para el sidebar real (nav-administracion). */
 export const USUARIO_MENU_ITEMS: Array<{ title: string; permission: string }> = [
@@ -508,6 +533,7 @@ export const USUARIO_MENU_ITEMS: Array<{ title: string; permission: string }> = 
 ];
 
 let permissionToModuleMap: Map<string, string> | null = null;
+let permissionToDisplayLabelMap: Map<string, string> | null = null;
 
 function buildPermissionToModule(): Map<string, string> {
     if (permissionToModuleMap) return permissionToModuleMap;
@@ -525,9 +551,37 @@ function buildPermissionToModule(): Map<string, string> {
     return permissionToModuleMap;
 }
 
+function buildPermissionToDisplayLabel(): Map<string, string> {
+    if (permissionToDisplayLabelMap) return permissionToDisplayLabelMap;
+    permissionToDisplayLabelMap = new Map();
+
+    function walk(nodes: PermissionTreeNode[], ancestors: string[] = []): void {
+        for (const node of nodes) {
+            const nextAncestors = [...ancestors, node.label];
+            if (node.permission) {
+                // Quitamos la raíz de módulo porque ya se muestra como encabezado en UI.
+                const chain = nextAncestors.length > 1 ? nextAncestors.slice(1) : nextAncestors;
+                const display = chain.join(' - ');
+                permissionToDisplayLabelMap!.set(node.permission, display);
+            }
+            if (node.children?.length) {
+                walk(node.children, nextAncestors);
+            }
+        }
+    }
+
+    walk(PERMISSION_TREE);
+    return permissionToDisplayLabelMap;
+}
+
 /** Módulo del sidebar al que pertenece un permiso (ej. "Administración", "Navegación"). */
 export function getModuleForPermission(permissionName: string): string {
     return buildPermissionToModule().get(permissionName) ?? 'Otros';
+}
+
+/** Texto legible para mostrar un permiso técnico al usuario final. */
+export function getDisplayLabelForPermission(permissionName: string): string {
+    return buildPermissionToDisplayLabel().get(permissionName) ?? permissionName;
 }
 
 /** Orden de módulos como en el sidebar (para agrupar permisos). */

@@ -121,6 +121,21 @@ class Asset extends Model
         return $this->hasMany(AssetDisposal::class, 'asset_id');
     }
 
+    public function licenseAssignments(): HasMany
+    {
+        return $this->hasMany(LicenseAssignment::class, 'asset_id');
+    }
+
+    public function softwareInstallations(): HasMany
+    {
+        return $this->hasMany(SoftwareInstallation::class, 'asset_id');
+    }
+
+    public function agentReports(): HasMany
+    {
+        return $this->hasMany(AgentReport::class, 'asset_id');
+    }
+
     public function applyAllowedZonalsConstraint(Builder $builder, array $allowedZonalIds): void
     {
         $builder->where(function ($q) use ($allowedZonalIds) {

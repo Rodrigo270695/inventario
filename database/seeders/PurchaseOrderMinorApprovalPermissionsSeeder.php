@@ -7,7 +7,7 @@ use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 /**
- * Permisos de aprobación menor (OC) y placeholders de módulos en desarrollo (Licencias, Seguridad en 3 pantallas, Auditoría).
+ * Permisos de aprobación menor (OC) y compatibilidad mínima de licencias.
  * Ejecutar en producción sin re-lanzar PermissionSeeder completo:
  * php artisan db:seed --class=PurchaseOrderMinorApprovalPermissionsSeeder
  */
@@ -17,10 +17,6 @@ class PurchaseOrderMinorApprovalPermissionsSeeder extends Seeder
         'purchase_orders.minor_approve',
         'purchase_orders.minor_observe',
         'licenses.view',
-        'security.login_attempts.view',
-        'security.api_logs.view',
-        'security.backups.view',
-        'audit.view',
     ];
 
     public function run(): void

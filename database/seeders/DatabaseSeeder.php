@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             RoleSeeder::class,
             PermissionSeeder::class,
+            LicenseModulePermissionsSeeder::class,
             ZonalOfficeWarehouseSeeder::class,
             GlAccountAndAssetCategorySeeder::class,
             AssetBrandsModelsComponentTypesSeeder::class,

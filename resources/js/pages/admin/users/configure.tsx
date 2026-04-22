@@ -1,7 +1,7 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { ArrowLeft, MapPin, Shield } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { getModuleForPermission, MODULE_ORDER } from '@/config/permission-tree';
+import { getDisplayLabelForPermission, getModuleForPermission, MODULE_ORDER } from '@/config/permission-tree';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Toast } from '@/components/toast';
@@ -348,7 +348,7 @@ export default function UserConfigure({
                                                                 onChange={(e) => togglePermission(p.id, e.target.checked)}
                                                                 className="cursor-pointer rounded border-border size-3 accent-inv-primary"
                                                             />
-                                                            <span className="truncate">{p.name}</span>
+                                                            <span className="truncate">{getDisplayLabelForPermission(p.name)}</span>
                                                         </label>
                                                     </li>
                                                 ))}

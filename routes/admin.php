@@ -1,18 +1,23 @@
 <?php
 
 use App\Http\Controllers\Admin\AlertController;
+use App\Http\Controllers\Admin\ApiKeyLogController;
 use App\Http\Controllers\Admin\ApiPeruRucController;
 use App\Http\Controllers\Admin\AssetCatalogController;
 use App\Http\Controllers\Admin\AssetCategoryController;
 use App\Http\Controllers\Admin\AssetController;
 use App\Http\Controllers\Admin\AssetDisposalController;
 use App\Http\Controllers\Admin\AssetTransferController;
+use App\Http\Controllers\Admin\AuditController;
+use App\Http\Controllers\Admin\BackupLogController;
 use App\Http\Controllers\Admin\ComponentController;
 use App\Http\Controllers\Admin\DepartmentController;
 use App\Http\Controllers\Admin\DepreciationController;
 use App\Http\Controllers\Admin\GlAccountController;
 use App\Http\Controllers\Admin\InventoryCountController;
 use App\Http\Controllers\Admin\InvoiceController;
+use App\Http\Controllers\Admin\LicenseController;
+use App\Http\Controllers\Admin\LoginAttemptController;
 use App\Http\Controllers\Admin\OrganizationController;
 use App\Http\Controllers\Admin\PreventiveMaintenanceController;
 use App\Http\Controllers\Admin\PurchaseOrderController;
@@ -25,7 +30,6 @@ use App\Http\Controllers\Admin\SupplierController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\WarehouseLocationController;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
 Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
     // ApiPeru (RUC)
@@ -499,19 +503,74 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
         ->middleware('permission:permissions.view')
         ->name('roles.permissions.update');
 
-    Route::get('licenses', fn () => Inertia::render('admin/placeholder-development', ['title' => 'Licencias']))
+    Route::get('licenses', [LicenseController::class, 'index'])
         ->middleware('permission:licenses.view')
         ->name('licenses.index');
-    Route::get('security/login-attempts', fn () => Inertia::render('admin/placeholder-development', ['title' => 'Intentos de login']))
+    Route::post('licenses/vendors', [LicenseController::class, 'storeVendor'])
+        ->middleware('permission:licenses.create')
+        ->name('licenses.vendors.store');
+    Route::put('licenses/vendors/{software_vendor}', [LicenseController::class, 'updateVendor'])
+        ->middleware('permission:licenses.update')
+        ->name('licenses.vendors.update');
+    Route::delete('licenses/vendors/{software_vendor}', [LicenseController::class, 'destroyVendor'])
+        ->middleware('permission:licenses.delete')
+        ->name('licenses.vendors.destroy');
+    Route::post('licenses/products', [LicenseController::class, 'storeProduct'])
+        ->middleware('permission:licenses.create')
+        ->name('licenses.products.store');
+    Route::put('licenses/products/{software_product}', [LicenseController::class, 'updateProduct'])
+        ->middleware('permission:licenses.update')
+        ->name('licenses.products.update');
+    Route::delete('licenses/products/{software_product}', [LicenseController::class, 'destroyProduct'])
+        ->middleware('permission:licenses.delete')
+        ->name('licenses.products.destroy');
+    Route::post('licenses/software-licenses', [LicenseController::class, 'storeLicense'])
+        ->middleware('permission:licenses.create')
+        ->name('licenses.software-licenses.store');
+    Route::put('licenses/software-licenses/{software_license}', [LicenseController::class, 'updateLicense'])
+        ->middleware('permission:licenses.update')
+        ->name('licenses.software-licenses.update');
+    Route::delete('licenses/software-licenses/{software_license}', [LicenseController::class, 'destroyLicense'])
+        ->middleware('permission:licenses.delete')
+        ->name('licenses.software-licenses.destroy');
+    Route::post('licenses/assignments', [LicenseController::class, 'storeAssignment'])
+        ->middleware('permission:licenses.assign')
+        ->name('licenses.assignments.store');
+    Route::post('licenses/assignments/{license_assignment}/revoke', [LicenseController::class, 'revokeAssignment'])
+        ->middleware('permission:licenses.revoke')
+        ->name('licenses.assignments.revoke');
+    Route::delete('licenses/assignments/{license_assignment}', [LicenseController::class, 'destroyAssignment'])
+        ->middleware('permission:licenses.delete')
+        ->name('licenses.assignments.destroy');
+    Route::post('licenses/installations', [LicenseController::class, 'storeInstallation'])
+        ->middleware('permission:licenses.create')
+        ->name('licenses.installations.store');
+    Route::put('licenses/installations/{software_installation}', [LicenseController::class, 'updateInstallation'])
+        ->middleware('permission:licenses.update')
+        ->name('licenses.installations.update');
+    Route::delete('licenses/installations/{software_installation}', [LicenseController::class, 'destroyInstallation'])
+        ->middleware('permission:licenses.delete')
+        ->name('licenses.installations.destroy');
+    Route::get('security/login-attempts', [LoginAttemptController::class, 'index'])
         ->middleware('permission:security.login_attempts.view')
         ->name('security.login-attempts.index');
-    Route::get('security/api-logs', fn () => Inertia::render('admin/placeholder-development', ['title' => 'Logs de API']))
+    Route::get('security/api-logs', [ApiKeyLogController::class, 'index'])
         ->middleware('permission:security.api_logs.view')
         ->name('security.api-logs.index');
-    Route::get('security/backups', fn () => Inertia::render('admin/placeholder-development', ['title' => 'Backups']))
+    Route::get('security/backups', [BackupLogController::class, 'index'])
         ->middleware('permission:security.backups.view')
         ->name('security.backups.index');
-    Route::get('audit', fn () => Inertia::render('admin/placeholder-development', ['title' => 'Auditoría']))
-        ->middleware('permission:audit.view')
-        ->name('audit.index');
+    Route::post('security/backups', [BackupLogController::class, 'store'])
+        ->middleware('permission:security.backups.create')
+        ->name('security.backups.store');
+    Route::post('security/backups/{backup_log}/verify', [BackupLogController::class, 'verify'])
+        ->middleware('permission:security.backups.verify')
+        ->name('security.backups.verify');
+    Route::get('audit', [AuditController::class, 'index'])->name('audit.index');
+    Route::post('audit/agent-tokens', [AuditController::class, 'storeAgentToken'])
+        ->middleware('permission:audit.tokens.manage')
+        ->name('audit.agent-tokens.store');
+    Route::delete('audit/agent-tokens/{agent_token}', [AuditController::class, 'destroyAgentToken'])
+        ->middleware('permission:audit.tokens.manage')
+        ->name('audit.agent-tokens.destroy');
 });

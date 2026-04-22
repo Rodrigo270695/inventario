@@ -181,7 +181,8 @@ export default function Login({ status }: Props) {
                                 {/* Formulario: inputs estilo underline (diseño distinto) */}
                                 <div className="px-6 py-6 sm:px-8 sm:py-7">
                                     <Form
-                                        {...store.form()}
+                                        action={store.url()}
+                                        method="post"
                                         resetOnSuccess={['password']}
                                         className="relative flex flex-col gap-5"
                                     >

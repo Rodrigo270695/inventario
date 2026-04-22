@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
-    ADMIN_AUDITORIA_ITEMS,
+    AUDIT_NAV_PERMISSIONS,
     ADMIN_CATALOGOS_ITEMS,
     ADMIN_SEGURIDAD_ITEMS,
     ADMIN_USUARIO_ITEMS,
@@ -65,13 +65,10 @@ export function SidebarPreview({ selectedPermissionNames, className }: SidebarPr
     const visibleSeguridadItems = ADMIN_SEGURIDAD_ITEMS.filter((item) =>
         selectedPermissionNames.has(item.permission)
     );
-    const visibleAuditoriaItems = ADMIN_AUDITORIA_ITEMS.filter((item) =>
-        selectedPermissionNames.has(item.permission)
-    );
     const showUsuario = visibleUsuarioItems.length > 0;
     const showCatalogos = visibleCatalogosItems.length > 0;
     const showSeguridad = visibleSeguridadItems.length > 0;
-    const showAuditoria = visibleAuditoriaItems.length > 0;
+    const showAuditoria = AUDIT_NAV_PERMISSIONS.some((p) => selectedPermissionNames.has(p));
     const showAdmin = showUsuario || showCatalogos || showSeguridad || showAuditoria;
 
     return (

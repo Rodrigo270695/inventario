@@ -302,4 +302,3 @@ Artisan::command('app:check-depreciation-alerts', function () {
         ->update(['resolved_at' => now()]);
 })->purpose('Generar alertas para depreciaciones pendientes de aprobación')->dailyAt('02:00');
 
-
