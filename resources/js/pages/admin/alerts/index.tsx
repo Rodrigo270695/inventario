@@ -87,11 +87,6 @@ export default function AlertsIndex({ rules, events, notifications }: AlertsInde
         [notifications]
     );
 
-    const getNotificationHref = (notification: NotificationRow): string | null => {
-        const href = notification.data?.href;
-        return typeof href === 'string' && href.trim() !== '' ? href : null;
-    };
-
     const markAllNotificationsAsRead = () => {
         if (markingAll || unreadNotificationsCount === 0) return;
 
@@ -320,15 +315,6 @@ export default function AlertsIndex({ rules, events, notifications }: AlertsInde
                                                     <p className="mt-0.5 text-[10px] text-muted-foreground">
                                                         {formatDateTime(n.created_at)}
                                                     </p>
-                                                    {getNotificationHref(n) && (
-                                                        <a
-                                                            href={getNotificationHref(n) ?? undefined}
-                                                            className="mt-1 inline-block text-[11px] font-medium text-inv-primary hover:underline"
-                                                            onClick={(event) => event.stopPropagation()}
-                                                        >
-                                                            Ver detalle
-                                                        </a>
-                                                    )}
                                                 </button>
                                             </li>
                                         ))}
