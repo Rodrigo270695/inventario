@@ -107,8 +107,6 @@ export default function AlertsIndex({ rules, events, notifications }: AlertsInde
     };
 
     const openNotification = (notification: NotificationRow) => {
-        const href = getNotificationHref(notification);
-
         if (!notification.read_at) {
             setMarkingNotificationId(notification.id);
             router.post(
@@ -119,19 +117,8 @@ export default function AlertsIndex({ rules, events, notifications }: AlertsInde
                     onFinish: () => {
                         setMarkingNotificationId((current) => (current === notification.id ? null : current));
                     },
-                    onSuccess: () => {
-                        if (href) {
-                            router.visit(href);
-                        }
-                    },
                 }
             );
-
-            return;
-        }
-
-        if (href) {
-            router.visit(href);
         }
     };
 
@@ -333,6 +320,15 @@ export default function AlertsIndex({ rules, events, notifications }: AlertsInde
                                                     <p className="mt-0.5 text-[10px] text-muted-foreground">
                                                         {formatDateTime(n.created_at)}
                                                     </p>
+                                                    {getNotificationHref(n) && (
+                                                        <a
+                                                            href={getNotificationHref(n) ?? undefined}
+                                                            className="mt-1 inline-block text-[11px] font-medium text-inv-primary hover:underline"
+                                                            onClick={(event) => event.stopPropagation()}
+                                                        >
+                                                            Ver detalle
+                                                        </a>
+                                                    )}
                                                 </button>
                                             </li>
                                         ))}
