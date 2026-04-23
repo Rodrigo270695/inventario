@@ -337,7 +337,7 @@ export default function BackupsIndex({ backupLogs, filters, stats }: Props) {
                                 <SelectValue placeholder="Estado" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="_">Todos</SelectItem>
+                                <SelectItem value="_">Todos los estados</SelectItem>
                                 <SelectItem value="started">En proceso</SelectItem>
                                 <SelectItem value="completed">Completado</SelectItem>
                                 <SelectItem value="failed">Fallido</SelectItem>

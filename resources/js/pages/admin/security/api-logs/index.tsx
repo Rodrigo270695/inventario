@@ -252,7 +252,7 @@ export default function ApiLogsIndex({ apiLogs, filters, stats }: Props) {
                                 <SelectValue placeholder="Estado HTTP" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="_">Todos</SelectItem>
+                                <SelectItem value="_">Todos los estados HTTP</SelectItem>
                                 <SelectItem value="success">2xx</SelectItem>
                                 <SelectItem value="unauthorized">401/403</SelectItem>
                                 <SelectItem value="client_error">4xx</SelectItem>

@@ -392,10 +392,10 @@ export default function InvoicesIndex({
                                 }
                             >
                                 <SelectTrigger className="h-9 w-[130px] rounded-xl border-border bg-background/80 shadow-xs text-xs">
-                                    <SelectValue placeholder="Todos" />
+                                    <SelectValue placeholder="Todos los estados" />
                                 </SelectTrigger>
                                 <SelectContent align="start" className="rounded-xl text-xs">
-                                    <SelectItem value="_all">Todos</SelectItem>
+                                    <SelectItem value="_all">Todos los estados</SelectItem>
                                     <SelectItem value="open">Abierta</SelectItem>
                                     <SelectItem value="closed">Cerrada</SelectItem>
                                 </SelectContent>

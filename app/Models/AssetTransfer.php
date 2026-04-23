@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Models\Concerns\RestrictsByAllowedZonals;
-use App\Models\TransferItem;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -86,6 +85,18 @@ class AssetTransfer extends Model
 
     public function applyAllowedZonalsConstraint(Builder $builder, array $allowedZonalIds): void
     {
+        $officeIds = static::allowedOfficeIdsFromRequest();
+
+        if ($officeIds !== null && $officeIds !== []) {
+            $builder->where(function (Builder $query) use ($officeIds) {
+                $query
+                    ->whereHas('originWarehouse', fn ($wq) => $wq->whereIn('office_id', $officeIds))
+                    ->orWhereHas('destinationWarehouse', fn ($wq) => $wq->whereIn('office_id', $officeIds));
+            });
+
+            return;
+        }
+
         $builder->where(function ($query) use ($allowedZonalIds) {
             $query
                 ->whereHas('originWarehouse.office', fn ($officeQuery) => $officeQuery->whereIn('zonal_id', $allowedZonalIds))

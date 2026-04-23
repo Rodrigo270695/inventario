@@ -12,6 +12,8 @@ use App\Models\PreventivePlan;
 use App\Models\PreventiveTask;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Support\UserGeographicAccess;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -20,6 +22,7 @@ use Inertia\Response;
 class PreventiveMaintenanceController extends Controller
 {
     private const PLANS_PER_PAGE = 15;
+
     private const TASKS_PER_PAGE = 15;
 
     public function index(Request $request): Response
@@ -32,12 +35,16 @@ class PreventiveMaintenanceController extends Controller
         $plansPage = (int) $request->input('plans_page', 1);
         $tasksPage = (int) $request->input('tasks_page', 1);
 
-        $plans = PreventivePlan::query()
-            ->with(['subcategory:id,name,code', 'componentType:id,name,code', 'warehouse:id,name,code,office_id', 'warehouse.office:id,name,code,zonal_id'])
-            ->orderBy('name')
-            ->paginate(self::PLANS_PER_PAGE, ['*'], 'plans_page', $plansPage);
+        [$allowedOfficeIds] = UserGeographicAccess::forUser($request->user());
 
-        $tasks = PreventiveTask::query()
+        /** @var Builder<\App\Models\PreventivePlan> $plansQuery */
+        $plansQuery = PreventivePlan::query()
+            ->with(['subcategory:id,name,code', 'componentType:id,name,code', 'warehouse:id,name,code,office_id', 'warehouse.office:id,name,code,zonal_id'])
+            ->orderBy('name');
+        $this->applyPreventivePlanGeographicConstraint($plansQuery, $allowedOfficeIds);
+        $plans = $plansQuery->paginate(self::PLANS_PER_PAGE, ['*'], 'plans_page', $plansPage);
+
+        $tasksQuery = PreventiveTask::query()
             ->with([
                 'plan:id,name,frequency_type,frequency_days',
                 'asset:id,code,category_id,model_id',
@@ -49,10 +56,22 @@ class PreventiveMaintenanceController extends Controller
                 'component.brand:id,name',
                 'technician:id,name,last_name,usuario',
             ])
-            ->orderBy('scheduled_date', 'desc')
-            ->paginate(self::TASKS_PER_PAGE, ['*'], 'tasks_page', $tasksPage);
+            ->whereHas('plan', function (Builder $pq) use ($allowedOfficeIds) {
+                $this->applyPreventivePlanGeographicConstraint($pq, $allowedOfficeIds);
+            })
+            ->where(function (Builder $tq) {
+                $tq->where(function (Builder $q) {
+                    $q->whereNotNull('preventive_tasks.asset_id')
+                        ->whereHas('asset');
+                })->orWhere(function (Builder $q) {
+                    $q->whereNotNull('preventive_tasks.component_id')
+                        ->whereHas('component');
+                });
+            })
+            ->orderBy('scheduled_date', 'desc');
+        $tasks = $tasksQuery->paginate(self::TASKS_PER_PAGE, ['*'], 'tasks_page', $tasksPage);
 
-        $payload = $this->formPayload();
+        $payload = $this->formPayload($allowedOfficeIds);
 
         return Inertia::render('admin/preventive-maintenance/index', [
             'tab' => $tab,
@@ -81,12 +100,23 @@ class PreventiveMaintenanceController extends Controller
             'description' => ['nullable', 'string'],
         ]);
 
+        $warehouseId = $request->input('warehouse_id');
+        [$allowedOfficeIds] = UserGeographicAccess::forUser($request->user());
+        if ($allowedOfficeIds !== null && $allowedOfficeIds !== [] && empty($warehouseId)) {
+            return redirect()->back()
+                ->withErrors(['warehouse_id' => 'Debe seleccionar un almacén de su alcance para el plan.'])
+                ->withInput();
+        }
+        if ($warehouseId) {
+            $this->assertWarehouseWithinUserGeography($request, (string) $warehouseId);
+        }
+
         PreventivePlan::create([
             'name' => $request->input('name'),
             'target_type' => $request->input('target_type'),
             'subcategory_id' => $request->input('subcategory_id'),
             'component_type_id' => $request->input('component_type_id'),
-            'warehouse_id' => $request->input('warehouse_id'),
+            'warehouse_id' => $warehouseId,
             'frequency_type' => $request->input('frequency_type'),
             'frequency_days' => $request->input('frequency_type') === 'custom' ? $request->input('frequency_days') : null,
             'checklist' => $request->input('checklist'),
@@ -120,12 +150,25 @@ class PreventiveMaintenanceController extends Controller
             'description' => ['nullable', 'string'],
         ]);
 
+        $this->assertPreventivePlanWithinUserGeography($request, (string) $preventive_plan->getKey());
+
+        $warehouseId = $request->input('warehouse_id');
+        [$allowedOfficeIds] = UserGeographicAccess::forUser($request->user());
+        if ($allowedOfficeIds !== null && $allowedOfficeIds !== [] && empty($warehouseId)) {
+            return redirect()->back()
+                ->withErrors(['warehouse_id' => 'Debe seleccionar un almacén de su alcance para el plan.'])
+                ->withInput();
+        }
+        if ($warehouseId) {
+            $this->assertWarehouseWithinUserGeography($request, (string) $warehouseId);
+        }
+
         $preventive_plan->update([
             'name' => $request->input('name'),
             'target_type' => $request->input('target_type'),
             'subcategory_id' => $request->input('subcategory_id'),
             'component_type_id' => $request->input('component_type_id'),
-            'warehouse_id' => $request->input('warehouse_id'),
+            'warehouse_id' => $warehouseId,
             'frequency_type' => $request->input('frequency_type'),
             'frequency_days' => $request->input('frequency_type') === 'custom' ? $request->input('frequency_days') : null,
             'checklist' => $request->input('checklist'),
@@ -139,8 +182,10 @@ class PreventiveMaintenanceController extends Controller
         return redirect()->back()->with('toast', ['type' => 'success', 'message' => 'Plan actualizado correctamente.']);
     }
 
-    public function destroyPlan(PreventivePlan $preventive_plan): RedirectResponse
+    public function destroyPlan(Request $request, PreventivePlan $preventive_plan): RedirectResponse
     {
+        $this->assertPreventivePlanWithinUserGeography($request, (string) $preventive_plan->getKey());
+
         if ($preventive_plan->tasks()->exists()) {
             return redirect()->back()->with('toast', ['type' => 'error', 'message' => 'No se puede eliminar un plan con tareas asociadas.']);
         }
@@ -167,6 +212,8 @@ class PreventiveMaintenanceController extends Controller
             return redirect()->back()->withErrors(['asset_id' => 'Debe seleccionar un activo o un componente, pero no ambos.'])->withInput();
         }
 
+        $this->assertPreventivePlanWithinUserGeography($request, (string) $request->input('plan_id'));
+
         PreventiveTask::create([
             'plan_id' => $request->input('plan_id'),
             'asset_id' => $assetId,
@@ -183,6 +230,8 @@ class PreventiveMaintenanceController extends Controller
 
     public function updateTask(Request $request, PreventiveTask $preventive_task): RedirectResponse
     {
+        $this->assertPreventivePlanWithinUserGeography($request, (string) $preventive_task->plan_id);
+
         $request->validate([
             'scheduled_date' => ['sometimes', 'date'],
             'priority' => ['nullable', 'string', 'in:low,medium,high'],
@@ -219,14 +268,19 @@ class PreventiveMaintenanceController extends Controller
         return redirect()->back()->with('toast', ['type' => 'success', 'message' => 'Tarea actualizada correctamente.']);
     }
 
-    public function destroyTask(PreventiveTask $preventive_task): RedirectResponse
+    public function destroyTask(Request $request, PreventiveTask $preventive_task): RedirectResponse
     {
+        $this->assertPreventivePlanWithinUserGeography($request, (string) $preventive_task->plan_id);
+
         $preventive_task->delete();
 
         return redirect()->back()->with('toast', ['type' => 'success', 'message' => 'Tarea eliminada correctamente.']);
     }
 
-    private function formPayload(): array
+    /**
+     * @param  array<int, string>|null  $allowedOfficeIds
+     */
+    private function formPayload(?array $allowedOfficeIds = null): array
     {
         $subcategoriesForSelect = AssetSubcategory::query()
             ->with('category:id,name,code,type')
@@ -248,10 +302,11 @@ class PreventiveMaintenanceController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'code', 'office_id']);
 
-        $plansForSelect = PreventivePlan::query()
+        $plansForSelectQuery = PreventivePlan::query()
             ->where('is_active', true)
-            ->orderBy('name')
-            ->get(['id', 'name', 'target_type']);
+            ->orderBy('name');
+        $this->applyPreventivePlanGeographicConstraint($plansForSelectQuery, $allowedOfficeIds);
+        $plansForSelect = $plansForSelectQuery->get(['id', 'name', 'target_type']);
 
         $assetsForSelect = Asset::query()
             ->with(['category:id,name', 'model:id,name,brand_id', 'model.brand:id,name'])
@@ -280,5 +335,52 @@ class PreventiveMaintenanceController extends Controller
             'componentsForSelect' => $componentsForSelect,
             'usersForSelect' => $usersForSelect,
         ];
+    }
+
+    /**
+     * @param  Builder<\App\Models\PreventivePlan>  $planQuery
+     * @param  array<int, string>|null  $allowedOfficeIds
+     */
+    private function applyPreventivePlanGeographicConstraint(Builder $planQuery, ?array $allowedOfficeIds): void
+    {
+        if ($allowedOfficeIds === null) {
+            return;
+        }
+
+        if ($allowedOfficeIds === []) {
+            $planQuery->whereRaw('1 = 0');
+
+            return;
+        }
+
+        $planQuery
+            ->whereNotNull('warehouse_id')
+            ->whereHas('warehouse', fn (Builder $w) => $w->whereIn('office_id', $allowedOfficeIds));
+    }
+
+    private function assertWarehouseWithinUserGeography(Request $request, string $warehouseId): void
+    {
+        [$allowedOfficeIds] = UserGeographicAccess::forUser($request->user());
+        if ($allowedOfficeIds === null) {
+            return;
+        }
+        if ($allowedOfficeIds === []) {
+            abort(403);
+        }
+        Warehouse::query()
+            ->whereKey($warehouseId)
+            ->whereIn('office_id', $allowedOfficeIds)
+            ->firstOrFail();
+    }
+
+    private function assertPreventivePlanWithinUserGeography(Request $request, string $planId): void
+    {
+        [$allowedOfficeIds] = UserGeographicAccess::forUser($request->user());
+        if ($allowedOfficeIds === null) {
+            return;
+        }
+        $planQuery = PreventivePlan::query()->whereKey($planId);
+        $this->applyPreventivePlanGeographicConstraint($planQuery, $allowedOfficeIds);
+        $planQuery->firstOrFail();
     }
 }

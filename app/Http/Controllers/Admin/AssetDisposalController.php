@@ -12,14 +12,15 @@ use App\Models\Office;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Models\Zonal;
+use App\Support\UserGeographicAccess;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
-use Maatwebsite\Excel\Facades\Excel;
 use Inertia\Inertia;
 use Inertia\Response;
+use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class AssetDisposalController extends Controller
@@ -48,9 +49,10 @@ class AssetDisposalController extends Controller
 
         /** @var \App\Models\User|null $authUser */
         $authUser = $request->user();
-        $allowedZonalIds = [];
-        if ($authUser && ! $authUser->hasRole('superadmin', 'web')) {
-            $allowedZonalIds = $authUser->zonals()->pluck('zonals.id')->all();
+        [$allowedOfficeIds, $allowedZonalIds] = UserGeographicAccess::forUser($authUser);
+        if ($authUser?->hasRole('superadmin', 'web')) {
+            $allowedOfficeIds = [];
+            $allowedZonalIds = [];
         }
 
         $disposalsQuery = AssetDisposal::query()
@@ -70,7 +72,9 @@ class AssetDisposalController extends Controller
                 'sale',
             ]);
 
-        if (! empty($allowedZonalIds)) {
+        if (! empty($allowedOfficeIds)) {
+            $disposalsQuery->whereHas('warehouse', fn (Builder $q) => $q->whereIn('office_id', $allowedOfficeIds));
+        } elseif (! empty($allowedZonalIds)) {
             $disposalsQuery->whereHas('warehouse.office', function (Builder $q) use ($allowedZonalIds) {
                 $q->whereIn('zonal_id', $allowedZonalIds);
             });
@@ -94,7 +98,10 @@ class AssetDisposalController extends Controller
                 'createdBy:id,name,last_name,usuario',
                 'approvedBy:id,name,last_name,usuario',
             ])
-            ->when(! empty($allowedZonalIds), function (Builder $q) use ($allowedZonalIds) {
+            ->when(! empty($allowedOfficeIds), function (Builder $q) use ($allowedOfficeIds) {
+                $q->whereHas('disposal.warehouse', fn (Builder $wq) => $wq->whereIn('office_id', $allowedOfficeIds));
+            })
+            ->when(empty($allowedOfficeIds) && ! empty($allowedZonalIds), function (Builder $q) use ($allowedZonalIds) {
                 $q->whereHas('disposal.warehouse.office', function (Builder $officeQuery) use ($allowedZonalIds) {
                     $officeQuery->whereIn('zonal_id', $allowedZonalIds);
                 });
@@ -144,7 +151,7 @@ class AssetDisposalController extends Controller
                     'warehouse_id' => $warehouseId,
                 ],
             ],
-            $this->formPayload($allowedZonalIds)
+            $this->formPayload($allowedZonalIds, $allowedOfficeIds)
         ));
     }
 
@@ -165,9 +172,10 @@ class AssetDisposalController extends Controller
 
         /** @var \App\Models\User|null $authUser */
         $authUser = $request->user();
-        $allowedZonalIds = [];
-        if ($authUser && ! $authUser->hasRole('superadmin', 'web')) {
-            $allowedZonalIds = $authUser->zonals()->pluck('zonals.id')->all();
+        [$allowedOfficeIds, $allowedZonalIds] = UserGeographicAccess::forUser($authUser);
+        if ($authUser?->hasRole('superadmin', 'web')) {
+            $allowedOfficeIds = [];
+            $allowedZonalIds = [];
         }
 
         $disposalsQuery = AssetDisposal::query()
@@ -186,7 +194,9 @@ class AssetDisposalController extends Controller
                 'createdByUser:id,name,last_name,usuario',
             ]);
 
-        if (! empty($allowedZonalIds)) {
+        if (! empty($allowedOfficeIds)) {
+            $disposalsQuery->whereHas('warehouse', fn (Builder $q) => $q->whereIn('office_id', $allowedOfficeIds));
+        } elseif (! empty($allowedZonalIds)) {
             $disposalsQuery->whereHas('warehouse.office', function (Builder $q) use ($allowedZonalIds) {
                 $q->whereIn('zonal_id', $allowedZonalIds);
             });
@@ -211,7 +221,10 @@ class AssetDisposalController extends Controller
                 'createdBy:id,name,last_name,usuario',
                 'approvedBy:id,name,last_name,usuario',
             ])
-            ->when(! empty($allowedZonalIds), function (Builder $q) use ($allowedZonalIds) {
+            ->when(! empty($allowedOfficeIds), function (Builder $q) use ($allowedOfficeIds) {
+                $q->whereHas('disposal.warehouse', fn (Builder $wq) => $wq->whereIn('office_id', $allowedOfficeIds));
+            })
+            ->when(empty($allowedOfficeIds) && ! empty($allowedZonalIds), function (Builder $q) use ($allowedZonalIds) {
                 $q->whereHas('disposal.warehouse.office', function (Builder $officeQuery) use ($allowedZonalIds) {
                     $officeQuery->whereIn('zonal_id', $allowedZonalIds);
                 });
@@ -501,7 +514,7 @@ class AssetDisposalController extends Controller
         }
     }
 
-    private function formPayload(array $allowedZonalIds = []): array
+    private function formPayload(array $allowedZonalIds = [], array $allowedOfficeIds = []): array
     {
         $zonalsForSelect = Zonal::query()
             ->where('is_active', true)
@@ -511,13 +524,15 @@ class AssetDisposalController extends Controller
 
         $officesForSelect = Office::query()
             ->where('is_active', true)
-            ->when(! empty($allowedZonalIds), fn (Builder $q) => $q->whereIn('zonal_id', $allowedZonalIds))
+            ->when(! empty($allowedOfficeIds), fn (Builder $q) => $q->whereIn('id', $allowedOfficeIds))
+            ->when(empty($allowedOfficeIds) && ! empty($allowedZonalIds), fn (Builder $q) => $q->whereIn('zonal_id', $allowedZonalIds))
             ->orderBy('name')
             ->get(['id', 'name', 'code', 'zonal_id']);
 
         $warehousesForSelect = Warehouse::query()
             ->where('is_active', true)
-            ->when(! empty($allowedZonalIds), function (Builder $q) use ($allowedZonalIds) {
+            ->when(! empty($allowedOfficeIds), fn (Builder $q) => $q->whereIn('office_id', $allowedOfficeIds))
+            ->when(empty($allowedOfficeIds) && ! empty($allowedZonalIds), function (Builder $q) use ($allowedZonalIds) {
                 $q->whereHas('office', fn (Builder $o) => $o->whereIn('zonal_id', $allowedZonalIds));
             })
             ->with('office:id,name,code,zonal_id')
@@ -527,7 +542,10 @@ class AssetDisposalController extends Controller
         $assetsForSelect = Asset::query()
             ->with(['category:id,name,code,type', 'model:id,name,brand_id', 'model.brand:id,name', 'warehouse.office:zonal_id,id,name,code'])
             ->whereNotIn('status', ['disposed', 'sold'])
-            ->when(! empty($allowedZonalIds), function (Builder $q) use ($allowedZonalIds) {
+            ->when(! empty($allowedOfficeIds), function (Builder $q) use ($allowedOfficeIds) {
+                $q->whereHas('warehouse', fn (Builder $wq) => $wq->whereIn('office_id', $allowedOfficeIds));
+            })
+            ->when(empty($allowedOfficeIds) && ! empty($allowedZonalIds), function (Builder $q) use ($allowedZonalIds) {
                 $q->whereHas('warehouse.office', fn (Builder $o) => $o->whereIn('zonal_id', $allowedZonalIds));
             })
             ->orderBy('code')
@@ -536,7 +554,10 @@ class AssetDisposalController extends Controller
         $componentsForSelect = Component::query()
             ->with(['type:id,name,code', 'brand:id,name', 'warehouse.office:zonal_id,id,name,code'])
             ->where('status', '<>', 'disposed')
-            ->when(! empty($allowedZonalIds), function (Builder $q) use ($allowedZonalIds) {
+            ->when(! empty($allowedOfficeIds), function (Builder $q) use ($allowedOfficeIds) {
+                $q->whereHas('warehouse', fn (Builder $wq) => $wq->whereIn('office_id', $allowedOfficeIds));
+            })
+            ->when(empty($allowedOfficeIds) && ! empty($allowedZonalIds), function (Builder $q) use ($allowedZonalIds) {
                 $q->whereHas('warehouse.office', fn (Builder $o) => $o->whereIn('zonal_id', $allowedZonalIds));
             })
             ->orderBy('code')
@@ -722,4 +743,3 @@ class AssetDisposalController extends Controller
         return $clean === '' ? null : $clean;
     }
 }
-

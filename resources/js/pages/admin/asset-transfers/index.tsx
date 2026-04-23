@@ -660,7 +660,7 @@ export default function AssetTransfersIndex({
                                 <SelectValue placeholder="Estado" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="_">Todos</SelectItem>
+                                <SelectItem value="_">Todos los estados</SelectItem>
                                 <SelectItem value="pending_approval">Por aprobar</SelectItem>
                                 <SelectItem value="approved">Aprobado</SelectItem>
                                 <SelectItem value="in_transit">En tránsito</SelectItem>

@@ -13,11 +13,9 @@ use App\Jobs\SendAssetTransferReceivedEmailJob;
 use App\Models\Asset;
 use App\Models\AssetTransfer;
 use App\Models\Component;
-use App\Models\Office;
 use App\Models\Scopes\AllowedZonalsScope;
 use App\Models\User;
 use App\Models\Warehouse;
-use App\Models\Zonal;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -194,6 +192,7 @@ class AssetTransferController extends Controller
             );
             $transfer->update($this->storeTransferDocuments($request, $transfer));
             $this->syncTransferItems($transfer, $validated['items']);
+
             return $transfer;
         });
 
@@ -713,18 +712,27 @@ class AssetTransferController extends Controller
     private function applyAllowedZonalsToComponentsQuery(Request $request, $query): void
     {
         $allowedZonalIds = $request->attributes->get('allowed_zonal_ids');
+        $allowedOfficeIds = $request->attributes->get('allowed_office_ids');
 
-        if ($allowedZonalIds === null) {
+        if ($allowedZonalIds === null && $allowedOfficeIds === null) {
             return;
         }
 
-        if ($allowedZonalIds === []) {
+        if ($allowedZonalIds === [] || $allowedOfficeIds === []) {
             $query->whereRaw('1 = 0');
 
             return;
         }
 
-        $query->whereHas('warehouse.office', fn ($officeQuery) => $officeQuery->whereIn('zonal_id', $allowedZonalIds));
+        if (is_array($allowedOfficeIds) && $allowedOfficeIds !== []) {
+            $query->whereHas('warehouse', fn ($wq) => $wq->whereIn('office_id', $allowedOfficeIds));
+
+            return;
+        }
+
+        if (is_array($allowedZonalIds) && $allowedZonalIds !== []) {
+            $query->whereHas('warehouse.office', fn ($officeQuery) => $officeQuery->whereIn('zonal_id', $allowedZonalIds));
+        }
     }
 
     private function cleanString(mixed $value): string

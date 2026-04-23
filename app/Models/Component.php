@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\RestrictsByAllowedZonals;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,6 +13,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Component extends Model
 {
     use HasUuids;
+    use RestrictsByAllowedZonals;
     use SoftDeletes;
 
     protected $fillable = [
@@ -86,5 +89,24 @@ class Component extends Model
     public function disposals(): HasMany
     {
         return $this->hasMany(AssetDisposal::class, 'component_id');
+    }
+
+    public function applyAllowedZonalsConstraint(Builder $builder, array $allowedZonalIds): void
+    {
+        $officeIds = static::allowedOfficeIdsFromRequest();
+
+        if ($officeIds !== null && $officeIds !== []) {
+            $builder->where(function (Builder $q) use ($officeIds, $allowedZonalIds) {
+                $q->whereHas('warehouse', fn (Builder $wq) => $wq->whereIn('office_id', $officeIds))
+                    ->orWhereHas('repairShop', fn (Builder $sq) => $sq->whereIn('zonal_id', $allowedZonalIds));
+            });
+
+            return;
+        }
+
+        $builder->where(function (Builder $q) use ($allowedZonalIds) {
+            $q->whereHas('warehouse.office', fn (Builder $oq) => $oq->whereIn('zonal_id', $allowedZonalIds))
+                ->orWhereHas('repairShop', fn (Builder $sq) => $sq->whereIn('zonal_id', $allowedZonalIds));
+        });
     }
 }

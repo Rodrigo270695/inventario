@@ -26,10 +26,22 @@ type Props = {
     onRequestDelete: (order: PurchaseOrder) => void;
 };
 
-function canActOnOrderZonal(
+function purchaseOrderOfficeId(order: PurchaseOrder): string | null {
+    return order.office_id ?? order.office?.id ?? null;
+}
+
+function canActOnPurchaseOrderScope(
     order: PurchaseOrder,
+    allowedOfficeIds: string[] | null | undefined,
     allowedZonalIds: string[] | null | undefined
 ): boolean {
+    if (allowedOfficeIds === null || allowedOfficeIds === undefined) return true;
+    if (allowedOfficeIds.length === 0) return false;
+
+    const oid = purchaseOrderOfficeId(order);
+    if (!oid) return false;
+    if (allowedOfficeIds.includes(oid)) return true;
+
     const zid = order.office?.zonal_id;
     if (!zid) return false;
     if (allowedZonalIds === null || allowedZonalIds === undefined) return true;
@@ -51,8 +63,9 @@ export const PurchaseOrderActionsCell: React.FC<Props> = ({
 }) => {
     const page = usePage();
     const allowedZonalIds = (page.props as { allowedZonalIds?: string[] | null }).allowedZonalIds;
+    const allowedOfficeIds = (page.props as { allowedOfficeIds?: string[] | null }).allowedOfficeIds;
 
-    const zonalOk = canActOnOrderZonal(order, allowedZonalIds);
+    const zonalOk = canActOnPurchaseOrderScope(order, allowedOfficeIds, allowedZonalIds);
 
     const isPendingMinor = order.status === 'pending_minor';
     const isObservedMinor = order.status === 'observed_minor';

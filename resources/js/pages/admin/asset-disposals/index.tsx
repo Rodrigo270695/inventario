@@ -931,7 +931,7 @@ export default function AssetDisposalsIndex(props: Props) {
                                             <SelectValue placeholder="Tipo de bien" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="_">Todos</SelectItem>
+                                            <SelectItem value="_">Todos los tipos de bien</SelectItem>
                                             <SelectItem value="asset">Activo</SelectItem>
                                             <SelectItem value="component">Componente</SelectItem>
                                         </SelectContent>

@@ -2,15 +2,17 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\Zonal;
+use App\Support\UserGeographicAccess;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Establece en la request los zonales que el usuario puede ver:
- * - superadmin: todos (allowed_zonal_ids = null).
- * - Resto: zonales asignados vía user_zonals + zonales donde el usuario es manager_id.
+ * Establece en la request el alcance geográfico del usuario:
+ * - superadmin: sin restricción (allowed_zonal_ids y allowed_office_ids = null).
+ * - Resto:
+ *   - allowed_office_ids: oficinas asignadas en user_offices + oficinas de zonales gestionados (manager_id).
+ *   - allowed_zonal_ids: zonales derivados de esas oficinas (para selects de zonal y modelos anclados a zonal_id).
  */
 class FilterZonalsByUser
 {
@@ -20,20 +22,14 @@ class FilterZonalsByUser
 
         if (! $user) {
             $request->attributes->set('allowed_zonal_ids', []);
+            $request->attributes->set('allowed_office_ids', []);
 
             return $next($request);
         }
 
-        if ($user->hasRole('superadmin', 'web')) {
-            $request->attributes->set('allowed_zonal_ids', null);
+        [$allowedOfficeIds, $allowedZonalIds] = UserGeographicAccess::forUser($user);
 
-            return $next($request);
-        }
-
-        $fromPivot = $user->zonals()->pluck('id');
-        $fromManager = Zonal::query()->where('manager_id', $user->id)->pluck('id');
-        $allowedZonalIds = $fromPivot->merge($fromManager)->unique()->values()->all();
-
+        $request->attributes->set('allowed_office_ids', $allowedOfficeIds);
         $request->attributes->set('allowed_zonal_ids', $allowedZonalIds);
 
         return $next($request);

@@ -88,6 +88,9 @@ class HandleInertiaRequests extends Middleware
                 'allowedZonalIds' => $request->attributes->has('allowed_zonal_ids')
                     ? $request->attributes->get('allowed_zonal_ids')
                     : null,
+                'allowedOfficeIds' => $request->attributes->has('allowed_office_ids')
+                    ? $request->attributes->get('allowed_office_ids')
+                    : null,
                 'auth' => [
                     'user' => $user instanceof User ? $this->sharedAuthUserPayload($user) : null,
                     'permissions' => $permissions,
@@ -111,6 +114,7 @@ class HandleInertiaRequests extends Middleware
                 ...$parentShare,
                 'name' => config('app.name'),
                 'allowedZonalIds' => null,
+                'allowedOfficeIds' => null,
                 'auth' => [
                     'user' => null,
                     'permissions' => [],

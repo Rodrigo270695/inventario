@@ -11,6 +11,7 @@ use App\Models\InventoryCountItem;
 use App\Models\Office;
 use App\Models\Warehouse;
 use App\Models\Zonal;
+use App\Support\UserGeographicAccess;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -40,9 +41,10 @@ class InventoryCountController extends Controller
 
         /** @var \App\Models\User|null $authUser */
         $authUser = $request->user();
-        $allowedZonalIds = [];
-        if ($authUser && ! $authUser->hasRole('superadmin', 'web')) {
-            $allowedZonalIds = $authUser->zonals()->pluck('zonals.id')->all();
+        [$allowedOfficeIds, $allowedZonalIds] = UserGeographicAccess::forUser($authUser);
+        if ($authUser?->hasRole('superadmin', 'web')) {
+            $allowedOfficeIds = [];
+            $allowedZonalIds = [];
         }
 
         $query = InventoryCount::query()
@@ -54,7 +56,9 @@ class InventoryCountController extends Controller
                 'reconciledBy:id,name,last_name,usuario',
             ]);
 
-        if (! empty($allowedZonalIds)) {
+        if (! empty($allowedOfficeIds)) {
+            $query->whereHas('warehouse', fn (Builder $q) => $q->whereIn('office_id', $allowedOfficeIds));
+        } elseif (! empty($allowedZonalIds)) {
             $query->whereHas('warehouse.office', function (Builder $q) use ($allowedZonalIds) {
                 $q->whereIn('zonal_id', $allowedZonalIds);
             });
@@ -84,7 +88,10 @@ class InventoryCountController extends Controller
             ->withQueryString();
 
         $baseQuery = InventoryCount::query()
-            ->when(! empty($allowedZonalIds), function (Builder $q) use ($allowedZonalIds) {
+            ->when(! empty($allowedOfficeIds), function (Builder $q) use ($allowedOfficeIds) {
+                $q->whereHas('warehouse', fn (Builder $wq) => $wq->whereIn('office_id', $allowedOfficeIds));
+            })
+            ->when(empty($allowedOfficeIds) && ! empty($allowedZonalIds), function (Builder $q) use ($allowedZonalIds) {
                 $q->whereHas('warehouse.office', fn (Builder $o) => $o->whereIn('zonal_id', $allowedZonalIds));
             });
         $stats = [
@@ -107,7 +114,7 @@ class InventoryCountController extends Controller
                 ],
                 'stats' => $stats,
             ],
-            $this->formPayload($allowedZonalIds)
+            $this->formPayload($allowedZonalIds, $allowedOfficeIds)
         ));
     }
 
@@ -117,10 +124,20 @@ class InventoryCountController extends Controller
         $authUser = $request->user();
 
         if ($authUser && ! $authUser->hasRole('superadmin', 'web')) {
-            $allowedZonalIds = $authUser->zonals()->pluck('zonals.id')->all();
+            [$allowedOfficeIds, $allowedZonalIds] = UserGeographicAccess::forUser($authUser);
             $inventory_count->loadMissing('warehouse.office');
-            $zonalId = $inventory_count->warehouse?->office?->zonal_id;
-            if (! $zonalId || ! in_array($zonalId, $allowedZonalIds, true)) {
+            $officeId = $inventory_count->warehouse?->office_id;
+
+            if (! empty($allowedOfficeIds)) {
+                if (! $officeId || ! in_array($officeId, $allowedOfficeIds, true)) {
+                    abort(403);
+                }
+            } elseif (! empty($allowedZonalIds)) {
+                $zonalId = $inventory_count->warehouse?->office?->zonal_id;
+                if (! $zonalId || ! in_array($zonalId, $allowedZonalIds, true)) {
+                    abort(403);
+                }
+            } else {
                 abort(403);
             }
         }
@@ -290,11 +307,18 @@ class InventoryCountController extends Controller
 
         /** @var \App\Models\User|null $user */
         $user = $request->user();
-        $allowedZonalIds = [];
-        if ($user && ! $user->hasRole('superadmin', 'web')) {
-            $allowedZonalIds = $user->zonals()->pluck('zonals.id')->all();
+        [$allowedOfficeIds, $allowedZonalIds] = UserGeographicAccess::forUser($user);
+        if ($user?->hasRole('superadmin', 'web')) {
+            $allowedOfficeIds = [];
+            $allowedZonalIds = [];
         }
-        if (! empty($allowedZonalIds)) {
+
+        if (! empty($allowedOfficeIds)) {
+            Warehouse::query()
+                ->where('id', $data['warehouse_id'])
+                ->whereIn('office_id', $allowedOfficeIds)
+                ->firstOrFail();
+        } elseif (! empty($allowedZonalIds)) {
             Warehouse::query()
                 ->where('id', $data['warehouse_id'])
                 ->whereHas('office', fn (Builder $o) => $o->whereIn('zonal_id', $allowedZonalIds))
@@ -344,7 +368,7 @@ class InventoryCountController extends Controller
         return redirect()->route('admin.inventory-counts.index')
             ->with('toast', [
                 'type' => 'success',
-                'message' => 'Conteo creado correctamente. Se cargaron ' . ($assets->count() + $components->count()) . ' ítems del almacén.',
+                'message' => 'Conteo creado correctamente. Se cargaron '.($assets->count() + $components->count()).' ítems del almacén.',
             ]);
     }
 
@@ -510,10 +534,20 @@ class InventoryCountController extends Controller
         /** @var \App\Models\User|null $authUser */
         $authUser = $request->user();
         if ($authUser && ! $authUser->hasRole('superadmin', 'web')) {
-            $allowedZonalIds = $authUser->zonals()->pluck('zonals.id')->all();
+            [$allowedOfficeIds, $allowedZonalIds] = UserGeographicAccess::forUser($authUser);
             $inventory_count->loadMissing('warehouse.office');
-            $zonalId = $inventory_count->warehouse?->office?->zonal_id;
-            if (! $zonalId || ! in_array($zonalId, $allowedZonalIds, true)) {
+            $officeId = $inventory_count->warehouse?->office_id;
+
+            if (! empty($allowedOfficeIds)) {
+                if (! $officeId || ! in_array($officeId, $allowedOfficeIds, true)) {
+                    abort(403);
+                }
+            } elseif (! empty($allowedZonalIds)) {
+                $zonalId = $inventory_count->warehouse?->office?->zonal_id;
+                if (! $zonalId || ! in_array($zonalId, $allowedZonalIds, true)) {
+                    abort(403);
+                }
+            } else {
                 abort(403);
             }
         }
@@ -542,7 +576,7 @@ class InventoryCountController extends Controller
         ]);
     }
 
-    private function formPayload(array $allowedZonalIds = []): array
+    private function formPayload(array $allowedZonalIds = [], array $allowedOfficeIds = []): array
     {
         $zonalsForSelect = Zonal::query()
             ->where('is_active', true)
@@ -552,13 +586,15 @@ class InventoryCountController extends Controller
 
         $officesForSelect = Office::query()
             ->where('is_active', true)
-            ->when(! empty($allowedZonalIds), fn (Builder $q) => $q->whereIn('zonal_id', $allowedZonalIds))
+            ->when(! empty($allowedOfficeIds), fn (Builder $q) => $q->whereIn('id', $allowedOfficeIds))
+            ->when(empty($allowedOfficeIds) && ! empty($allowedZonalIds), fn (Builder $q) => $q->whereIn('zonal_id', $allowedZonalIds))
             ->orderBy('name')
             ->get(['id', 'name', 'code', 'zonal_id']);
 
         $warehousesForSelect = Warehouse::query()
             ->where('is_active', true)
-            ->when(! empty($allowedZonalIds), function (Builder $q) use ($allowedZonalIds) {
+            ->when(! empty($allowedOfficeIds), fn (Builder $q) => $q->whereIn('office_id', $allowedOfficeIds))
+            ->when(empty($allowedOfficeIds) && ! empty($allowedZonalIds), function (Builder $q) use ($allowedZonalIds) {
                 $q->whereHas('office', fn (Builder $o) => $o->whereIn('zonal_id', $allowedZonalIds));
             })
             ->with('office:id,name,code,zonal_id', 'office.zonal:id,name,code')

@@ -517,7 +517,7 @@ export default function ServicesIndex({
                                 <SelectValue placeholder="Estado" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="_">Todos</SelectItem>
+                                <SelectItem value="_">Todos los estados</SelectItem>
                                 {Object.entries(STATUS_LABELS).map(([value, label]) => (
                                     <SelectItem key={value} value={value}>
                                         {label}

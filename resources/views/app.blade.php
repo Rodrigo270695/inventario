@@ -40,7 +40,8 @@
         <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600|plus-jakarta-sans:400,500,600,700" rel="stylesheet" />
 
         @viteReactRefresh
-        @vite(['resources/js/app.tsx', "resources/js/pages/{$page['component']}.tsx"])
+        {{-- Solo entradas definidas en vite.config; las páginas se cargan vía import.meta.glob en app.tsx --}}
+        @vite(['resources/css/app.css', 'resources/js/app.tsx'])
         @inertiaHead
     </head>
     <body class="font-sans antialiased">

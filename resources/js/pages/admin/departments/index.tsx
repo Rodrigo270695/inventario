@@ -413,7 +413,7 @@ export default function DepartmentsIndex({
                                 <SelectValue placeholder="Estado" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="_">Todos</SelectItem>
+                                <SelectItem value="_">Todos los estados</SelectItem>
                                 <SelectItem value="1">Activos</SelectItem>
                                 <SelectItem value="0">Inactivos</SelectItem>
                             </SelectContent>

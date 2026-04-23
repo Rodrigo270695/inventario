@@ -280,10 +280,23 @@ function formatGerOperCell(row: PurchaseOrder): React.ReactNode {
     return <span>—</span>;
 }
 
-function canActOnOrderZonal(
+function purchaseOrderOfficeId(order: PurchaseOrder): string | null {
+    return order.office_id ?? order.office?.id ?? null;
+}
+
+function canActOnPurchaseOrderScope(
     order: PurchaseOrder,
+    allowedOfficeIds: string[] | null | undefined,
     allowedZonalIds: string[] | null | undefined
 ): boolean {
+    if (allowedOfficeIds === null || allowedOfficeIds === undefined) return true;
+    if (allowedOfficeIds.length === 0) return false;
+
+    const oid = purchaseOrderOfficeId(order);
+    if (!oid) return false;
+    if (allowedOfficeIds.includes(oid)) return true;
+
+    // Compatibilidad: si el payload no trae office_id pero sí zonal, permitir fallback por zonal.
     const zid = order.office?.zonal_id;
     if (!zid) return false;
     if (allowedZonalIds === null || allowedZonalIds === undefined) return true;
@@ -326,6 +339,7 @@ export default function PurchaseOrdersIndex({
 
     const { props } = usePage();
     const allowedZonalIds = (props as { allowedZonalIds?: string[] | null }).allowedZonalIds;
+    const allowedOfficeIds = (props as { allowedOfficeIds?: string[] | null }).allowedOfficeIds;
     const auth = (props as { auth?: { permissions?: string[] } }).auth;
     const permissions = auth?.permissions ?? [];
     const canCreate = permissions.includes('purchase_orders.create');
@@ -648,7 +662,7 @@ export default function PurchaseOrdersIndex({
                                 <SelectValue placeholder="Estado" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="_">Todos</SelectItem>
+                                <SelectItem value="_">Todos los estados</SelectItem>
                                 <SelectItem value="pending_minor">Pendiente zonal</SelectItem>
                                 <SelectItem value="pending">Pendiente general</SelectItem>
                                 <SelectItem value="observed_minor">Observado zonal</SelectItem>
@@ -667,7 +681,7 @@ export default function PurchaseOrdersIndex({
                                 <SelectValue placeholder="Proveedor" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="_">Todos</SelectItem>
+                                <SelectItem value="_">Todos los proveedores</SelectItem>
                                 {suppliersForFilter.map((s) => (
                                     <SelectItem key={s.id} value={s.id}>
                                         {s.name}
@@ -785,10 +799,10 @@ export default function PurchaseOrdersIndex({
                                                     </Link>
                                                 )}
                                                 {row.status === 'pending_minor' &&
-                                                    canActOnOrderZonal(row, allowedZonalIds) &&
+                                                    canActOnPurchaseOrderScope(row, allowedOfficeIds, allowedZonalIds) &&
                                                     (canMinorApprove || canMinorObserve) && (
                                                         <>
-                                                            {canMinorApprove && canActOnOrderZonal(row, allowedZonalIds) && (
+                                                            {canMinorApprove && canActOnPurchaseOrderScope(row, allowedOfficeIds, allowedZonalIds) && (
                                                                 <>
                                                                     <Button
                                                                         type="button"
@@ -812,7 +826,7 @@ export default function PurchaseOrdersIndex({
                                                                     </Button>
                                                                 </>
                                                             )}
-                                                            {canMinorObserve && canActOnOrderZonal(row, allowedZonalIds) && (
+                                                            {canMinorObserve && canActOnPurchaseOrderScope(row, allowedOfficeIds, allowedZonalIds) && (
                                                                 <Button
                                                                     type="button"
                                                                     variant="outline"

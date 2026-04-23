@@ -15,6 +15,7 @@ use App\Models\RepairShop;
 use App\Models\Warehouse;
 use App\Models\Zonal;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -87,20 +88,7 @@ class ComponentController extends Controller
             $query->where('type_id', $typeId);
         }
 
-        if ($zonalId !== '') {
-            $query->whereHas('warehouse', function ($w) use ($zonalId, $officeId) {
-                $w->whereHas('office', fn ($o) => $o->where('zonal_id', $zonalId));
-                if ($officeId !== '') {
-                    $w->where('office_id', $officeId);
-                }
-            });
-        } elseif ($officeId !== '') {
-            $query->whereHas('warehouse', fn ($w) => $w->where('office_id', $officeId));
-        }
-
-        if ($warehouseId !== '') {
-            $query->where('warehouse_id', $warehouseId);
-        }
+        $this->applyComponentGeographicUiFilters($query, $zonalId, $officeId, $warehouseId);
 
         if ($status !== '') {
             $query->where('status', $status);
@@ -145,19 +133,7 @@ class ComponentController extends Controller
         if ($typeId !== '') {
             $baseCount->where('type_id', $typeId);
         }
-        if ($zonalId !== '') {
-            $baseCount->whereHas('warehouse', function ($w) use ($zonalId, $officeId) {
-                $w->whereHas('office', fn ($o) => $o->where('zonal_id', $zonalId));
-                if ($officeId !== '') {
-                    $w->where('office_id', $officeId);
-                }
-            });
-        } elseif ($officeId !== '') {
-            $baseCount->whereHas('warehouse', fn ($w) => $w->where('office_id', $officeId));
-        }
-        if ($warehouseId !== '') {
-            $baseCount->where('warehouse_id', $warehouseId);
-        }
+        $this->applyComponentGeographicUiFilters($baseCount, $zonalId, $officeId, $warehouseId);
         if ($status !== '') {
             $baseCount->where('status', $status);
         }
@@ -179,19 +155,7 @@ class ComponentController extends Controller
             if ($typeId !== '') {
                 $qCount->where('type_id', $typeId);
             }
-            if ($zonalId !== '') {
-                $qCount->whereHas('warehouse', function ($w) use ($zonalId, $officeId) {
-                    $w->whereHas('office', fn ($o) => $o->where('zonal_id', $zonalId));
-                    if ($officeId !== '') {
-                        $w->where('office_id', $officeId);
-                    }
-                });
-            } elseif ($officeId !== '') {
-                $qCount->whereHas('warehouse', fn ($w) => $w->where('office_id', $officeId));
-            }
-            if ($warehouseId !== '') {
-                $qCount->where('warehouse_id', $warehouseId);
-            }
+            $this->applyComponentGeographicUiFilters($qCount, $zonalId, $officeId, $warehouseId);
             $statusCounts[$s] = $qCount->where('status', $s)->count();
         }
 
@@ -270,20 +234,7 @@ class ComponentController extends Controller
             $query->where('type_id', $typeId);
         }
 
-        if ($zonalId !== '') {
-            $query->whereHas('warehouse', function ($w) use ($zonalId, $officeId) {
-                $w->whereHas('office', fn ($o) => $o->where('zonal_id', $zonalId));
-                if ($officeId !== '') {
-                    $w->where('office_id', $officeId);
-                }
-            });
-        } elseif ($officeId !== '') {
-            $query->whereHas('warehouse', fn ($w) => $w->where('office_id', $officeId));
-        }
-
-        if ($warehouseId !== '') {
-            $query->where('warehouse_id', $warehouseId);
-        }
+        $this->applyComponentGeographicUiFilters($query, $zonalId, $officeId, $warehouseId);
 
         if ($status !== '') {
             $query->where('status', $status);
@@ -398,7 +349,8 @@ class ComponentController extends Controller
             }
         }
 
-        $last = Component::withTrashed()
+        $last = Component::withoutGlobalScopes()
+            ->withTrashed()
             ->where('code', 'LIKE', $prefix.'-%')
             ->orderByDesc('code')
             ->value('code');
@@ -413,6 +365,31 @@ class ComponentController extends Controller
         }
 
         return sprintf('%s-%03d', $prefix, $nextNumber);
+    }
+
+    /**
+     * Filtros de zonal / oficina / almacén coherentes con ubicación en almacén o en taller de reparación.
+     *
+     * @param  Builder<\App\Models\Component>  $query
+     */
+    private function applyComponentGeographicUiFilters(Builder $query, string $zonalId, string $officeId, string $warehouseId): void
+    {
+        if ($zonalId !== '') {
+            $query->where(function (Builder $outer) use ($zonalId, $officeId) {
+                $outer->whereHas('warehouse', function (Builder $w) use ($zonalId, $officeId) {
+                    $w->whereHas('office', fn (Builder $o) => $o->where('zonal_id', $zonalId));
+                    if ($officeId !== '') {
+                        $w->where('office_id', $officeId);
+                    }
+                })->orWhereHas('repairShop', fn (Builder $rs) => $rs->where('zonal_id', $zonalId));
+            });
+        } elseif ($officeId !== '') {
+            $query->whereHas('warehouse', fn (Builder $w) => $w->where('office_id', $officeId));
+        }
+
+        if ($warehouseId !== '') {
+            $query->where('warehouse_id', $warehouseId);
+        }
     }
 
     private function parseComponentIds(Request $request): array
@@ -441,6 +418,10 @@ class ComponentController extends Controller
 
         if ($components->isEmpty()) {
             abort(404, 'No se encontraron componentes para generar etiquetas.');
+        }
+
+        if ($components->count() !== count($ids)) {
+            abort(403, 'No tienes acceso a uno o más de los componentes solicitados.');
         }
 
         return $components;

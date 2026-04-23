@@ -234,7 +234,7 @@ export default function LoginAttemptsIndex({ loginAttempts, filters, stats }: Pr
                                 <SelectValue placeholder="Resultado" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="_">Todos</SelectItem>
+                                <SelectItem value="_">Todos los resultados</SelectItem>
                                 <SelectItem value="1">Exitoso</SelectItem>
                                 <SelectItem value="0">Fallido</SelectItem>
                             </SelectContent>

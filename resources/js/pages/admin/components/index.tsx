@@ -620,7 +620,7 @@ export default function ComponentsIndex({
                                 <SelectValue placeholder="Almacén" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="_">Todos</SelectItem>
+                                <SelectItem value="_">Todos los almacenes</SelectItem>
                                 {warehousesFilteredByOffice.map((w) => (
                                     <SelectItem key={w.id} value={w.id}>
                                         {w.name} {w.code ? `(${w.code})` : ''}
@@ -656,7 +656,7 @@ export default function ComponentsIndex({
                                 <SelectValue placeholder="Estado" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="_">Todos</SelectItem>
+                                <SelectItem value="_">Todos los estados</SelectItem>
                                 {Object.entries(STATUS_LABELS).map(([value, label]) => (
                                     <SelectItem key={value} value={value}>
                                         {label}

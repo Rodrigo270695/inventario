@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\User\UserRequest;
 use App\Mail\UserCredentialsMail;
 use App\Mail\UserCredentialsSentConfirmationMail;
+use App\Models\Office;
 use App\Models\User;
 use App\Models\Zonal;
 use Illuminate\Database\QueryException;
@@ -192,7 +193,7 @@ class UserController extends Controller
 
         $template = null;
         if (is_string($duplicateFromId) && $duplicateFromId !== '') {
-            $template = User::with(['zonals:id', 'roles'])->find($duplicateFromId);
+            $template = User::with(['zonals:id', 'offices:id', 'roles'])->find($duplicateFromId);
             if ($template === null) {
                 return redirect()->back()
                     ->withInput($request->except('password', 'password_confirmation'))
@@ -234,8 +235,16 @@ class UserController extends Controller
         }
 
         if ($template !== null) {
-            $template->loadMissing('zonals:id');
-            $user->zonals()->sync($template->zonals->pluck('id')->all());
+            $template->loadMissing(['zonals:id', 'offices:id']);
+            $officeIds = $template->offices->pluck('id')->all();
+            if ($officeIds === []) {
+                $officeIds = Office::query()
+                    ->whereIn('zonal_id', $template->zonals->pluck('id')->all())
+                    ->pluck('id')
+                    ->all();
+            }
+            $user->offices()->sync($officeIds);
+            $this->syncUserZonalsFromOfficeIds($user, $officeIds);
             $this->applyEffectivePermissionsFromTemplate($user, $template);
         }
 
@@ -297,7 +306,7 @@ class UserController extends Controller
         }
 
         $successMessage = $template !== null
-            ? 'Usuario duplicado correctamente (mismo rol, zonales y permisos efectivos que el origen). Las credenciales se enviaron a su correo.'.($actorEmail === '' ? '' : ' Recibirás un correo de confirmación.')
+            ? 'Usuario duplicado correctamente (mismo rol, oficinas y permisos efectivos que el origen). Las credenciales se enviaron a su correo.'.($actorEmail === '' ? '' : ' Recibirás un correo de confirmación.')
             : 'Usuario registrado correctamente. Las credenciales se enviaron a su correo.'.($actorEmail === '' ? '' : ' Recibirás un correo de confirmación.');
 
         return redirect()->back()
@@ -308,13 +317,21 @@ class UserController extends Controller
     {
         $this->denyUnlessSuperadminViewer($request->user(), $user);
 
-        $user->load(['zonals:id,name,code', 'roles:id,name,guard_name']);
+        $user->load([
+            'zonals:id,name,code',
+            'offices:id,name,code,zonal_id',
+            'roles:id,name,guard_name',
+        ]);
         $role = $user->roles->firstWhere('guard_name', 'web');
 
         return response()->json([
             'role_name' => $role?->name,
             'zonal_labels' => $user->zonals
                 ->map(fn (Zonal $z) => trim($z->code.' · '.$z->name))
+                ->values()
+                ->all(),
+            'office_labels' => $user->offices
+                ->map(fn (Office $o) => trim(($o->code ?? '').' · '.$o->name))
                 ->values()
                 ->all(),
         ]);
@@ -469,9 +486,12 @@ class UserController extends Controller
     {
         $this->denyUnlessSuperadminViewer($request->user(), $user);
 
-        $user->load('zonals:id,name,code');
-        $zonals = Zonal::query()->orderBy('name')->get(['id', 'name', 'code']);
-        $userZonalIds = $user->zonals->pluck('id')->all();
+        $user->load(['offices:id,name,code,zonal_id']);
+        $zonals = Zonal::query()
+            ->with(['offices' => fn ($q) => $q->select('offices.id', 'offices.zonal_id', 'offices.name', 'offices.code')->orderBy('offices.name')])
+            ->orderBy('name')
+            ->get(['id', 'name', 'code']);
+        $userOfficeIds = $user->offices->pluck('id')->all();
 
         $allPermissions = Permission::where('guard_name', 'web')->orderBy('name')->get(['id', 'name']);
         $rolePermissionIds = $user->getPermissionsViaRoles()->pluck('id')->all();
@@ -486,7 +506,7 @@ class UserController extends Controller
                 'usuario' => $user->usuario,
             ],
             'zonals' => $zonals,
-            'userZonalIds' => $userZonalIds,
+            'userOfficeIds' => $userOfficeIds,
             'permissions' => $allPermissions->map(fn ($p) => ['id' => $p->id, 'name' => $p->name]),
             'rolePermissionIds' => array_map('intval', $rolePermissionIds),
             'directPermissionIds' => array_map('intval', $directPermissionIds),
@@ -494,6 +514,30 @@ class UserController extends Controller
         ]);
     }
 
+    public function updateOffices(Request $request, User $user): RedirectResponse
+    {
+        $this->denyUnlessSuperadminViewer($request->user(), $user);
+
+        $validated = $request->validate([
+            'office_ids' => ['array'],
+            'office_ids.*' => ['uuid', Rule::exists('offices', 'id')],
+        ], [
+            'office_ids.array' => 'Las oficinas deben ser una lista.',
+            'office_ids.*.exists' => 'Una o más oficinas no son válidas.',
+        ]);
+
+        $officeIds = $validated['office_ids'] ?? [];
+        $user->offices()->sync($officeIds);
+        $this->syncUserZonalsFromOfficeIds($user, $officeIds);
+
+        return redirect()->back()
+            ->with('toast', ['type' => 'success', 'message' => 'Oficinas actualizadas correctamente.']);
+    }
+
+    /**
+     * Compatibilidad: endpoint legado que sincronizaba user_zonals.
+     * Ahora expande a todas las oficinas de los zonales seleccionados y sincroniza user_offices.
+     */
     public function updateZonals(Request $request, User $user): RedirectResponse
     {
         $this->denyUnlessSuperadminViewer($request->user(), $user);
@@ -507,10 +551,27 @@ class UserController extends Controller
         ]);
 
         $zonalIds = $validated['zonal_ids'] ?? [];
+        $officeIds = Office::query()->whereIn('zonal_id', $zonalIds)->pluck('id')->all();
+        $user->offices()->sync($officeIds);
         $user->zonals()->sync($zonalIds);
 
         return redirect()->back()
-            ->with('toast', ['type' => 'success', 'message' => 'Zonales actualizados correctamente.']);
+            ->with('toast', ['type' => 'success', 'message' => 'Zonales actualizados (y oficinas sincronizadas).']);
+    }
+
+    /**
+     * @param  array<int, string>  $officeIds
+     */
+    private function syncUserZonalsFromOfficeIds(User $user, array $officeIds): void
+    {
+        if ($officeIds === []) {
+            $user->zonals()->sync([]);
+
+            return;
+        }
+
+        $zonalIds = Office::query()->whereIn('id', $officeIds)->pluck('zonal_id')->unique()->values()->all();
+        $user->zonals()->sync($zonalIds);
     }
 
     /**

@@ -34,6 +34,28 @@ const STATUS_CLASS: Record<string, string> = {
 
 type QuoteDisplay = { id: string; description: string | null; pdf_path: string | null; is_selected: boolean };
 
+function purchaseOrderOfficeId(order: PurchaseOrder): string | null {
+    return order.office_id ?? order.office?.id ?? null;
+}
+
+function canActOnPurchaseOrderScope(
+    order: PurchaseOrder,
+    allowedOfficeIds: string[] | null | undefined,
+    allowedZonalIds: string[] | null | undefined
+): boolean {
+    if (allowedOfficeIds === null || allowedOfficeIds === undefined) return true;
+    if (allowedOfficeIds.length === 0) return false;
+
+    const oid = purchaseOrderOfficeId(order);
+    if (!oid) return false;
+    if (allowedOfficeIds.includes(oid)) return true;
+
+    const zid = order.office?.zonal_id;
+    if (!zid) return false;
+    if (allowedZonalIds === null || allowedZonalIds === undefined) return true;
+    return allowedZonalIds.includes(zid);
+}
+
 type ActionModalType =
     | 'approve'
     | 'reject'
@@ -163,12 +185,8 @@ export default function PurchaseOrderShow({
     const isPendingMinor = po.status === 'pending_minor';
     const { props: pageProps } = usePage();
     const allowedZonalIds = (pageProps as { allowedZonalIds?: string[] | null }).allowedZonalIds;
-    const zid = po.office?.zonal_id;
-    const zonalOk =
-        zid &&
-        (allowedZonalIds === null ||
-            allowedZonalIds === undefined ||
-            (Array.isArray(allowedZonalIds) && allowedZonalIds.includes(zid)));
+    const allowedOfficeIds = (pageProps as { allowedOfficeIds?: string[] | null }).allowedOfficeIds;
+    const zonalOk = canActOnPurchaseOrderScope(po, allowedOfficeIds, allowedZonalIds);
 
     const quotes = po.quotes ?? [];
 

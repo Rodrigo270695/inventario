@@ -41,6 +41,11 @@ class Office extends Model
 
     public function applyAllowedZonalsConstraint(Builder $builder, array $allowedZonalIds): void
     {
-        $builder->whereIn($this->getTable().'.zonal_id', $allowedZonalIds);
+        static::constrainByOfficesOrZonals(
+            $builder,
+            $allowedZonalIds,
+            fn (Builder $q) => $q->whereIn($this->getTable().'.id', static::allowedOfficeIdsFromRequest() ?? []),
+            fn (Builder $q) => $q->whereIn($this->getTable().'.zonal_id', $allowedZonalIds),
+        );
     }
 }

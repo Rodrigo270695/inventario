@@ -131,10 +131,24 @@ class RepairTicket extends Model
 
     public function applyAllowedZonalsConstraint(Builder $builder, array $allowedZonalIds): void
     {
-        $builder->where(function ($query) use ($allowedZonalIds) {
+        $officeIds = static::allowedOfficeIdsFromRequest();
+
+        if ($officeIds !== null && $officeIds !== []) {
+            $builder->where(function (Builder $query) use ($officeIds, $allowedZonalIds) {
+                $query
+                    ->whereHas('warehouse', fn ($wq) => $wq->whereIn('office_id', $officeIds))
+                    ->orWhereHas('asset.warehouse', fn ($wq) => $wq->whereIn('office_id', $officeIds))
+                    ->orWhereHas('component.warehouse', fn ($wq) => $wq->whereIn('office_id', $officeIds))
+                    ->orWhereHas('repairShop', fn ($shopQuery) => $shopQuery->whereIn('zonal_id', $allowedZonalIds));
+            });
+
+            return;
+        }
+
+        $builder->where(function (Builder $query) use ($allowedZonalIds) {
             $query
                 ->whereHas('warehouse.office', fn ($officeQuery) => $officeQuery->whereIn('zonal_id', $allowedZonalIds))
-                ->whereHas('asset.warehouse.office', fn ($officeQuery) => $officeQuery->whereIn('zonal_id', $allowedZonalIds))
+                ->orWhereHas('asset.warehouse.office', fn ($officeQuery) => $officeQuery->whereIn('zonal_id', $allowedZonalIds))
                 ->orWhereHas('component.warehouse.office', fn ($officeQuery) => $officeQuery->whereIn('zonal_id', $allowedZonalIds))
                 ->orWhereHas('repairShop', fn ($shopQuery) => $shopQuery->whereIn('zonal_id', $allowedZonalIds));
         });

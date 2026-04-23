@@ -63,7 +63,12 @@ class Invoice extends Model
 
     public function applyAllowedZonalsConstraint(Builder $builder, array $allowedZonalIds): void
     {
-        $builder->whereHas('purchaseOrder.office', fn ($q) => $q->whereIn('zonal_id', $allowedZonalIds));
+        static::constrainByOfficesOrZonals(
+            $builder,
+            $allowedZonalIds,
+            fn (Builder $q) => $q->whereHas('purchaseOrder', fn ($pq) => $pq->whereIn('office_id', static::allowedOfficeIdsFromRequest() ?? [])),
+            fn (Builder $q) => $q->whereHas('purchaseOrder.office', fn ($oq) => $oq->whereIn('zonal_id', $allowedZonalIds)),
+        );
     }
 
     protected static function booted(): void

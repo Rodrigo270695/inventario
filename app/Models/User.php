@@ -140,6 +140,11 @@ class User extends Authenticatable
         return $this->belongsToMany(Zonal::class, 'user_zonals');
     }
 
+    public function offices(): BelongsToMany
+    {
+        return $this->belongsToMany(Office::class, 'user_offices');
+    }
+
     /** Zonales donde este usuario es gestor (además de los asignados en user_zonals). */
     public function managedZonals(): HasMany
     {

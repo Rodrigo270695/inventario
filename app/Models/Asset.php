@@ -138,9 +138,21 @@ class Asset extends Model
 
     public function applyAllowedZonalsConstraint(Builder $builder, array $allowedZonalIds): void
     {
-        $builder->where(function ($q) use ($allowedZonalIds) {
+        $officeIds = static::allowedOfficeIdsFromRequest();
+
+        if ($officeIds !== null && $officeIds !== []) {
+            $builder->where(function (Builder $q) use ($officeIds, $allowedZonalIds) {
+                $q->whereHas('warehouse', fn (Builder $wq) => $wq->whereIn('office_id', $officeIds))
+                    ->orWhereHas('repairShop', fn (Builder $sq) => $sq->whereIn('zonal_id', $allowedZonalIds));
+            });
+
+            return;
+        }
+
+        $builder->where(function (Builder $q) use ($allowedZonalIds) {
             $q->whereNull('warehouse_id')
-                ->orWhereHas('warehouse.office', fn ($oq) => $oq->whereIn('zonal_id', $allowedZonalIds));
+                ->orWhereHas('warehouse.office', fn ($oq) => $oq->whereIn('zonal_id', $allowedZonalIds))
+                ->orWhereHas('repairShop', fn ($sq) => $sq->whereIn('zonal_id', $allowedZonalIds));
         });
     }
 }

@@ -434,7 +434,7 @@ export default function StockEntriesIndex({
                                 <SelectValue placeholder="Estado" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="_">Todos</SelectItem>
+                                <SelectItem value="_">Todos los estados</SelectItem>
                                 <SelectItem value="draft">Borrador</SelectItem>
                                 <SelectItem value="completed">Completado</SelectItem>
                             </SelectContent>
@@ -449,7 +449,7 @@ export default function StockEntriesIndex({
                                 <SelectValue placeholder="Almacén" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="_">Todos</SelectItem>
+                                <SelectItem value="_">Todos los almacenes</SelectItem>
                                 {warehousesForFilter.map((w) => (
                                     <SelectItem key={w.id} value={w.id}>
                                         {w.code ? `${w.code} - ${w.name}` : w.name}

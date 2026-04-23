@@ -57,6 +57,11 @@ class StockEntry extends Model
 
     public function applyAllowedZonalsConstraint(Builder $builder, array $allowedZonalIds): void
     {
-        $builder->whereHas('warehouse.office', fn ($q) => $q->whereIn('zonal_id', $allowedZonalIds));
+        static::constrainByOfficesOrZonals(
+            $builder,
+            $allowedZonalIds,
+            fn (Builder $q) => $q->whereHas('warehouse', fn ($wq) => $wq->whereIn('office_id', static::allowedOfficeIdsFromRequest() ?? [])),
+            fn (Builder $q) => $q->whereHas('warehouse.office', fn ($oq) => $oq->whereIn('zonal_id', $allowedZonalIds)),
+        );
     }
 }

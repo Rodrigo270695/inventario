@@ -169,42 +169,42 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
         ->name('repair-tickets.destroy');
 
     Route::get('preventive-maintenance', [PreventiveMaintenanceController::class, 'index'])
-        ->middleware(['role_or_permission:preventive_plans.view|preventive_plans.create|preventive_plans.update|preventive_plans.delete|preventive_tasks.view|preventive_tasks.create|preventive_tasks.update|preventive_tasks.delete'])
+        ->middleware(['role_or_permission:preventive_plans.view|preventive_plans.create|preventive_plans.update|preventive_plans.delete|preventive_tasks.view|preventive_tasks.create|preventive_tasks.update|preventive_tasks.delete', 'filter.zonals.by.user'])
         ->name('preventive-maintenance.index');
     Route::post('preventive-maintenance/plans', [PreventiveMaintenanceController::class, 'storePlan'])
-        ->middleware('permission:preventive_plans.create')
+        ->middleware(['permission:preventive_plans.create', 'filter.zonals.by.user'])
         ->name('preventive-maintenance.plans.store');
     Route::put('preventive-maintenance/plans/{preventive_plan}', [PreventiveMaintenanceController::class, 'updatePlan'])
-        ->middleware('permission:preventive_plans.update')
+        ->middleware(['permission:preventive_plans.update', 'filter.zonals.by.user'])
         ->name('preventive-maintenance.plans.update');
     Route::delete('preventive-maintenance/plans/{preventive_plan}', [PreventiveMaintenanceController::class, 'destroyPlan'])
-        ->middleware('permission:preventive_plans.delete')
+        ->middleware(['permission:preventive_plans.delete', 'filter.zonals.by.user'])
         ->name('preventive-maintenance.plans.destroy');
     Route::post('preventive-maintenance/tasks', [PreventiveMaintenanceController::class, 'storeTask'])
-        ->middleware('permission:preventive_tasks.create')
+        ->middleware(['permission:preventive_tasks.create', 'filter.zonals.by.user'])
         ->name('preventive-maintenance.tasks.store');
     Route::put('preventive-maintenance/tasks/{preventive_task}', [PreventiveMaintenanceController::class, 'updateTask'])
-        ->middleware('permission:preventive_tasks.update')
+        ->middleware(['permission:preventive_tasks.update', 'filter.zonals.by.user'])
         ->name('preventive-maintenance.tasks.update');
     Route::delete('preventive-maintenance/tasks/{preventive_task}', [PreventiveMaintenanceController::class, 'destroyTask'])
-        ->middleware('permission:preventive_tasks.delete')
+        ->middleware(['permission:preventive_tasks.delete', 'filter.zonals.by.user'])
         ->name('preventive-maintenance.tasks.destroy');
 
     Route::get('assets', [AssetController::class, 'index'])
         ->middleware(['permission:assets.view', 'filter.zonals.by.user'])
         ->name('assets.index');
-    Route::post('assets', [AssetController::class, 'store'])->middleware('permission:assets.create')->name('assets.store');
-    Route::post('assets/restore', [AssetController::class, 'restore'])->middleware('permission:assets.create')->name('assets.restore');
-    Route::put('assets/{asset}', [AssetController::class, 'update'])->middleware('permission:assets.update')->name('assets.update');
-    Route::delete('assets/{asset}', [AssetController::class, 'destroy'])->middleware('permission:assets.delete')->name('assets.destroy');
-    Route::put('assets/{asset}/specs', [AssetController::class, 'updateSpecs'])->middleware('permission:assets.update')->name('assets.specs.update');
-    Route::put('assets/{asset}/computer', [AssetController::class, 'updateComputer'])->middleware('permission:assets.update')->name('assets.computer.update');
-    Route::post('assets/{asset}/assignments', [AssetController::class, 'storeAssignment'])->middleware('permission:assets.update')->name('assets.assignments.store');
-    Route::put('assets/{asset}/assignments/{assignment}/return', [AssetController::class, 'returnAssignment'])->middleware('permission:assets.update')->name('assets.assignments.return');
-    Route::post('assets/{asset}/photos', [AssetController::class, 'storePhoto'])->middleware('permission:assets.update')->name('assets.photos.store');
-    Route::delete('assets/{asset}/photos/{photo}', [AssetController::class, 'destroyPhoto'])->middleware('permission:assets.update')->name('assets.photos.destroy');
-    Route::post('assets/{asset}/computer-components', [AssetController::class, 'storeComputerComponent'])->middleware('permission:assets.update')->name('assets.computer-components.store');
-    Route::put('assets/{asset}/computer-components/{computerComponent}/retire', [AssetController::class, 'retireComputerComponent'])->middleware('permission:assets.update')->name('assets.computer-components.retire');
+    Route::post('assets', [AssetController::class, 'store'])->middleware(['permission:assets.create', 'filter.zonals.by.user'])->name('assets.store');
+    Route::post('assets/restore', [AssetController::class, 'restore'])->middleware(['permission:assets.create', 'filter.zonals.by.user'])->name('assets.restore');
+    Route::put('assets/{asset}', [AssetController::class, 'update'])->middleware(['permission:assets.update', 'filter.zonals.by.user'])->name('assets.update');
+    Route::delete('assets/{asset}', [AssetController::class, 'destroy'])->middleware(['permission:assets.delete', 'filter.zonals.by.user'])->name('assets.destroy');
+    Route::put('assets/{asset}/specs', [AssetController::class, 'updateSpecs'])->middleware(['permission:assets.update', 'filter.zonals.by.user'])->name('assets.specs.update');
+    Route::put('assets/{asset}/computer', [AssetController::class, 'updateComputer'])->middleware(['permission:assets.update', 'filter.zonals.by.user'])->name('assets.computer.update');
+    Route::post('assets/{asset}/assignments', [AssetController::class, 'storeAssignment'])->middleware(['permission:assets.update', 'filter.zonals.by.user'])->name('assets.assignments.store');
+    Route::put('assets/{asset}/assignments/{assignment}/return', [AssetController::class, 'returnAssignment'])->middleware(['permission:assets.update', 'filter.zonals.by.user'])->name('assets.assignments.return');
+    Route::post('assets/{asset}/photos', [AssetController::class, 'storePhoto'])->middleware(['permission:assets.update', 'filter.zonals.by.user'])->name('assets.photos.store');
+    Route::delete('assets/{asset}/photos/{photo}', [AssetController::class, 'destroyPhoto'])->middleware(['permission:assets.update', 'filter.zonals.by.user'])->name('assets.photos.destroy');
+    Route::post('assets/{asset}/computer-components', [AssetController::class, 'storeComputerComponent'])->middleware(['permission:assets.update', 'filter.zonals.by.user'])->name('assets.computer-components.store');
+    Route::put('assets/{asset}/computer-components/{computerComponent}/retire', [AssetController::class, 'retireComputerComponent'])->middleware(['permission:assets.update', 'filter.zonals.by.user'])->name('assets.computer-components.retire');
     Route::get('assets/{asset}/config', [AssetController::class, 'config'])
         ->middleware(['permission:assets.configure', 'filter.zonals.by.user'])
         ->name('assets.config');
@@ -224,15 +224,15 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
         ->middleware(['permission:assets.barcodes.view', 'filter.zonals.by.user'])
         ->name('assets.barcode.pdf');
 
-    Route::get('components', [ComponentController::class, 'index'])->middleware('permission:components.view')->name('components.index');
-    Route::post('components', [ComponentController::class, 'store'])->middleware('permission:components.create')->name('components.store');
-    Route::put('components/{component}', [ComponentController::class, 'update'])->middleware('permission:components.update')->name('components.update');
-    Route::delete('components/{component}', [ComponentController::class, 'destroy'])->middleware('permission:components.delete')->name('components.destroy');
-    Route::put('components/{component}/specs', [ComponentController::class, 'updateSpecs'])->middleware('permission:components.update')->name('components.specs.update');
-    Route::get('components/{component}/config', [ComponentController::class, 'config'])->middleware('permission:components.configure')->name('components.config');
-    Route::get('components/export', [ComponentController::class, 'export'])->middleware('permission:components.export')->name('components.export');
-    Route::get('components/barcodes/pdf', [ComponentController::class, 'barcodesPdf'])->middleware('permission:components.barcodes.bulk')->name('components.barcodes.pdf');
-    Route::get('components/{component}/barcode/pdf', [ComponentController::class, 'barcodePdf'])->middleware('permission:components.barcodes.view')->name('components.barcode.pdf');
+    Route::get('components', [ComponentController::class, 'index'])->middleware(['permission:components.view', 'filter.zonals.by.user'])->name('components.index');
+    Route::post('components', [ComponentController::class, 'store'])->middleware(['permission:components.create', 'filter.zonals.by.user'])->name('components.store');
+    Route::put('components/{component}', [ComponentController::class, 'update'])->middleware(['permission:components.update', 'filter.zonals.by.user'])->name('components.update');
+    Route::delete('components/{component}', [ComponentController::class, 'destroy'])->middleware(['permission:components.delete', 'filter.zonals.by.user'])->name('components.destroy');
+    Route::put('components/{component}/specs', [ComponentController::class, 'updateSpecs'])->middleware(['permission:components.update', 'filter.zonals.by.user'])->name('components.specs.update');
+    Route::get('components/{component}/config', [ComponentController::class, 'config'])->middleware(['permission:components.configure', 'filter.zonals.by.user'])->name('components.config');
+    Route::get('components/export', [ComponentController::class, 'export'])->middleware(['permission:components.export', 'filter.zonals.by.user'])->name('components.export');
+    Route::get('components/barcodes/pdf', [ComponentController::class, 'barcodesPdf'])->middleware(['permission:components.barcodes.bulk', 'filter.zonals.by.user'])->name('components.barcodes.pdf');
+    Route::get('components/{component}/barcode/pdf', [ComponentController::class, 'barcodePdf'])->middleware(['permission:components.barcodes.view', 'filter.zonals.by.user'])->name('components.barcode.pdf');
 
     Route::get('asset-transfers', [AssetTransferController::class, 'index'])
         ->middleware(['role_or_permission:asset_transfers.view|asset_transfers.view_detail|asset_transfers.create|asset_transfers.update|asset_transfers.delete|asset_transfers.approve|asset_transfers.cancel|asset_transfers.dispatch|asset_transfers.receive|asset_transfers.export', 'filter.zonals.by.user'])
@@ -488,6 +488,7 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
         ->middleware(['permission:users.duplicate', 'permission:users.create'])
         ->name('users.duplicate-template');
     Route::get('users/{user}/configure', [UserController::class, 'configure'])->middleware('permission:users.configure')->name('users.configure');
+    Route::put('users/{user}/offices', [UserController::class, 'updateOffices'])->middleware('permission:users.configure')->name('users.offices.update');
     Route::put('users/{user}/zonals', [UserController::class, 'updateZonals'])->middleware('permission:users.configure')->name('users.zonals.update');
     Route::put('users/{user}/permissions', [UserController::class, 'updatePermissions'])->middleware('permission:users.configure')->name('users.permissions.update');
     Route::post('users/{user}/send-credentials', [UserController::class, 'sendCredentials'])->middleware('permission:users.send_credentials')->name('users.send-credentials');

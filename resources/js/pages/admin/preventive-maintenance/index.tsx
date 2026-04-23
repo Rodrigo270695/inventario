@@ -1040,9 +1040,9 @@ export default function PreventiveMaintenanceIndex(props: Props) {
                         <div className="sm:col-span-2">
                             <Label>Tipo (componente)</Label>
                             <Select value={planForm.component_type_id || '_'} onValueChange={(v) => setPlanForm((p) => ({ ...p, component_type_id: v === '_' ? '' : v }))}>
-                                <SelectTrigger className="mt-1"><SelectValue placeholder="Todos" /></SelectTrigger>
+                                <SelectTrigger className="mt-1"><SelectValue placeholder="Todos los tipos" /></SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="_">—</SelectItem>
+                                    <SelectItem value="_">Todos los tipos</SelectItem>
                                     {componentTypesForSelect.map((ct) => <SelectItem key={ct.id} value={ct.id}>{ct.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>

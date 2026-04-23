@@ -47,6 +47,11 @@ class Warehouse extends Model
 
     public function applyAllowedZonalsConstraint(Builder $builder, array $allowedZonalIds): void
     {
-        $builder->whereHas('office', fn ($q) => $q->whereIn('zonal_id', $allowedZonalIds));
+        static::constrainByOfficesOrZonals(
+            $builder,
+            $allowedZonalIds,
+            fn (Builder $q) => $q->whereIn($this->getTable().'.office_id', static::allowedOfficeIdsFromRequest() ?? []),
+            fn (Builder $q) => $q->whereHas('office', fn ($oq) => $oq->whereIn('zonal_id', $allowedZonalIds)),
+        );
     }
 }

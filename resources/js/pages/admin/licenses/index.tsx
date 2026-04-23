@@ -217,7 +217,7 @@ export default function LicensesIndex({
                                         )
                                     }
                                     options={vendorOptions}
-                                    placeholder="Todos"
+                                    placeholder="Todos los fabricantes"
                                 />
                             </div>
                             <div className="space-y-1.5">
@@ -232,7 +232,7 @@ export default function LicensesIndex({
                                         )
                                     }
                                     options={productOptions}
-                                    placeholder="Todos"
+                                    placeholder="Todos los productos"
                                 />
                             </div>
                             <div className="space-y-1.5">
@@ -247,7 +247,7 @@ export default function LicensesIndex({
                                         )
                                     }
                                     options={assetOptions}
-                                    placeholder="Todos"
+                                    placeholder="Todos los activos"
                                 />
                             </div>
                         </div>

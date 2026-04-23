@@ -12,6 +12,7 @@ use App\Models\Supplier;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Models\Zonal;
+use App\Support\UserGeographicAccess;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -45,10 +46,7 @@ class ServiceController extends Controller
 
         /** @var \App\Models\User|null $authUser */
         $authUser = $request->user();
-        $allowedZonalIds = [];
-        if ($authUser && ! $authUser->hasRole('superadmin', 'web')) {
-            $allowedZonalIds = $authUser->zonals()->pluck('zonals.id')->all();
-        }
+        [$allowedOfficeIds, $allowedZonalIds] = UserGeographicAccess::forUser($authUser);
 
         $query = Service::query()
             ->with([
@@ -63,10 +61,12 @@ class ServiceController extends Controller
                 'requestedByUser:id,name,last_name,usuario',
             ]);
 
-        if (! empty($allowedZonalIds)) {
-            $query->whereHas('warehouse.office', function (Builder $q) use ($allowedZonalIds) {
-                $q->whereIn('zonal_id', $allowedZonalIds);
-            });
+        if ($allowedOfficeIds !== null) {
+            if ($allowedOfficeIds === []) {
+                $query->whereRaw('1 = 0');
+            } else {
+                $query->whereHas('warehouse', fn (Builder $q) => $q->whereIn('office_id', $allowedOfficeIds));
+            }
         }
 
         if ($q !== '') {
@@ -119,6 +119,13 @@ class ServiceController extends Controller
 
         $warehousesForFilter = Warehouse::query()
             ->where('is_active', true)
+            ->when($allowedOfficeIds !== null, function (Builder $q) use ($allowedOfficeIds) {
+                if ($allowedOfficeIds === []) {
+                    $q->whereRaw('1 = 0');
+                } else {
+                    $q->whereIn('office_id', $allowedOfficeIds);
+                }
+            })
             ->with('office:id,zonal_id,name,code', 'office.zonal:id,name,code')
             ->get(['id', 'name', 'code', 'office_id'])
             ->sortBy(function (Warehouse $w) {
@@ -129,8 +136,12 @@ class ServiceController extends Controller
             ->values();
 
         $baseQuery = Service::query()
-            ->when(! empty($allowedZonalIds), function (Builder $q) use ($allowedZonalIds) {
-                $q->whereHas('warehouse.office', fn (Builder $o) => $o->whereIn('zonal_id', $allowedZonalIds));
+            ->when($allowedOfficeIds !== null, function (Builder $q) use ($allowedOfficeIds) {
+                if ($allowedOfficeIds === []) {
+                    $q->whereRaw('1 = 0');
+                } else {
+                    $q->whereHas('warehouse', fn (Builder $wq) => $wq->whereIn('office_id', $allowedOfficeIds));
+                }
             });
         $stats = [
             'total' => (clone $baseQuery)->count(),
@@ -155,18 +166,15 @@ class ServiceController extends Controller
             'canCreate' => $authUser?->can('services.create') ?? false,
             'canUpdate' => $authUser?->can('services.update') ?? false,
             'canDelete' => $authUser?->can('services.delete') ?? false,
-        ], $this->formPayload($allowedZonalIds)));
+        ], $this->formPayload($allowedZonalIds, $allowedOfficeIds)));
     }
 
     public function create(Request $request): Response
     {
         $authUser = $request->user();
-        $allowedZonalIds = [];
-        if ($authUser && ! $authUser->hasRole('superadmin', 'web')) {
-            $allowedZonalIds = $authUser->zonals()->pluck('zonals.id')->all();
-        }
+        [$allowedOfficeIds, $allowedZonalIds] = UserGeographicAccess::forUser($authUser);
 
-        return Inertia::render('admin/services/create', $this->formPayload($allowedZonalIds));
+        return Inertia::render('admin/services/create', $this->formPayload($allowedZonalIds, $allowedOfficeIds));
     }
 
     public function store(Request $request): RedirectResponse
@@ -192,14 +200,15 @@ class ServiceController extends Controller
         ]);
 
         $authUser = $request->user();
-        $allowedZonalIds = [];
-        if ($authUser && ! $authUser->hasRole('superadmin', 'web')) {
-            $allowedZonalIds = $authUser->zonals()->pluck('zonals.id')->all();
-        }
-        if (! empty($allowedZonalIds)) {
+        [$allowedOfficeIds] = UserGeographicAccess::forUser($authUser);
+
+        if ($allowedOfficeIds !== null) {
+            if ($allowedOfficeIds === []) {
+                abort(403);
+            }
             Warehouse::query()
                 ->where('id', $validated['warehouse_id'])
-                ->whereHas('office', fn (Builder $o) => $o->whereIn('zonal_id', $allowedZonalIds))
+                ->whereIn('office_id', $allowedOfficeIds)
                 ->firstOrFail();
         }
 
@@ -229,13 +238,14 @@ class ServiceController extends Controller
     public function edit(Request $request, Service $service): Response
     {
         $authUser = $request->user();
-        $allowedZonalIds = [];
-        if ($authUser && ! $authUser->hasRole('superadmin', 'web')) {
-            $allowedZonalIds = $authUser->zonals()->pluck('zonals.id')->all();
-        }
-        if (! empty($allowedZonalIds)) {
-            $service->load('warehouse.office');
-            if (! in_array($service->warehouse->office->zonal_id ?? null, $allowedZonalIds, true)) {
+        [$allowedOfficeIds, $allowedZonalIds] = UserGeographicAccess::forUser($authUser);
+        if ($allowedOfficeIds !== null) {
+            if ($allowedOfficeIds === []) {
+                abort(403);
+            }
+            $service->loadMissing('warehouse.office');
+            $officeId = $service->warehouse?->office_id;
+            if (! $officeId || ! in_array($officeId, $allowedOfficeIds, true)) {
                 abort(403);
             }
         }
@@ -251,7 +261,7 @@ class ServiceController extends Controller
 
         return Inertia::render('admin/services/edit', array_merge([
             'service' => $service,
-        ], $this->formPayload($allowedZonalIds)));
+        ], $this->formPayload($allowedZonalIds, $allowedOfficeIds)));
     }
 
     public function update(Request $request, Service $service): RedirectResponse
@@ -261,13 +271,14 @@ class ServiceController extends Controller
         ])));
 
         $authUser = $request->user();
-        $allowedZonalIds = [];
-        if ($authUser && ! $authUser->hasRole('superadmin', 'web')) {
-            $allowedZonalIds = $authUser->zonals()->pluck('zonals.id')->all();
-        }
-        if (! empty($allowedZonalIds)) {
-            $service->load('warehouse.office');
-            if (! in_array($service->warehouse->office->zonal_id ?? null, $allowedZonalIds, true)) {
+        [$allowedOfficeIds, $allowedZonalIds] = UserGeographicAccess::forUser($authUser);
+        if ($allowedOfficeIds !== null) {
+            if ($allowedOfficeIds === []) {
+                abort(403);
+            }
+            $service->loadMissing('warehouse.office');
+            $officeId = $service->warehouse?->office_id;
+            if (! $officeId || ! in_array($officeId, $allowedOfficeIds, true)) {
                 abort(403);
             }
         }
@@ -287,6 +298,16 @@ class ServiceController extends Controller
             'notes' => 'nullable|string',
         ]);
 
+        if ($allowedOfficeIds !== null) {
+            if ($allowedOfficeIds === []) {
+                abort(403);
+            }
+            Warehouse::query()
+                ->where('id', $validated['warehouse_id'])
+                ->whereIn('office_id', $allowedOfficeIds)
+                ->firstOrFail();
+        }
+
         $service->update($validated);
 
         return redirect()->route('admin.services.index')->with('toast', ['type' => 'success', 'message' => 'Servicio actualizado correctamente.']);
@@ -295,13 +316,14 @@ class ServiceController extends Controller
     public function destroy(Request $request, Service $service): RedirectResponse
     {
         $authUser = $request->user();
-        $allowedZonalIds = [];
-        if ($authUser && ! $authUser->hasRole('superadmin', 'web')) {
-            $allowedZonalIds = $authUser->zonals()->pluck('zonals.id')->all();
-        }
-        if (! empty($allowedZonalIds)) {
-            $service->load('warehouse.office');
-            if (! in_array($service->warehouse->office->zonal_id ?? null, $allowedZonalIds, true)) {
+        [$allowedOfficeIds, $allowedZonalIds] = UserGeographicAccess::forUser($authUser);
+        if ($allowedOfficeIds !== null) {
+            if ($allowedOfficeIds === []) {
+                abort(403);
+            }
+            $service->loadMissing('warehouse.office');
+            $officeId = $service->warehouse?->office_id;
+            if (! $officeId || ! in_array($officeId, $allowedOfficeIds, true)) {
                 abort(403);
             }
         }
@@ -311,11 +333,19 @@ class ServiceController extends Controller
         return redirect()->route('admin.services.index')->with('toast', ['type' => 'success', 'message' => 'Servicio eliminado.']);
     }
 
-    private function formPayload(array $allowedZonalIds): array
+    /**
+     * @param  array<int, string>|null  $allowedZonalIds
+     * @param  array<int, string>|null  $allowedOfficeIds
+     */
+    private function formPayload(?array $allowedZonalIds, ?array $allowedOfficeIds = null): array
     {
         $warehousesQuery = Warehouse::query()->where('is_active', true)->with('office:id,zonal_id,name,code', 'office.zonal:id,name,code')->orderBy('name');
-        if (! empty($allowedZonalIds)) {
-            $warehousesQuery->whereHas('office', fn (Builder $o) => $o->whereIn('zonal_id', $allowedZonalIds));
+        if ($allowedOfficeIds !== null) {
+            if ($allowedOfficeIds === []) {
+                $warehousesQuery->whereRaw('1 = 0');
+            } else {
+                $warehousesQuery->whereIn('office_id', $allowedOfficeIds);
+            }
         }
         $warehousesForSelect = $warehousesQuery->get(['id', 'name', 'code', 'office_id']);
 
@@ -331,13 +361,27 @@ class ServiceController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'asset_category_id as category_id']);
 
-        $zonalsForSelect = Zonal::query()
+        $zonalsQuery = Zonal::query()
             ->where('is_active', true)
-            ->orderBy('name')
-            ->get(['id', 'name', 'code']);
+            ->orderBy('name');
+        if ($allowedOfficeIds !== null) {
+            if ($allowedOfficeIds === [] || ($allowedZonalIds !== null && $allowedZonalIds === [])) {
+                $zonalsQuery->whereRaw('1 = 0');
+            } elseif ($allowedZonalIds !== null) {
+                $zonalsQuery->whereIn('id', $allowedZonalIds);
+            }
+        }
+        $zonalsForSelect = $zonalsQuery->get(['id', 'name', 'code']);
 
         $officesForSelect = Office::query()
             ->where('is_active', true)
+            ->when($allowedOfficeIds !== null, function (Builder $q) use ($allowedOfficeIds) {
+                if ($allowedOfficeIds === []) {
+                    $q->whereRaw('1 = 0');
+                } else {
+                    $q->whereIn('id', $allowedOfficeIds);
+                }
+            })
             ->orderBy('name')
             ->get(['id', 'name', 'code', 'zonal_id']);
 

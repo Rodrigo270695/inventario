@@ -2,8 +2,12 @@
 
 namespace App\Http\Requests\Admin\Component;
 
+use App\Models\RepairShop;
+use App\Models\Warehouse;
+use App\Support\UserGeographicAccess;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class ComponentRequest extends FormRequest
 {
@@ -40,6 +44,45 @@ class ComponentRequest extends FormRequest
             'acquisition_date' => ['nullable', 'date'],
             'notes' => ['nullable', 'string', 'max:5000'],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $v): void {
+            $user = $this->user();
+            [$officeIds, $zonalIds] = UserGeographicAccess::forUser($user);
+            if ($officeIds === null && $zonalIds === null) {
+                return;
+            }
+            if ($officeIds === [] || $zonalIds === []) {
+                $v->errors()->add('warehouse_id', 'Tu usuario no tiene oficinas asignadas para registrar componentes.');
+
+                return;
+            }
+
+            $warehouseId = $this->input('warehouse_id');
+            $repairShopId = $this->input('repair_shop_id');
+
+            if (! empty($warehouseId)) {
+                $ok = Warehouse::query()
+                    ->whereKey($warehouseId)
+                    ->whereIn('office_id', $officeIds)
+                    ->exists();
+                if (! $ok) {
+                    $v->errors()->add('warehouse_id', 'El almacén seleccionado no está permitido para tu usuario.');
+                }
+            }
+
+            if (! empty($repairShopId)) {
+                $ok = RepairShop::query()
+                    ->whereKey($repairShopId)
+                    ->whereIn('zonal_id', $zonalIds)
+                    ->exists();
+                if (! $ok) {
+                    $v->errors()->add('repair_shop_id', 'El taller seleccionado no está permitido para tu usuario.');
+                }
+            }
+        });
     }
 
     /**

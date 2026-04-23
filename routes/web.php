@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\PurchaseOrderController;
+use App\Http\Controllers\DashboardController;
 use App\Models\PurchaseOrder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -16,8 +17,8 @@ Route::get('/', function () {
     ]);
 })->name('home');
 
-Route::middleware(['auth'])->group(function () {
-    Route::inertia('dashboard', 'dashboard')->name('dashboard');
+Route::middleware(['auth', 'filter.zonals.by.user'])->group(function () {
+    Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 });
 
 require __DIR__.'/settings.php';
