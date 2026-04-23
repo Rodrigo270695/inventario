@@ -22,6 +22,18 @@ use Inertia\Response;
 
 class DashboardController extends Controller
 {
+    /** @var array<string, string> */
+    private const CONDITION_LABELS = [
+        'new' => 'Nuevo',
+        'good' => 'Bueno',
+        'regular' => 'Regular',
+        'damaged' => 'Dañado',
+        'obsolete' => 'Obsoleto',
+        'broken' => 'Malogrado',
+        'in_repair' => 'En reparación',
+        'pending_disposal' => 'Con baja pendiente',
+    ];
+
     public function index(Request $request): Response
     {
         /** @var User $user */
@@ -98,7 +110,21 @@ class DashboardController extends Controller
             $rows[] = [
                 'key' => (string) $key,
                 'label' => $label,
-                'count' => (int) ($counts[$key] ?? 0),
+                'count' => (int) ($counts[(string) $key] ?? 0),
+            ];
+        }
+        foreach ($counts as $key => $count) {
+            $k = (string) $key;
+            if (array_key_exists($k, $statusLabels)) {
+                continue;
+            }
+            if ((int) $count === 0) {
+                continue;
+            }
+            $rows[] = [
+                'key' => $k,
+                'label' => ucfirst(str_replace('_', ' ', $k)),
+                'count' => (int) $count,
             ];
         }
         usort($rows, fn (array $a, array $b) => $b['count'] <=> $a['count']);
@@ -161,7 +187,7 @@ class DashboardController extends Controller
 
         return [
             'title' => 'Activos',
-            'subtitle' => 'Valor contable, operación y estados',
+            'subtitle' => 'Valor contable, estado operativo y condición física',
             'href' => '/admin/assets',
             'accent' => '#447794',
             'primary' => [
@@ -175,7 +201,9 @@ class DashboardController extends Controller
                 ['label' => 'Garantía ≤30 días', 'value' => (string) $soon, 'tone' => $soon > 0 ? 'rose' : 'default'],
             ],
             'statusRows' => $this->topStatusRows(clone $q, 'status', $statusLabels, 8),
-            'chartHint' => 'Registros por estado (ordenados)',
+            'chartHint' => 'Por estado operativo',
+            'conditionRows' => $this->topStatusRows(clone $q, 'condition', self::CONDITION_LABELS, 8),
+            'conditionChartHint' => 'Por condición física',
         ];
     }
 
@@ -198,7 +226,7 @@ class DashboardController extends Controller
 
         return [
             'title' => 'Componentes',
-            'subtitle' => 'Stock y ciclo de vida',
+            'subtitle' => 'Stock, estado operativo y condición',
             'href' => '/admin/components',
             'accent' => '#2d5b75',
             'primary' => [
@@ -212,7 +240,9 @@ class DashboardController extends Controller
                 ['label' => 'En tránsito', 'value' => (string) $inTransit],
             ],
             'statusRows' => $this->topStatusRows(clone $q, 'status', $statusLabels, 8),
-            'chartHint' => 'Distribución por estado',
+            'chartHint' => 'Por estado operativo',
+            'conditionRows' => $this->topStatusRows(clone $q, 'condition', self::CONDITION_LABELS, 8),
+            'conditionChartHint' => 'Por condición física',
         ];
     }
 

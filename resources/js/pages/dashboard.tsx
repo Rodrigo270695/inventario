@@ -40,6 +40,9 @@ export type DashboardModule = {
     kpis: DashboardKpi[];
     statusRows: DashboardStatusRow[];
     chartHint: string;
+    /** Solo activos y componentes: reparto por `condition`. */
+    conditionRows?: DashboardStatusRow[];
+    conditionChartHint?: string;
 };
 
 export type DashboardModules = Partial<{
@@ -213,6 +216,13 @@ function ModuleCard({ modKey, mod }: { modKey: keyof DashboardModules; mod: Dash
                     <div className="border-t border-border/40 pt-2">
                         <p className="text-muted-foreground mb-2 text-[11px] font-medium">{mod.chartHint}</p>
                         <StatusBarChart rows={mod.statusRows} accent={mod.accent} />
+                    </div>
+                )}
+
+                {mod.conditionRows && mod.conditionRows.length > 0 && mod.conditionChartHint && (
+                    <div className="border-t border-border/40 pt-2">
+                        <p className="text-muted-foreground mb-2 text-[11px] font-medium">{mod.conditionChartHint}</p>
+                        <StatusBarChart rows={mod.conditionRows} accent={mod.accent} />
                     </div>
                 )}
             </div>
