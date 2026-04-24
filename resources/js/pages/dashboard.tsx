@@ -113,6 +113,12 @@ function StatusBarChart({ rows, accent }: { rows: DashboardStatusRow[]; accent: 
     const chartW = 300;
     const rowH = 26;
     const chartH = Math.max(100, rows.length * rowH + 36);
+    const chartRows = rows.map((r) => {
+        const label = (r.label ?? '').trim();
+        const fallback =
+            r.key && r.key.trim() !== '' ? r.key.replace(/_/g, ' ') : 'Sin estado';
+        return { ...r, label: label || fallback };
+    });
 
     return (
         <div className="w-full max-w-[320px] overflow-x-auto">
@@ -120,7 +126,7 @@ function StatusBarChart({ rows, accent }: { rows: DashboardStatusRow[]; accent: 
                 layout="vertical"
                 width={chartW}
                 height={chartH}
-                data={rows}
+                data={chartRows}
                 margin={{ top: 4, right: 12, left: 4, bottom: 4 }}
             >
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border/40" horizontal={false} />

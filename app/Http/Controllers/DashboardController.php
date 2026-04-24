@@ -121,9 +121,10 @@ class DashboardController extends Controller
             if ((int) $count === 0) {
                 continue;
             }
+            $pretty = trim(str_replace('_', ' ', $k));
             $rows[] = [
                 'key' => $k,
-                'label' => ucfirst(str_replace('_', ' ', $k)),
+                'label' => $pretty !== '' ? ucfirst($pretty) : 'Sin estado',
                 'count' => (int) $count,
             ];
         }
@@ -181,6 +182,7 @@ class DashboardController extends Controller
             'active' => 'En uso',
             'in_repair' => 'En reparación',
             'in_transit' => 'En tránsito',
+            'broken' => 'Malogrado',
             'disposed' => 'Dado de baja',
             'sold' => 'Vendido',
         ];
@@ -221,6 +223,7 @@ class DashboardController extends Controller
             'active' => 'En uso',
             'in_repair' => 'En reparación',
             'in_transit' => 'En tránsito',
+            'broken' => 'Malogrado',
             'disposed' => 'Dado de baja',
         ];
 
