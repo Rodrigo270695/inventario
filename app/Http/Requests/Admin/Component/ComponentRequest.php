@@ -39,7 +39,7 @@ class ComponentRequest extends FormRequest
             'model' => ['nullable', 'string', 'max:150'],
             'warehouse_id' => ['nullable', 'uuid', 'exists:warehouses,id'],
             'repair_shop_id' => ['nullable', 'uuid', 'exists:repair_shops,id'],
-            'status' => ['required', 'string', 'in:active,stored,in_repair,in_transit,disposed'],
+            'status' => ['required', 'string', 'in:active,stored,in_repair,in_transit,broken,disposed'],
             'condition' => ['required', 'string', 'in:new,good,regular,damaged,obsolete,broken,in_repair,pending_disposal'],
             'acquisition_date' => ['nullable', 'date'],
             'notes' => ['nullable', 'string', 'max:5000'],

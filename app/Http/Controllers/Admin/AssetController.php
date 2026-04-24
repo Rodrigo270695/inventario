@@ -233,7 +233,7 @@ class AssetController extends Controller
             $queryForStatusCounts->where('condition', $condition);
         }
         $statusCounts = [];
-        foreach (['stored', 'active', 'in_repair', 'in_transit', 'disposed', 'sold'] as $s) {
+        foreach (['stored', 'active', 'in_repair', 'in_transit', 'broken', 'disposed', 'sold'] as $s) {
             $statusCounts[$s] = (clone $queryForStatusCounts)->where('status', $s)->count();
         }
 

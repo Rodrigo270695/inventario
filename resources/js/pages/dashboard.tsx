@@ -12,11 +12,11 @@ import {
     Truck,
     Wrench,
 } from 'lucide-react';
-import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis } from 'recharts';
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import AppLayout from '@/layouts/app-layout';
+import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import type { BreadcrumbItem } from '@/types';
-import { cn } from '@/lib/utils';
 
 export type DashboardKpi = {
     label: string;
@@ -104,15 +104,25 @@ const KPI_TONE: Record<NonNullable<DashboardKpi['tone']>, string> = {
     rose: 'border-rose-500/25 bg-rose-500/8',
 };
 
-function StatusBarChart({ rows, accent }: { rows: DashboardStatusRow[]; accent: string }) {
+function StatusBarChart({
+    rows,
+    accent,
+    compact,
+}: {
+    rows: DashboardStatusRow[];
+    accent: string;
+    /** En layout de dos columnas (estado + condición): eje Y más estrecho. */
+    compact?: boolean;
+}) {
     if (rows.length === 0) {
         return null;
     }
 
     const max = Math.max(1, ...rows.map((r) => r.count));
-    const chartW = 300;
     const rowH = 26;
     const chartH = Math.max(100, rows.length * rowH + 36);
+    const yAxisWidth = compact ? 76 : 108;
+    const tickSize = compact ? 9 : 10;
     const chartRows = rows.map((r) => {
         const label = (r.label ?? '').trim();
         const fallback =
@@ -121,48 +131,52 @@ function StatusBarChart({ rows, accent }: { rows: DashboardStatusRow[]; accent: 
     });
 
     return (
-        <div className="w-full max-w-[320px] overflow-x-auto">
-            <BarChart
-                layout="vertical"
-                width={chartW}
-                height={chartH}
-                data={chartRows}
-                margin={{ top: 4, right: 12, left: 4, bottom: 4 }}
-            >
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border/40" horizontal={false} />
-                <XAxis type="number" domain={[0, max]} hide allowDecimals={false} />
-                <YAxis
-                    type="category"
-                    dataKey="label"
-                    width={108}
-                    tick={{ fontSize: 10 }}
-                    stroke="hsl(var(--muted-foreground))"
-                    interval={0}
-                />
-                <Tooltip
-                    cursor={false}
-                    contentStyle={{
-                        borderRadius: 8,
-                        border: '1px solid hsl(var(--border))',
-                        fontSize: 12,
-                    }}
-                    formatter={(value: number | undefined) => [value ?? 0, 'Registros']}
-                />
-                <Bar
-                    dataKey="count"
-                    fill={accent}
-                    radius={[0, 4, 4, 0]}
-                    maxBarSize={18}
-                    opacity={0.88}
-                    activeBar={false}
-                />
-            </BarChart>
+        <div className="w-full min-w-0" style={{ height: chartH }}>
+            <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                    layout="vertical"
+                    data={chartRows}
+                    margin={{ top: 4, right: compact ? 6 : 12, left: 2, bottom: 4 }}
+                >
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border/40" horizontal={false} />
+                    <XAxis type="number" domain={[0, max]} hide allowDecimals={false} />
+                    <YAxis
+                        type="category"
+                        dataKey="label"
+                        width={yAxisWidth}
+                        tick={{ fontSize: tickSize }}
+                        stroke="hsl(var(--muted-foreground))"
+                        interval={0}
+                    />
+                    <Tooltip
+                        cursor={false}
+                        contentStyle={{
+                            borderRadius: 8,
+                            border: '1px solid hsl(var(--border))',
+                            fontSize: 12,
+                        }}
+                        formatter={(value: number | undefined) => [value ?? 0, 'Registros']}
+                    />
+                    <Bar
+                        dataKey="count"
+                        fill={accent}
+                        radius={[0, 4, 4, 0]}
+                        maxBarSize={18}
+                        opacity={0.88}
+                        activeBar={false}
+                    />
+                </BarChart>
+            </ResponsiveContainer>
         </div>
     );
 }
 
 function ModuleCard({ modKey, mod }: { modKey: keyof DashboardModules; mod: DashboardModule }) {
     const Icon = MODULE_ICONS[modKey];
+    const hasStatusChart = mod.statusRows.length > 0;
+    const hasConditionChart =
+        Boolean(mod.conditionChartHint) &&
+        Boolean(mod.conditionRows?.length);
 
     return (
         <article
@@ -218,18 +232,34 @@ function ModuleCard({ modKey, mod }: { modKey: keyof DashboardModules; mod: Dash
                     ))}
                 </div>
 
-                {mod.statusRows.length > 0 && (
+                {hasStatusChart && hasConditionChart ? (
                     <div className="border-t border-border/40 pt-2">
-                        <p className="text-muted-foreground mb-2 text-[11px] font-medium">{mod.chartHint}</p>
-                        <StatusBarChart rows={mod.statusRows} accent={mod.accent} />
+                        <div className="grid min-w-0 grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
+                            <div className="min-w-0 space-y-2">
+                                <p className="text-muted-foreground text-[11px] font-medium">{mod.chartHint}</p>
+                                <StatusBarChart rows={mod.statusRows} accent={mod.accent} compact />
+                            </div>
+                            <div className="min-w-0 space-y-2">
+                                <p className="text-muted-foreground text-[11px] font-medium">{mod.conditionChartHint}</p>
+                                <StatusBarChart rows={mod.conditionRows!} accent={mod.accent} compact />
+                            </div>
+                        </div>
                     </div>
-                )}
-
-                {mod.conditionRows && mod.conditionRows.length > 0 && mod.conditionChartHint && (
-                    <div className="border-t border-border/40 pt-2">
-                        <p className="text-muted-foreground mb-2 text-[11px] font-medium">{mod.conditionChartHint}</p>
-                        <StatusBarChart rows={mod.conditionRows} accent={mod.accent} />
-                    </div>
+                ) : (
+                    <>
+                        {hasStatusChart && (
+                            <div className="border-t border-border/40 pt-2">
+                                <p className="text-muted-foreground mb-2 text-[11px] font-medium">{mod.chartHint}</p>
+                                <StatusBarChart rows={mod.statusRows} accent={mod.accent} />
+                            </div>
+                        )}
+                        {hasConditionChart && (
+                            <div className="border-t border-border/40 pt-2">
+                                <p className="text-muted-foreground mb-2 text-[11px] font-medium">{mod.conditionChartHint}</p>
+                                <StatusBarChart rows={mod.conditionRows!} accent={mod.accent} />
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
         </article>

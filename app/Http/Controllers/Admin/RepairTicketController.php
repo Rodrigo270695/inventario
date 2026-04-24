@@ -2,14 +2,15 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Http\Controllers\Controller;
 use App\Exports\RepairTicketsExport;
+use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\RepairTicket\RepairTicketRequest;
 use App\Jobs\SendRepairTicketPendingApprovalEmailJob;
 use App\Models\Asset;
 use App\Models\Component;
 use App\Models\MaintenanceDocument;
 use App\Models\MaintenanceStatusLog;
+use App\Models\Office;
 use App\Models\RepairCost;
 use App\Models\RepairPart;
 use App\Models\RepairShop;
@@ -17,16 +18,15 @@ use App\Models\RepairTicket;
 use App\Models\Scopes\AllowedZonalsScope;
 use App\Models\Supplier;
 use App\Models\User;
-use App\Models\Zonal;
-use App\Models\Office;
 use App\Models\Warehouse;
+use App\Models\Zonal;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Maatwebsite\Excel\Facades\Excel;
 use Inertia\Inertia;
 use Inertia\Response;
+use Maatwebsite\Excel\Facades\Excel;
 
 class RepairTicketController extends Controller
 {
@@ -651,7 +651,7 @@ class RepairTicketController extends Controller
         $finalStatus = $this->cleanString($request->input('final_status', ''));
         $conditionOut = $this->cleanString($request->input('condition_out', ''));
 
-        if ($finalStatus !== '' && ! in_array($finalStatus, ['stored', 'active', 'in_repair', 'in_transit', 'disposed', 'sold'], true)) {
+        if ($finalStatus !== '' && ! in_array($finalStatus, ['stored', 'active', 'in_repair', 'in_transit', 'broken', 'disposed', 'sold'], true)) {
             abort(422, 'Estado final del bien no válido.');
         }
 

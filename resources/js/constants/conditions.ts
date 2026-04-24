@@ -76,3 +76,12 @@ export function normalizeConditionValue(raw?: string | null): string {
     };
     return map[v] ?? raw;
 }
+
+/** Valor inicial del select de condición (mismo criterio que el modal: vacío → nuevo). */
+export function resolveConditionForForm(raw: string | null | undefined): string {
+    const n = normalizeConditionValue(raw ?? '');
+    if (n === '' || n.toLowerCase() === 'null') {
+        return 'new';
+    }
+    return CONDITION_OPTIONS.some((o) => o.value === n) ? n : 'new';
+}

@@ -140,7 +140,7 @@ class ComponentController extends Controller
         $totalFiltered = $baseCount->count();
 
         $statusCounts = [];
-        foreach (['stored', 'active', 'in_repair', 'in_transit', 'disposed'] as $s) {
+        foreach (['stored', 'active', 'in_repair', 'in_transit', 'broken', 'disposed'] as $s) {
             $qCount = Component::query();
             if ($q !== '') {
                 $term = '%'.mb_strtolower($q).'%';

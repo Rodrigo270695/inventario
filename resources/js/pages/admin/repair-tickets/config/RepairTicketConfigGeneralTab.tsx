@@ -1,7 +1,8 @@
 import { router } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 import { AppModal } from '@/components/app-modal';
-import { SearchableSelect, type SearchableSelectOption } from '@/components/searchable-select';
+import { SearchableSelect } from '@/components/searchable-select';
+import type { SearchableSelectOption } from '@/components/searchable-select';
 import {
     Select,
     SelectContent,
@@ -9,6 +10,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { ASSET_OPER_STATUS_OPTIONS as ASSET_STATUS_OPTIONS } from '@/constants/asset-operational-status';
 import type { AssetOption, ComponentOption, RepairShopOption, RepairTicketConfigTicket, UserOption } from './types';
 import {
     CONDITION_LABELS,
@@ -53,15 +55,6 @@ const CONDITION_OPTIONS = [
     { value: 'regular', label: 'Regular' },
     { value: 'damaged', label: 'Dañado' },
     { value: 'obsolete', label: 'Obsoleto' },
-];
-
-const ASSET_STATUS_OPTIONS = [
-    { value: 'stored', label: 'Almacenado' },
-    { value: 'active', label: 'En uso' },
-    { value: 'in_repair', label: 'En reparación' },
-    { value: 'in_transit', label: 'En tránsito' },
-    { value: 'disposed', label: 'Dado de baja' },
-    { value: 'sold', label: 'Vendido' },
 ];
 
 type Props = {

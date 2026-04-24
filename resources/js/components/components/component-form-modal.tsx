@@ -11,7 +11,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { CONDITION_OPTIONS } from '@/constants/conditions';
+import { COMPONENT_OPER_STATUS_OPTIONS, resolveComponentOperationalStatusForForm } from '@/constants/asset-operational-status';
+import { CONDITION_OPTIONS, resolveConditionForForm } from '@/constants/conditions';
 import type { AssetCategory, AssetSubcategory, Component } from '@/types';
 
 type TypeOption = { id: string; name: string; code: string | null };
@@ -47,13 +48,7 @@ function toDateInputValue(v: string | null | undefined): string {
     return s.length >= 10 ? s.slice(0, 10) : s;
 }
 
-const STATUS_OPTIONS = [
-    { value: 'stored', label: 'Almacenado' },
-    { value: 'active', label: 'En uso' },
-    { value: 'in_repair', label: 'En reparación' },
-    { value: 'in_transit', label: 'En tránsito' },
-    { value: 'disposed', label: 'Dado de baja' },
-];
+const STATUS_OPTIONS = COMPONENT_OPER_STATUS_OPTIONS;
 
 export function ComponentFormModal({
     open,
@@ -80,8 +75,8 @@ export function ComponentFormModal({
         subcategory_id: component?.subcategory_id ?? '',
         model: component?.model ?? '',
         warehouse_id: component?.warehouse_id ?? '',
-        status: component?.status ?? 'stored',
-        condition: component?.condition ?? 'new',
+        status: resolveComponentOperationalStatusForForm(component?.status),
+        condition: resolveConditionForForm(component?.condition),
         acquisition_date: toDateInputValue(component?.acquisition_date),
         notes: component?.notes ?? '',
     });
@@ -117,24 +112,26 @@ export function ComponentFormModal({
             }
         }
 
-        setCascadeZonalId(zonalId);
-        setCascadeOfficeId(officeId);
+        queueMicrotask(() => {
+            setCascadeZonalId(zonalId);
+            setCascadeOfficeId(officeId);
 
-        const sub = component?.subcategory;
-        setCategoryId(sub?.category?.id ?? sub?.asset_category_id ?? '');
-        setSubcategoryId(sub?.id ?? component?.subcategory_id ?? '');
+            const sub = component?.subcategory;
+            setCategoryId(sub?.category?.id ?? sub?.asset_category_id ?? '');
+            setSubcategoryId(sub?.id ?? component?.subcategory_id ?? '');
 
-        setData({
-            serial_number: component?.serial_number ?? '',
-            type_id: component?.type_id ?? '',
-            brand_id: component?.brand_id ?? '',
-            subcategory_id: component?.subcategory_id ?? '',
-            model: component?.model ?? '',
-            warehouse_id: component?.warehouse_id ?? '',
-            status: component?.status ?? 'stored',
-            condition: component?.condition ?? 'new',
-            acquisition_date: toDateInputValue(component?.acquisition_date),
-            notes: component?.notes ?? '',
+            setData({
+                serial_number: component?.serial_number ?? '',
+                type_id: component?.type_id ?? '',
+                brand_id: component?.brand_id ?? '',
+                subcategory_id: component?.subcategory_id ?? '',
+                model: component?.model ?? '',
+                warehouse_id: component?.warehouse_id ?? '',
+                status: resolveComponentOperationalStatusForForm(component?.status),
+                condition: resolveConditionForForm(component?.condition),
+                acquisition_date: toDateInputValue(component?.acquisition_date),
+                notes: component?.notes ?? '',
+            });
         });
     }, [
         open,
@@ -152,6 +149,7 @@ export function ComponentFormModal({
         warehousesForSelect,
         officesForSelect,
         component?.subcategory,
+        setData,
     ]);
 
     const subcategoriesFiltered = useMemo(

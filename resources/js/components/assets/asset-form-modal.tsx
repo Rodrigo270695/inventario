@@ -11,7 +11,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { CONDITION_OPTIONS } from '@/constants/conditions';
+import { ASSET_OPER_STATUS_OPTIONS, resolveAssetOperationalStatusForForm } from '@/constants/asset-operational-status';
+import { CONDITION_OPTIONS, resolveConditionForForm } from '@/constants/conditions';
 import type { Asset } from '@/types';
 
 type CategoryOption = { id: string; name: string; code: string };
@@ -38,14 +39,7 @@ type Props = {
 /** Valor interno del select de modelo para «registrar otro modelo». */
 const MODEL_OTHER = '__other__';
 
-const STATUS_OPTIONS = [
-    { value: 'stored', label: 'Almacenado' },
-    { value: 'active', label: 'En uso' },
-    { value: 'in_repair', label: 'En reparación' },
-    { value: 'in_transit', label: 'En tránsito' },
-    { value: 'disposed', label: 'Dado de baja' },
-    { value: 'sold', label: 'Vendido' },
-];
+const STATUS_OPTIONS = ASSET_OPER_STATUS_OPTIONS;
 
 function toStr(v: number | string | null | undefined): string {
     if (v == null || v === '') return '';
@@ -84,8 +78,8 @@ export function AssetFormModal({
         model_id: asset?.model_id ?? '',
         brand_id: asset?.brand_id ?? asset?.model?.brand?.id ?? '',
         category_id: asset?.category_id ?? '',
-        status: asset?.status ?? 'stored',
-        condition: asset?.condition ?? 'new',
+        status: resolveAssetOperationalStatusForForm(asset?.status),
+        condition: resolveConditionForForm(asset?.condition),
         warehouse_id: asset?.warehouse_id ?? '',
         acquisition_value: toStr(asset?.acquisition_value),
         acquisition_date: toDateInputValue(asset?.acquisition_date),
@@ -135,9 +129,11 @@ export function AssetFormModal({
     useEffect(() => {
         if (!open) {
             clearErrors();
-            setSubcategoryId('');
-            setCascadeZonalId('');
-            setCascadeOfficeId('');
+            queueMicrotask(() => {
+                setSubcategoryId('');
+                setCascadeZonalId('');
+                setCascadeOfficeId('');
+            });
             return;
         }
         const timer = setTimeout(() => {
@@ -166,65 +162,67 @@ export function AssetFormModal({
         }
         formSessionRef.current = sessionKey;
 
-        if (isEdit && asset) {
-            const modelSubcategoryId =
-                asset.model?.subcategory?.id ??
-                modelsForSelect.find((m) => m.id === asset.model_id)?.subcategory_id ??
-                '';
+        queueMicrotask(() => {
+            if (isEdit && asset) {
+                const modelSubcategoryId =
+                    asset.model?.subcategory?.id ??
+                    modelsForSelect.find((m) => m.id === asset.model_id)?.subcategory_id ??
+                    '';
 
-            const wh = asset.warehouse;
-            if (wh?.office) {
-                setCascadeZonalId(wh.office.zonal_id);
-                setCascadeOfficeId(wh.office_id ?? '');
-            } else if (wh?.office_id) {
-                setCascadeOfficeId(wh.office_id);
-                const off = officesForSelect.find((o) => o.id === wh.office_id);
-                setCascadeZonalId(off?.zonal_id ?? '');
+                const wh = asset.warehouse;
+                if (wh?.office) {
+                    setCascadeZonalId(wh.office.zonal_id);
+                    setCascadeOfficeId(wh.office_id ?? '');
+                } else if (wh?.office_id) {
+                    setCascadeOfficeId(wh.office_id);
+                    const off = officesForSelect.find((o) => o.id === wh.office_id);
+                    setCascadeZonalId(off?.zonal_id ?? '');
+                } else {
+                    setCascadeZonalId('');
+                    setCascadeOfficeId('');
+                }
+
+                setData({
+                    code: asset.code ?? '',
+                    serial_number: asset.serial_number ?? '',
+                    model_id: asset.model_id ?? '',
+                    brand_id: asset.brand_id ?? asset.model?.brand?.id ?? '',
+                    category_id: asset.category_id ?? '',
+                    status: resolveAssetOperationalStatusForForm(asset.status),
+                    condition: resolveConditionForForm(asset.condition),
+                    warehouse_id: asset.warehouse_id ?? '',
+                    acquisition_value: toStr(asset.acquisition_value),
+                    acquisition_date: toDateInputValue(asset.acquisition_date),
+                    current_value: toStr(asset.current_value),
+                    depreciation_rate: toStr(asset.depreciation_rate),
+                    warranty_until: toDateInputValue(asset.warranty_until),
+                    notes: asset.notes ?? '',
+                    new_model_name: '',
+                });
+                setSubcategoryId(modelSubcategoryId);
             } else {
                 setCascadeZonalId('');
                 setCascadeOfficeId('');
+                setSubcategoryId('');
+                setData({
+                    code: '',
+                    serial_number: '',
+                    model_id: '',
+                    brand_id: '',
+                    category_id: '',
+                    status: 'stored',
+                    condition: 'new',
+                    warehouse_id: '',
+                    acquisition_value: '',
+                    acquisition_date: '',
+                    current_value: '',
+                    depreciation_rate: '',
+                    warranty_until: '',
+                    notes: '',
+                    new_model_name: '',
+                });
             }
-
-            setData({
-                code: asset.code ?? '',
-                serial_number: asset.serial_number ?? '',
-                model_id: asset.model_id ?? '',
-                brand_id: asset.brand_id ?? asset.model?.brand?.id ?? '',
-                category_id: asset.category_id ?? '',
-                status: asset.status ?? 'stored',
-                condition: asset.condition ?? 'new',
-                warehouse_id: asset.warehouse_id ?? '',
-                acquisition_value: toStr(asset.acquisition_value),
-                acquisition_date: toDateInputValue(asset.acquisition_date),
-                current_value: toStr(asset.current_value),
-                depreciation_rate: toStr(asset.depreciation_rate),
-                warranty_until: toDateInputValue(asset.warranty_until),
-                notes: asset.notes ?? '',
-                new_model_name: '',
-            });
-            setSubcategoryId(modelSubcategoryId);
-        } else {
-            setCascadeZonalId('');
-            setCascadeOfficeId('');
-            setSubcategoryId('');
-            setData({
-                code: '',
-                serial_number: '',
-                model_id: '',
-                brand_id: '',
-                category_id: '',
-                status: 'stored',
-                condition: 'new',
-                warehouse_id: '',
-                acquisition_value: '',
-                acquisition_date: '',
-                current_value: '',
-                depreciation_rate: '',
-                warranty_until: '',
-                notes: '',
-                new_model_name: '',
-            });
-        }
+        });
     }, [open, isEdit, asset, modelsForSelect, officesForSelect, setData]);
 
     const handleCategoryChange = (v: string) => {

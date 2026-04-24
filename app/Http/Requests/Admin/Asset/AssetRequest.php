@@ -54,7 +54,7 @@ class AssetRequest extends FormRequest
             'subcategory_id' => ['nullable', 'uuid', 'exists:asset_subcategories,id'],
             'new_model_name' => ['nullable', 'string', 'max:200'],
             'category_id' => ['required', 'uuid', 'exists:asset_categories,id'],
-            'status' => ['required', 'string', 'in:active,stored,in_repair,in_transit,disposed,sold'],
+            'status' => ['required', 'string', 'in:active,stored,in_repair,in_transit,broken,disposed,sold'],
             'condition' => ['required', 'string', 'in:new,good,regular,damaged,obsolete,broken,in_repair,pending_disposal'],
             'warehouse_id' => ['required', 'uuid', 'exists:warehouses,id'],
             'acquisition_value' => ['nullable', 'numeric', 'min:0'],

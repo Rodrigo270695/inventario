@@ -25,6 +25,7 @@ const STATUS_LABELS: Record<string, string> = {
     active: 'En uso',
     in_repair: 'En reparación',
     in_transit: 'En tránsito',
+    broken: 'Malogrado',
     disposed: 'Dado de baja',
 };
 

@@ -12,7 +12,7 @@ use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class AssetsExport implements FromCollection, WithHeadings, WithColumnWidths, WithStyles, WithEvents
+class AssetsExport implements FromCollection, WithColumnWidths, WithEvents, WithHeadings, WithStyles
 {
     public function __construct(
         private Collection $assets
@@ -44,6 +44,7 @@ class AssetsExport implements FromCollection, WithHeadings, WithColumnWidths, Wi
                 'active' => 'En uso',
                 'in_repair' => 'En reparación',
                 'in_transit' => 'En tránsito',
+                'broken' => 'Malogrado',
                 'disposed' => 'Dado de baja',
                 'sold' => 'Vendido',
             ];
@@ -165,4 +166,3 @@ class AssetsExport implements FromCollection, WithHeadings, WithColumnWidths, Wi
         return implode(' ', $parts) ?: ($user->usuario ?? '—');
     }
 }
-

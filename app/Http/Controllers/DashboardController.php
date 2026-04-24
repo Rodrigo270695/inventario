@@ -34,6 +34,20 @@ class DashboardController extends Controller
         'pending_disposal' => 'Con baja pendiente',
     ];
 
+    /** Valores legacy o en español → clave canónica (alineado con `resources/js/constants/conditions.ts`). */
+    private const CONDITION_VALUE_ALIASES = [
+        'nuevo' => 'new',
+        'bueno' => 'good',
+        'fair' => 'regular',
+        'malo' => 'damaged',
+        'bad' => 'damaged',
+        'obsoleto' => 'obsolete',
+        'malogrado' => 'broken',
+        'en_reparacion' => 'in_repair',
+        'en reparación' => 'in_repair',
+        'baja_pendiente' => 'pending_disposal',
+    ];
+
     public function index(Request $request): Response
     {
         /** @var User $user */
@@ -102,9 +116,9 @@ class DashboardController extends Controller
      * @param  array<string, string>  $statusLabels
      * @return list<array{key: string, label: string, count: int}>
      */
-    private function topStatusRows(Builder $baseQuery, string $statusColumn, array $statusLabels, int $limit = 8): array
+    private function topStatusRows(Builder $baseQuery, string $statusColumn, array $statusLabels, int $limit = 8, ?string $mergeBlankInto = null, bool $normalizeConditionAliases = false): array
     {
-        $counts = $this->countsByStatusKey($baseQuery, $statusColumn);
+        $counts = $this->countsByStatusKey($baseQuery, $statusColumn, $mergeBlankInto, $normalizeConditionAliases);
         $rows = [];
         foreach ($statusLabels as $key => $label) {
             $rows[] = [
@@ -136,7 +150,7 @@ class DashboardController extends Controller
     /**
      * @return array<string, int>
      */
-    private function countsByStatusKey(Builder $baseQuery, string $statusColumn): array
+    private function countsByStatusKey(Builder $baseQuery, string $statusColumn, ?string $mergeBlankInto = null, bool $normalizeConditionAliases = false): array
     {
         $table = $baseQuery->getModel()->getTable();
         $statusCol = $table.'.'.$statusColumn;
@@ -150,7 +164,15 @@ class DashboardController extends Controller
 
         $out = [];
         foreach ($raw as $k => $v) {
-            $out[(string) $k] = (int) $v;
+            $sk = trim((string) $k);
+            if ($mergeBlankInto !== null && ($sk === '' || strcasecmp($sk, 'null') === 0)) {
+                $sk = $mergeBlankInto;
+            }
+            if ($normalizeConditionAliases) {
+                $lower = mb_strtolower($sk, 'UTF-8');
+                $sk = self::CONDITION_VALUE_ALIASES[$lower] ?? $sk;
+            }
+            $out[$sk] = ($out[$sk] ?? 0) + (int) $v;
         }
 
         return $out;
@@ -202,9 +224,9 @@ class DashboardController extends Controller
                 ['label' => 'En almacén', 'value' => (string) $stored],
                 ['label' => 'Garantía ≤30 días', 'value' => (string) $soon, 'tone' => $soon > 0 ? 'rose' : 'default'],
             ],
-            'statusRows' => $this->topStatusRows(clone $q, 'status', $statusLabels, 8),
+            'statusRows' => $this->topStatusRows(clone $q, 'status', $statusLabels, 8, 'stored'),
             'chartHint' => 'Por estado operativo',
-            'conditionRows' => $this->topStatusRows(clone $q, 'condition', self::CONDITION_LABELS, 8),
+            'conditionRows' => $this->topStatusRows(clone $q, 'condition', self::CONDITION_LABELS, 8, 'new', true),
             'conditionChartHint' => 'Por condición física',
         ];
     }
@@ -242,9 +264,9 @@ class DashboardController extends Controller
                 ['label' => 'En reparación', 'value' => (string) $inRepair, 'tone' => $inRepair > 0 ? 'amber' : 'default'],
                 ['label' => 'En tránsito', 'value' => (string) $inTransit],
             ],
-            'statusRows' => $this->topStatusRows(clone $q, 'status', $statusLabels, 8),
+            'statusRows' => $this->topStatusRows(clone $q, 'status', $statusLabels, 8, 'stored'),
             'chartHint' => 'Por estado operativo',
-            'conditionRows' => $this->topStatusRows(clone $q, 'condition', self::CONDITION_LABELS, 8),
+            'conditionRows' => $this->topStatusRows(clone $q, 'condition', self::CONDITION_LABELS, 8, 'new', true),
             'conditionChartHint' => 'Por condición física',
         ];
     }
