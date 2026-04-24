@@ -8,7 +8,16 @@ export const STATUS_LABELS: Record<string, string> = {
     broken: 'Malogrado',
     disposed: 'Dado de baja',
     sold: 'Vendido',
+    unassigned: 'Sin estado',
 };
+
+/** NULL o vacío en BD → clave de presentación «sin estado». */
+export function assetOperationalStatusKey(raw: string | null | undefined): string {
+    if (raw == null || String(raw).trim() === '') {
+        return 'unassigned';
+    }
+    return raw;
+}
 
 export const CONDITION_LABELS: Record<string, string> = {
     new: 'Nuevo',
@@ -28,7 +37,7 @@ export const CONDITION_OPTIONS = [
 
 function parseUtcToLima(value: string): Date {
     // Si el valor ya viene con zona horaria (ej. termina en Z), usamos tal cual.
-    const hasZone = /[zZ]|[+\-]\d\d:?\d\d$/.test(value);
+    const hasZone = /[zZ]|[-+]\d\d:?\d\d$/.test(value);
     const iso = hasZone ? value : `${value.replace(' ', 'T')}Z`;
     return new Date(iso);
 }

@@ -116,9 +116,9 @@ class DashboardController extends Controller
      * @param  array<string, string>  $statusLabels
      * @return list<array{key: string, label: string, count: int}>
      */
-    private function topStatusRows(Builder $baseQuery, string $statusColumn, array $statusLabels, int $limit = 8, ?string $mergeBlankInto = null, bool $normalizeConditionAliases = false): array
+    private function topStatusRows(Builder $baseQuery, string $statusColumn, array $statusLabels, int $limit = 8, ?string $mergeBlankInto = null, bool $normalizeConditionAliases = false, ?string $mapBlankKey = null): array
     {
-        $counts = $this->countsByStatusKey($baseQuery, $statusColumn, $mergeBlankInto, $normalizeConditionAliases);
+        $counts = $this->countsByStatusKey($baseQuery, $statusColumn, $mergeBlankInto, $normalizeConditionAliases, $mapBlankKey);
         $rows = [];
         foreach ($statusLabels as $key => $label) {
             $rows[] = [
@@ -150,7 +150,7 @@ class DashboardController extends Controller
     /**
      * @return array<string, int>
      */
-    private function countsByStatusKey(Builder $baseQuery, string $statusColumn, ?string $mergeBlankInto = null, bool $normalizeConditionAliases = false): array
+    private function countsByStatusKey(Builder $baseQuery, string $statusColumn, ?string $mergeBlankInto = null, bool $normalizeConditionAliases = false, ?string $mapBlankKey = null): array
     {
         $table = $baseQuery->getModel()->getTable();
         $statusCol = $table.'.'.$statusColumn;
@@ -165,8 +165,12 @@ class DashboardController extends Controller
         $out = [];
         foreach ($raw as $k => $v) {
             $sk = trim((string) $k);
-            if ($mergeBlankInto !== null && ($sk === '' || strcasecmp($sk, 'null') === 0)) {
-                $sk = $mergeBlankInto;
+            if ($sk === '' || strcasecmp($sk, 'null') === 0) {
+                if ($mapBlankKey !== null) {
+                    $sk = $mapBlankKey;
+                } elseif ($mergeBlankInto !== null) {
+                    $sk = $mergeBlankInto;
+                }
             }
             if ($normalizeConditionAliases) {
                 $lower = mb_strtolower($sk, 'UTF-8');
@@ -193,7 +197,14 @@ class DashboardController extends Controller
         $book = (float) ((clone $q)->selectRaw("SUM({$bookExpr}) as dashboard_book_sum")->value('dashboard_book_sum') ?? 0);
         $inUse = (clone $q)->where($table.'.status', 'active')->count();
         $inRepair = (clone $q)->where($table.'.status', 'in_repair')->count();
-        $stored = (clone $q)->where($table.'.status', 'stored')->count();
+        $storedExact = (clone $q)->where($table.'.status', 'stored')->count();
+        $inTransit = (clone $q)->where($table.'.status', 'in_transit')->count();
+        $brokenStatus = (clone $q)->where($table.'.status', 'broken')->count();
+        $disposed = (clone $q)->where($table.'.status', 'disposed')->count();
+        $sold = (clone $q)->where($table.'.status', 'sold')->count();
+        $assignedByStatus = $storedExact + $inUse + $inRepair + $inTransit + $brokenStatus + $disposed + $sold;
+        $stored = $storedExact;
+        $unassignedCount = max(0, $total - $assignedByStatus);
         $soon = (clone $q)
             ->whereNotNull($table.'.warranty_until')
             ->whereBetween($table.'.warranty_until', [Carbon::now()->startOfDay(), Carbon::now()->addDays(30)->endOfDay()])
@@ -207,6 +218,7 @@ class DashboardController extends Controller
             'broken' => 'Malogrado',
             'disposed' => 'Dado de baja',
             'sold' => 'Vendido',
+            'unassigned' => 'Sin estado',
         ];
 
         return [
@@ -222,9 +234,10 @@ class DashboardController extends Controller
                 ['label' => 'Valor en libros', 'value' => $this->formatPen($book), 'hint' => 'Suma de valor actual o de adquisición'],
                 ['label' => 'En uso', 'value' => (string) $inUse],
                 ['label' => 'En almacén', 'value' => (string) $stored],
+                ['label' => 'Sin estado', 'value' => (string) $unassignedCount, 'tone' => $unassignedCount > 0 ? 'amber' : 'default'],
                 ['label' => 'Garantía ≤30 días', 'value' => (string) $soon, 'tone' => $soon > 0 ? 'rose' : 'default'],
             ],
-            'statusRows' => $this->topStatusRows(clone $q, 'status', $statusLabels, 8, 'stored'),
+            'statusRows' => $this->topStatusRows(clone $q, 'status', $statusLabels, 10, null, false, 'unassigned'),
             'chartHint' => 'Por estado operativo',
             'conditionRows' => $this->topStatusRows(clone $q, 'condition', self::CONDITION_LABELS, 8, 'new', true),
             'conditionChartHint' => 'Por condición física',
@@ -236,9 +249,14 @@ class DashboardController extends Controller
         $table = $q->getModel()->getTable();
         $total = (clone $q)->count();
         $active = (clone $q)->where($table.'.status', 'active')->count();
-        $stored = (clone $q)->where($table.'.status', 'stored')->count();
+        $storedExact = (clone $q)->where($table.'.status', 'stored')->count();
         $inRepair = (clone $q)->where($table.'.status', 'in_repair')->count();
         $inTransit = (clone $q)->where($table.'.status', 'in_transit')->count();
+        $brokenStatus = (clone $q)->where($table.'.status', 'broken')->count();
+        $disposed = (clone $q)->where($table.'.status', 'disposed')->count();
+        $assignedByStatus = $storedExact + $active + $inRepair + $inTransit + $brokenStatus + $disposed;
+        $stored = $storedExact;
+        $unassignedCount = max(0, $total - $assignedByStatus);
 
         $statusLabels = [
             'stored' => 'Almacenado',
@@ -247,6 +265,7 @@ class DashboardController extends Controller
             'in_transit' => 'En tránsito',
             'broken' => 'Malogrado',
             'disposed' => 'Dado de baja',
+            'unassigned' => 'Sin estado',
         ];
 
         return [
@@ -263,8 +282,9 @@ class DashboardController extends Controller
                 ['label' => 'Almacenados', 'value' => (string) $stored],
                 ['label' => 'En reparación', 'value' => (string) $inRepair, 'tone' => $inRepair > 0 ? 'amber' : 'default'],
                 ['label' => 'En tránsito', 'value' => (string) $inTransit],
+                ['label' => 'Sin estado', 'value' => (string) $unassignedCount, 'tone' => $unassignedCount > 0 ? 'amber' : 'default'],
             ],
-            'statusRows' => $this->topStatusRows(clone $q, 'status', $statusLabels, 8, 'stored'),
+            'statusRows' => $this->topStatusRows(clone $q, 'status', $statusLabels, 10, null, false, 'unassigned'),
             'chartHint' => 'Por estado operativo',
             'conditionRows' => $this->topStatusRows(clone $q, 'condition', self::CONDITION_LABELS, 8, 'new', true),
             'conditionChartHint' => 'Por condición física',

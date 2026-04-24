@@ -27,6 +27,9 @@ use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class ComponentController extends Controller
 {
+    /** Estados operativos válidos en BD (cualquier otro valor cuenta como «Sin estado» en listados). */
+    private const COMPONENT_STATUS_CANONICAL = ['stored', 'active', 'in_repair', 'in_transit', 'broken', 'disposed'];
+
     private const VALID_SORT = ['code', 'created_at', 'status'];
 
     private const VALID_ORDER = ['asc', 'desc'];
@@ -90,9 +93,7 @@ class ComponentController extends Controller
 
         $this->applyComponentGeographicUiFilters($query, $zonalId, $officeId, $warehouseId);
 
-        if ($status !== '') {
-            $query->where('status', $status);
-        }
+        $this->applyComponentStatusFilter($query, $status);
 
         $query->orderBy($sortBy, $sortOrder);
 
@@ -134,30 +135,37 @@ class ComponentController extends Controller
             $baseCount->where('type_id', $typeId);
         }
         $this->applyComponentGeographicUiFilters($baseCount, $zonalId, $officeId, $warehouseId);
-        if ($status !== '') {
-            $baseCount->where('status', $status);
-        }
+        $this->applyComponentStatusFilter($baseCount, $status);
         $totalFiltered = $baseCount->count();
 
-        $statusCounts = [];
-        foreach (['stored', 'active', 'in_repair', 'in_transit', 'broken', 'disposed'] as $s) {
-            $qCount = Component::query();
-            if ($q !== '') {
-                $term = '%'.mb_strtolower($q).'%';
-                $qCount->where(function ($qb) use ($term) {
-                    $qb->whereRaw('LOWER(code) LIKE ?', [$term])
-                        ->orWhereRaw('LOWER(COALESCE(serial_number, \'\')) LIKE ?', [$term])
-                        ->orWhereRaw('LOWER(COALESCE(model, \'\')) LIKE ?', [$term])
-                        ->orWhereHas('type', fn ($t) => $t->whereRaw('LOWER(name) LIKE ?', [$term]))
-                        ->orWhereHas('brand', fn ($b) => $b->whereRaw('LOWER(name) LIKE ?', [$term]));
-                });
-            }
-            if ($typeId !== '') {
-                $qCount->where('type_id', $typeId);
-            }
-            $this->applyComponentGeographicUiFilters($qCount, $zonalId, $officeId, $warehouseId);
-            $statusCounts[$s] = $qCount->where('status', $s)->count();
+        $queryForStatusCounts = Component::query();
+        if ($q !== '') {
+            $term = '%'.mb_strtolower($q).'%';
+            $queryForStatusCounts->where(function ($qb) use ($term) {
+                $qb->whereRaw('LOWER(code) LIKE ?', [$term])
+                    ->orWhereRaw('LOWER(COALESCE(serial_number, \'\')) LIKE ?', [$term])
+                    ->orWhereRaw('LOWER(COALESCE(model, \'\')) LIKE ?', [$term])
+                    ->orWhereHas('type', fn ($t) => $t->whereRaw('LOWER(name) LIKE ?', [$term]))
+                    ->orWhereHas('brand', fn ($b) => $b->whereRaw('LOWER(name) LIKE ?', [$term]));
+            });
         }
+        if ($typeId !== '') {
+            $queryForStatusCounts->where('type_id', $typeId);
+        }
+        $this->applyComponentGeographicUiFilters($queryForStatusCounts, $zonalId, $officeId, $warehouseId);
+        $this->applyComponentStatusFilter($queryForStatusCounts, $status);
+        $statusCounts = [];
+        foreach (self::COMPONENT_STATUS_CANONICAL as $s) {
+            $statusCounts[$s] = (clone $queryForStatusCounts)->where('status', $s)->count();
+        }
+        $statusCounts['unassigned'] = (clone $queryForStatusCounts)
+            ->where(function ($w) {
+                $canonical = self::COMPONENT_STATUS_CANONICAL;
+                $w->whereNull('status')
+                    ->orWhereRaw("BTRIM(COALESCE(status::text, '')) = ''")
+                    ->orWhereNotIn('status', $canonical);
+            })
+            ->count();
 
         return Inertia::render('admin/components/index', [
             'components' => $components,
@@ -236,9 +244,7 @@ class ComponentController extends Controller
 
         $this->applyComponentGeographicUiFilters($query, $zonalId, $officeId, $warehouseId);
 
-        if ($status !== '') {
-            $query->where('status', $status);
-        }
+        $this->applyComponentStatusFilter($query, $status);
 
         $query->orderBy($sortBy, $sortOrder);
 
@@ -425,6 +431,27 @@ class ComponentController extends Controller
         }
 
         return $components;
+    }
+
+    /**
+     * @param  Builder<\App\Models\Component>  $query
+     */
+    private function applyComponentStatusFilter(Builder $query, string $status): void
+    {
+        if ($status === '') {
+            return;
+        }
+        if ($status === 'unassigned') {
+            $canonical = self::COMPONENT_STATUS_CANONICAL;
+            $query->where(function ($w) use ($canonical) {
+                $w->whereNull('status')
+                    ->orWhereRaw("BTRIM(COALESCE(status::text, '')) = ''")
+                    ->orWhereNotIn('status', $canonical);
+            });
+
+            return;
+        }
+        $query->where('status', $status);
     }
 
     private function makeBarcodePdfResponse(Collection $components, string $filename, bool $download): SymfonyResponse

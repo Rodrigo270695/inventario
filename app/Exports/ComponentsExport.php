@@ -12,7 +12,7 @@ use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class ComponentsExport implements FromCollection, WithHeadings, WithColumnWidths, WithStyles, WithEvents
+class ComponentsExport implements FromCollection, WithColumnWidths, WithEvents, WithHeadings, WithStyles
 {
     public function __construct(
         private Collection $components
@@ -25,7 +25,9 @@ class ComponentsExport implements FromCollection, WithHeadings, WithColumnWidths
             'active' => 'En uso',
             'in_repair' => 'En reparación',
             'in_transit' => 'En tránsito',
+            'broken' => 'Malogrado',
             'disposed' => 'Dado de baja',
+            'unassigned' => 'Sin estado',
         ];
         $conditionLabels = [
             'new' => 'Nuevo',
@@ -57,7 +59,9 @@ class ComponentsExport implements FromCollection, WithHeadings, WithColumnWidths
                 : ($categoryName ?? $categoryTypeLabel ?? '—');
             $subcategory = $component->subcategory?->name ?? '—';
 
-            $status = $statusLabels[$component->status] ?? $component->status ?? '—';
+            $rawStatus = $component->status;
+            $statusKey = ($rawStatus === null || trim((string) $rawStatus) === '') ? 'unassigned' : (string) $rawStatus;
+            $status = $statusLabels[$statusKey] ?? $rawStatus ?? '—';
             $condition = $conditionLabels[$component->condition] ?? $component->condition ?? '—';
 
             $zonal = $component->warehouse?->office?->zonal?->name
@@ -157,4 +161,3 @@ class ComponentsExport implements FromCollection, WithHeadings, WithColumnWidths
         ];
     }
 }
-

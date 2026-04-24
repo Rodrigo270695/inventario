@@ -47,6 +47,7 @@ class AssetsExport implements FromCollection, WithColumnWidths, WithEvents, With
                 'broken' => 'Malogrado',
                 'disposed' => 'Dado de baja',
                 'sold' => 'Vendido',
+                'unassigned' => 'Sin estado',
             ];
             $conditionLabels = [
                 'new' => 'Nuevo',
@@ -56,7 +57,9 @@ class AssetsExport implements FromCollection, WithColumnWidths, WithEvents, With
                 'obsolete' => 'Obsoleto',
             ];
 
-            $status = $statusLabels[$asset->status] ?? $asset->status ?? '—';
+            $rawStatus = $asset->status;
+            $statusKey = ($rawStatus === null || trim((string) $rawStatus) === '') ? 'unassigned' : (string) $rawStatus;
+            $status = $statusLabels[$statusKey] ?? $rawStatus ?? '—';
             $condition = $conditionLabels[$asset->condition] ?? $asset->condition ?? '—';
 
             $zonal = $asset->warehouse?->office?->zonal?->name

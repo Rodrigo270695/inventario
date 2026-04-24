@@ -20,6 +20,7 @@ use App\Models\User;
 use App\Models\Warehouse;
 use App\Models\Zonal;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -32,6 +33,9 @@ use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class AssetController extends Controller
 {
+    /** Estados operativos válidos en BD (cualquier otro valor cuenta como «Sin estado» en listados). */
+    private const ASSET_STATUS_CANONICAL = ['stored', 'active', 'in_repair', 'in_transit', 'broken', 'disposed', 'sold'];
+
     private const VALID_SORT = ['code', 'created_at', 'status'];
 
     private const VALID_ORDER = ['asc', 'desc'];
@@ -129,9 +133,7 @@ class AssetController extends Controller
             $query->whereHas('model', fn ($m) => $m->where('subcategory_id', $subcategoryId));
         }
 
-        if ($status !== '') {
-            $query->where('status', $status);
-        }
+        $this->applyAssetStatusFilter($query, $status);
 
         if ($condition !== '') {
             $query->where('condition', $condition);
@@ -193,9 +195,7 @@ class AssetController extends Controller
         if ($subcategoryId !== '') {
             $baseQuery->whereHas('model', fn ($m) => $m->where('subcategory_id', $subcategoryId));
         }
-        if ($status !== '') {
-            $baseQuery->where('status', $status);
-        }
+        $this->applyAssetStatusFilter($baseQuery, $status);
         if ($condition !== '') {
             $baseQuery->where('condition', $condition);
         }
@@ -232,10 +232,19 @@ class AssetController extends Controller
         if ($condition !== '') {
             $queryForStatusCounts->where('condition', $condition);
         }
+        $this->applyAssetStatusFilter($queryForStatusCounts, $status);
         $statusCounts = [];
-        foreach (['stored', 'active', 'in_repair', 'in_transit', 'broken', 'disposed', 'sold'] as $s) {
+        foreach (self::ASSET_STATUS_CANONICAL as $s) {
             $statusCounts[$s] = (clone $queryForStatusCounts)->where('status', $s)->count();
         }
+        $statusCounts['unassigned'] = (clone $queryForStatusCounts)
+            ->where(function ($w) {
+                $canonical = self::ASSET_STATUS_CANONICAL;
+                $w->whereNull('status')
+                    ->orWhereRaw("BTRIM(COALESCE(status::text, '')) = ''")
+                    ->orWhereNotIn('status', $canonical);
+            })
+            ->count();
 
         return Inertia::render('admin/assets/index', [
             'assets' => $assets,
@@ -336,9 +345,7 @@ class AssetController extends Controller
             $query->whereHas('model', fn ($m) => $m->where('subcategory_id', $subcategoryId));
         }
 
-        if ($status !== '') {
-            $query->where('status', $status);
-        }
+        $this->applyAssetStatusFilter($query, $status);
 
         if ($condition !== '') {
             $query->where('condition', $condition);
@@ -871,6 +878,27 @@ class AssetController extends Controller
 
         return redirect()->back()
             ->with('toast', ['type' => 'success', 'message' => 'Foto subida correctamente.']);
+    }
+
+    /**
+     * @param  Builder<\App\Models\Asset>  $query
+     */
+    private function applyAssetStatusFilter(Builder $query, string $status): void
+    {
+        if ($status === '') {
+            return;
+        }
+        if ($status === 'unassigned') {
+            $canonical = self::ASSET_STATUS_CANONICAL;
+            $query->where(function ($w) use ($canonical) {
+                $w->whereNull('status')
+                    ->orWhereRaw("BTRIM(COALESCE(status::text, '')) = ''")
+                    ->orWhereNotIn('status', $canonical);
+            });
+
+            return;
+        }
+        $query->where('status', $status);
     }
 
     public function destroyPhoto(Asset $asset, AssetPhoto $photo): RedirectResponse

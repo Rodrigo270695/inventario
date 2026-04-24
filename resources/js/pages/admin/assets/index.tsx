@@ -12,7 +12,6 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AssetFormModal } from '@/components/assets/asset-form-modal';
-import { CONDITION_OPTIONS, conditionToLabel } from '@/constants/conditions';
 import type { DataTableColumn, SortOrder } from '@/components/data-table';
 import { DataTable } from '@/components/data-table';
 import { DeleteConfirmModal } from '@/components/delete-confirm-modal';
@@ -30,7 +29,10 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { CONDITION_OPTIONS, conditionToLabel } from '@/constants/conditions';
 import AppLayout from '@/layouts/app-layout';
+import { cn } from '@/lib/utils';
+import { assetOperationalStatusKey } from '@/pages/admin/assets/config/utils';
 import type {
     Asset,
     BreadcrumbItem,
@@ -148,6 +150,7 @@ const STATUS_LABELS: Record<string, string> = {
     broken: 'Malogrado',
     disposed: 'Dado de baja',
     sold: 'Vendido',
+    unassigned: 'Sin estado',
 };
 
 /** Clases de color por estado para los badges (fondo + texto) */
@@ -159,6 +162,7 @@ const STATUS_BADGE_CLASSES: Record<string, string> = {
     broken: 'bg-rose-100 text-rose-900 dark:bg-rose-500/20 dark:text-rose-200',
     disposed: 'bg-slate-200 text-slate-700 dark:bg-slate-500/30 dark:text-slate-300',
     sold: 'bg-violet-100 text-violet-800 dark:bg-violet-500/25 dark:text-violet-300',
+    unassigned: 'bg-orange-100 text-orange-950 dark:bg-orange-500/20 dark:text-orange-200',
 };
 
 /** Marca y modelo en un solo texto (p. ej. `EPSON-M244A`). */
@@ -450,11 +454,19 @@ export default function AssetsIndex({
             label: 'Estado',
             sortable: true,
             className: 'text-foreground',
-            render: (row) => (
-                <span className="inline-flex rounded-full bg-blue-100 px-1.5 py-px text-[10px] font-medium leading-tight text-blue-700 dark:bg-blue-500/20 dark:text-blue-400">
-                    {STATUS_LABELS[row.status] ?? row.status}
-                </span>
-            ),
+            render: (row) => {
+                const sk = assetOperationalStatusKey(row.status);
+                return (
+                    <span
+                        className={cn(
+                            'inline-flex rounded-full px-1.5 py-px text-[10px] font-medium leading-tight',
+                            STATUS_BADGE_CLASSES[sk] ?? 'bg-slate-100 text-slate-600 dark:bg-slate-500/20 dark:text-slate-400'
+                        )}
+                    >
+                        {STATUS_LABELS[sk] ?? row.status ?? '—'}
+                    </span>
+                );
+            },
         },
         {
             key: 'condition',
@@ -881,7 +893,11 @@ export default function AssetsIndex({
                                                     </div>
                                                     <div className="flex flex-wrap gap-x-2">
                                                         <dt className="text-muted-foreground shrink-0">Estado:</dt>
-                                                        <dd className="text-foreground">{STATUS_LABELS[row.status] ?? row.status}</dd>
+                                                        <dd className="text-foreground">
+                                                            {STATUS_LABELS[assetOperationalStatusKey(row.status)] ??
+                                                                row.status ??
+                                                                '—'}
+                                                        </dd>
                                                     </div>
                                                     <div className="flex flex-wrap gap-x-2">
                                                         <dt className="text-muted-foreground shrink-0">Condición:</dt>

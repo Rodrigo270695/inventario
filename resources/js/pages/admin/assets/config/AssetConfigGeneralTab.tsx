@@ -1,7 +1,14 @@
 import { router } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 import type { AssetConfigAsset } from './types';
-import { CONDITION_LABELS, STATUS_LABELS, assetLocationPath, formatDateShort, fullDisplayName } from './utils';
+import {
+    CONDITION_LABELS,
+    STATUS_LABELS,
+    assetLocationPath,
+    assetOperationalStatusKey,
+    formatDateShort,
+    fullDisplayName,
+} from './utils';
 
 type Props = {
     asset: AssetConfigAsset;
@@ -92,7 +99,9 @@ export function AssetConfigGeneralTab({ asset }: Props) {
                 </div>
                 <div>
                     <p className="text-muted-foreground text-xs font-medium">Estado</p>
-                    <p className="text-foreground text-sm">{STATUS_LABELS[asset.status] ?? asset.status}</p>
+                    <p className="text-foreground text-sm">
+                        {STATUS_LABELS[assetOperationalStatusKey(asset.status)] ?? asset.status ?? '—'}
+                    </p>
                 </div>
                 <div>
                     <p className="text-muted-foreground text-xs font-medium">Condición</p>

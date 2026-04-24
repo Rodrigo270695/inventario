@@ -2,7 +2,6 @@ import { Head, router, usePage } from '@inertiajs/react';
 import { FileDown, Filter, LayoutGrid, Package, Pencil, Plus, Printer, Settings, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ComponentFormModal } from '@/components/components/component-form-modal';
-import { conditionToLabel } from '@/constants/conditions';
 import type { DataTableColumn, SortOrder } from '@/components/data-table';
 import { DataTable } from '@/components/data-table';
 import { DeleteConfirmModal } from '@/components/delete-confirm-modal';
@@ -18,6 +17,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { conditionToLabel } from '@/constants/conditions';
 import AppLayout from '@/layouts/app-layout';
 import type { AssetCategory, AssetSubcategory, BreadcrumbItem, Component, PaginationMeta } from '@/types';
 
@@ -121,7 +121,15 @@ const STATUS_LABELS: Record<string, string> = {
     in_transit: 'En tránsito',
     broken: 'Malogrado',
     disposed: 'Dado de baja',
+    unassigned: 'Sin estado',
 };
+
+function componentOperationalStatusKey(raw: string | null | undefined): string {
+    if (raw == null || String(raw).trim() === '') {
+        return 'unassigned';
+    }
+    return raw;
+}
 
 const STATUS_BADGE_CLASSES: Record<string, string> = {
     stored: 'bg-blue-100 text-blue-800 dark:bg-blue-500/25 dark:text-blue-300',
@@ -130,6 +138,7 @@ const STATUS_BADGE_CLASSES: Record<string, string> = {
     in_transit: 'bg-sky-100 text-sky-800 dark:bg-sky-500/25 dark:text-sky-300',
     broken: 'bg-rose-100 text-rose-900 dark:bg-rose-500/20 dark:text-rose-200',
     disposed: 'bg-slate-200 text-slate-700 dark:bg-slate-500/30 dark:text-slate-300',
+    unassigned: 'bg-orange-100 text-orange-950 dark:bg-orange-500/20 dark:text-orange-200',
 };
 
 const CATEGORY_TYPE_LABELS: Record<string, string> = {
@@ -334,15 +343,18 @@ export default function ComponentsIndex({
                 label: 'Estado',
                 sortable: true,
                 className: 'text-foreground text-xs',
-                render: (row) => (
-                    <span
-                        className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-medium ${
-                            STATUS_BADGE_CLASSES[row.status] ?? 'bg-slate-100 text-slate-700'
-                        }`}
-                    >
-                        {STATUS_LABELS[row.status] ?? row.status}
-                    </span>
-                ),
+                render: (row) => {
+                    const sk = componentOperationalStatusKey(row.status);
+                    return (
+                        <span
+                            className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-medium ${
+                                STATUS_BADGE_CLASSES[sk] ?? 'bg-slate-100 text-slate-700'
+                            }`}
+                        >
+                            {STATUS_LABELS[sk] ?? row.status ?? '—'}
+                        </span>
+                    );
+                },
             },
             {
                 key: 'condition',
@@ -704,7 +716,11 @@ export default function ComponentsIndex({
                                                     </div>
                                                     <div className="flex flex-wrap gap-x-2">
                                                         <dt className="text-muted-foreground shrink-0">Estado:</dt>
-                                                        <dd className="text-foreground">{STATUS_LABELS[row.status] ?? row.status}</dd>
+                                                        <dd className="text-foreground">
+                                                            {STATUS_LABELS[componentOperationalStatusKey(row.status)] ??
+                                                                row.status ??
+                                                                '—'}
+                                                        </dd>
                                                     </div>
                                                     <div className="flex flex-wrap gap-x-2">
                                                         <dt className="text-muted-foreground shrink-0">Condición:</dt>

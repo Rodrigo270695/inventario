@@ -27,7 +27,15 @@ const STATUS_LABELS: Record<string, string> = {
     in_transit: 'En tránsito',
     broken: 'Malogrado',
     disposed: 'Dado de baja',
+    unassigned: 'Sin estado',
 };
+
+function componentOperationalStatusKey(raw: string | null | undefined): string {
+    if (raw == null || String(raw).trim() === '') {
+        return 'unassigned';
+    }
+    return raw;
+}
 
 const CONDITION_LABELS: Record<string, string> = {
     new: 'Nuevo',
@@ -134,7 +142,9 @@ export function ComponentConfigGeneralTab({ component }: Props) {
                 <div>
                     <p className="text-muted-foreground text-xs font-medium">Estado</p>
                     <p className="text-foreground text-sm">
-                        {STATUS_LABELS[component.status] ?? component.status}
+                        {STATUS_LABELS[componentOperationalStatusKey(component.status)] ??
+                            component.status ??
+                            '—'}
                     </p>
                 </div>
                 <div>
