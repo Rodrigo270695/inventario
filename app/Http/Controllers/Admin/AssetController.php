@@ -34,7 +34,7 @@ use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 class AssetController extends Controller
 {
     /** Estados operativos válidos en BD (cualquier otro valor cuenta como «Sin estado» en listados). */
-    private const ASSET_STATUS_CANONICAL = ['stored', 'active', 'in_repair', 'in_transit', 'broken', 'disposed', 'sold'];
+    private const ASSET_STATUS_CANONICAL = ['stored', 'active', 'in_repair', 'in_transit', 'disposed', 'sold'];
 
     private const VALID_SORT = ['code', 'created_at', 'status'];
 

@@ -119,16 +119,16 @@ const STATUS_LABELS: Record<string, string> = {
     active: 'En uso',
     in_repair: 'En reparación',
     in_transit: 'En tránsito',
-    broken: 'Malogrado',
     disposed: 'Dado de baja',
     unassigned: 'Sin estado',
 };
 
 function componentOperationalStatusKey(raw: string | null | undefined): string {
-    if (raw == null || String(raw).trim() === '') {
+    const s = raw == null ? '' : String(raw).trim();
+    if (s === '' || s === 'broken') {
         return 'unassigned';
     }
-    return raw;
+    return s;
 }
 
 const STATUS_BADGE_CLASSES: Record<string, string> = {
@@ -136,7 +136,6 @@ const STATUS_BADGE_CLASSES: Record<string, string> = {
     active: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/25 dark:text-emerald-300',
     in_repair: 'bg-amber-100 text-amber-800 dark:bg-amber-500/25 dark:text-amber-300',
     in_transit: 'bg-sky-100 text-sky-800 dark:bg-sky-500/25 dark:text-sky-300',
-    broken: 'bg-rose-100 text-rose-900 dark:bg-rose-500/20 dark:text-rose-200',
     disposed: 'bg-slate-200 text-slate-700 dark:bg-slate-500/30 dark:text-slate-300',
     unassigned: 'bg-orange-100 text-orange-950 dark:bg-orange-500/20 dark:text-orange-200',
 };

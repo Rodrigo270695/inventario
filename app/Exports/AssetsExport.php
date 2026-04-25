@@ -44,7 +44,6 @@ class AssetsExport implements FromCollection, WithColumnWidths, WithEvents, With
                 'active' => 'En uso',
                 'in_repair' => 'En reparación',
                 'in_transit' => 'En tránsito',
-                'broken' => 'Malogrado',
                 'disposed' => 'Dado de baja',
                 'sold' => 'Vendido',
                 'unassigned' => 'Sin estado',
@@ -58,7 +57,8 @@ class AssetsExport implements FromCollection, WithColumnWidths, WithEvents, With
             ];
 
             $rawStatus = $asset->status;
-            $statusKey = ($rawStatus === null || trim((string) $rawStatus) === '') ? 'unassigned' : (string) $rawStatus;
+            $r = $rawStatus === null ? '' : trim((string) $rawStatus);
+            $statusKey = ($r === '' || $r === 'broken') ? 'unassigned' : $r;
             $status = $statusLabels[$statusKey] ?? $rawStatus ?? '—';
             $condition = $conditionLabels[$asset->condition] ?? $asset->condition ?? '—';
 

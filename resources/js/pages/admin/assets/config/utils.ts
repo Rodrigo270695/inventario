@@ -5,18 +5,18 @@ export const STATUS_LABELS: Record<string, string> = {
     active: 'En uso',
     in_repair: 'En reparación',
     in_transit: 'En tránsito',
-    broken: 'Malogrado',
     disposed: 'Dado de baja',
     sold: 'Vendido',
     unassigned: 'Sin estado',
 };
 
-/** NULL o vacío en BD → clave de presentación «sin estado». */
+/** NULL, vacío o `broken` en estado (legacy) → presentación «sin estado»; malogrado va en condición. */
 export function assetOperationalStatusKey(raw: string | null | undefined): string {
-    if (raw == null || String(raw).trim() === '') {
+    const s = raw == null ? '' : String(raw).trim();
+    if (s === '' || s === 'broken') {
         return 'unassigned';
     }
-    return raw;
+    return s;
 }
 
 export const CONDITION_LABELS: Record<string, string> = {

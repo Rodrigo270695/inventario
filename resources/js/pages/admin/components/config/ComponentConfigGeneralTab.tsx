@@ -25,16 +25,16 @@ const STATUS_LABELS: Record<string, string> = {
     active: 'En uso',
     in_repair: 'En reparación',
     in_transit: 'En tránsito',
-    broken: 'Malogrado',
     disposed: 'Dado de baja',
     unassigned: 'Sin estado',
 };
 
 function componentOperationalStatusKey(raw: string | null | undefined): string {
-    if (raw == null || String(raw).trim() === '') {
+    const s = raw == null ? '' : String(raw).trim();
+    if (s === '' || s === 'broken') {
         return 'unassigned';
     }
-    return raw;
+    return s;
 }
 
 const CONDITION_LABELS: Record<string, string> = {

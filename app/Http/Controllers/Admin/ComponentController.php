@@ -28,7 +28,7 @@ use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 class ComponentController extends Controller
 {
     /** Estados operativos válidos en BD (cualquier otro valor cuenta como «Sin estado» en listados). */
-    private const COMPONENT_STATUS_CANONICAL = ['stored', 'active', 'in_repair', 'in_transit', 'broken', 'disposed'];
+    private const COMPONENT_STATUS_CANONICAL = ['stored', 'active', 'in_repair', 'in_transit', 'disposed'];
 
     private const VALID_SORT = ['code', 'created_at', 'status'];
 

@@ -25,7 +25,6 @@ class ComponentsExport implements FromCollection, WithColumnWidths, WithEvents, 
             'active' => 'En uso',
             'in_repair' => 'En reparación',
             'in_transit' => 'En tránsito',
-            'broken' => 'Malogrado',
             'disposed' => 'Dado de baja',
             'unassigned' => 'Sin estado',
         ];
@@ -60,7 +59,8 @@ class ComponentsExport implements FromCollection, WithColumnWidths, WithEvents, 
             $subcategory = $component->subcategory?->name ?? '—';
 
             $rawStatus = $component->status;
-            $statusKey = ($rawStatus === null || trim((string) $rawStatus) === '') ? 'unassigned' : (string) $rawStatus;
+            $r = $rawStatus === null ? '' : trim((string) $rawStatus);
+            $statusKey = ($r === '' || $r === 'broken') ? 'unassigned' : $r;
             $status = $statusLabels[$statusKey] ?? $rawStatus ?? '—';
             $condition = $conditionLabels[$component->condition] ?? $component->condition ?? '—';
 

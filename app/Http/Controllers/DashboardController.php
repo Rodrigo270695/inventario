@@ -199,10 +199,9 @@ class DashboardController extends Controller
         $inRepair = (clone $q)->where($table.'.status', 'in_repair')->count();
         $storedExact = (clone $q)->where($table.'.status', 'stored')->count();
         $inTransit = (clone $q)->where($table.'.status', 'in_transit')->count();
-        $brokenStatus = (clone $q)->where($table.'.status', 'broken')->count();
         $disposed = (clone $q)->where($table.'.status', 'disposed')->count();
         $sold = (clone $q)->where($table.'.status', 'sold')->count();
-        $assignedByStatus = $storedExact + $inUse + $inRepair + $inTransit + $brokenStatus + $disposed + $sold;
+        $assignedByStatus = $storedExact + $inUse + $inRepair + $inTransit + $disposed + $sold;
         $stored = $storedExact;
         $unassignedCount = max(0, $total - $assignedByStatus);
         $soon = (clone $q)
@@ -215,7 +214,6 @@ class DashboardController extends Controller
             'active' => 'En uso',
             'in_repair' => 'En reparación',
             'in_transit' => 'En tránsito',
-            'broken' => 'Malogrado',
             'disposed' => 'Dado de baja',
             'sold' => 'Vendido',
             'unassigned' => 'Sin estado',
@@ -252,9 +250,8 @@ class DashboardController extends Controller
         $storedExact = (clone $q)->where($table.'.status', 'stored')->count();
         $inRepair = (clone $q)->where($table.'.status', 'in_repair')->count();
         $inTransit = (clone $q)->where($table.'.status', 'in_transit')->count();
-        $brokenStatus = (clone $q)->where($table.'.status', 'broken')->count();
         $disposed = (clone $q)->where($table.'.status', 'disposed')->count();
-        $assignedByStatus = $storedExact + $active + $inRepair + $inTransit + $brokenStatus + $disposed;
+        $assignedByStatus = $storedExact + $active + $inRepair + $inTransit + $disposed;
         $stored = $storedExact;
         $unassignedCount = max(0, $total - $assignedByStatus);
 
@@ -263,7 +260,6 @@ class DashboardController extends Controller
             'active' => 'En uso',
             'in_repair' => 'En reparación',
             'in_transit' => 'En tránsito',
-            'broken' => 'Malogrado',
             'disposed' => 'Dado de baja',
             'unassigned' => 'Sin estado',
         ];

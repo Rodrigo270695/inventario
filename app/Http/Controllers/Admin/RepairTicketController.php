@@ -651,7 +651,7 @@ class RepairTicketController extends Controller
         $finalStatus = $this->cleanString($request->input('final_status', ''));
         $conditionOut = $this->cleanString($request->input('condition_out', ''));
 
-        if ($finalStatus !== '' && ! in_array($finalStatus, ['stored', 'active', 'in_repair', 'in_transit', 'broken', 'disposed', 'sold'], true)) {
+        if ($finalStatus !== '' && ! in_array($finalStatus, ['stored', 'active', 'in_repair', 'in_transit', 'disposed', 'sold'], true)) {
             abort(422, 'Estado final del bien no válido.');
         }
 
