@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AssetCategory;
+use App\Models\Asset;
 use App\Models\DepreciationEntry;
 use App\Models\DepreciationSchedule;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -138,6 +140,62 @@ class DepreciationController extends Controller
         ]);
     }
 
+    public function runManual(Request $request)
+    {
+        if (! $request->user()?->can('depreciation.create')) {
+            abort(403);
+        }
+
+        $data = $request->validate([
+            'period' => ['required', 'date_format:Y-m'],
+        ]);
+
+        $period = $data['period'];
+
+        $schedules = DepreciationSchedule::query()
+            ->with([
+                'category:id,name,code,gl_account_id,gl_depreciation_account_id',
+                'assets:id,category_id,acquisition_value,current_value',
+            ])
+            ->get();
+
+        if ($schedules->isEmpty()) {
+            return redirect()->back()->with('toast', [
+                'type' => 'error',
+                'message' => 'No hay reglas de depreciación configuradas.',
+            ]);
+        }
+
+        $categoriesWithoutAccounts = [];
+
+        foreach ($schedules as $schedule) {
+            $category = $schedule->category;
+            if (! $category) {
+                continue;
+            }
+
+            if (! $category->gl_account_id || ! $category->gl_depreciation_account_id) {
+                $categoriesWithoutAccounts[] = $category->code ?: $category->name;
+            }
+        }
+
+        if ($categoriesWithoutAccounts !== []) {
+            $categoriesWithoutAccounts = array_values(array_unique($categoriesWithoutAccounts));
+
+            return redirect()->back()->with('toast', [
+                'type' => 'error',
+                'message' => 'No se puede ejecutar: faltan cuentas contables en categorías: '.implode(', ', $categoriesWithoutAccounts).'.',
+            ]);
+        }
+
+        $created = $this->createEntriesForPeriod($period, $schedules);
+
+        return redirect()->back()->with('toast', [
+            'type' => 'success',
+            'message' => "Depreciación ejecutada para {$period}. Movimientos creados: {$created}.",
+        ]);
+    }
+
     public function approveEntry(Request $request, DepreciationEntry $depreciation_entry)
     {
         if (! $request->user()?->can('depreciation.approve')) {
@@ -192,5 +250,77 @@ class DepreciationController extends Controller
                 ? '1 movimiento aprobado correctamente.'
                 : "{$count} movimientos aprobados correctamente.",
         ]);
+    }
+
+    /**
+     * @param \Illuminate\Support\Collection<int, DepreciationSchedule>|null $schedules
+     */
+    private function createEntriesForPeriod(string $period, $schedules = null): int
+    {
+        $validPeriod = Carbon::createFromFormat('Y-m', $period);
+        if (! $validPeriod || $validPeriod->format('Y-m') !== $period) {
+            return 0;
+        }
+
+        $schedules ??= DepreciationSchedule::query()
+            ->with('assets:id,category_id,acquisition_value,current_value')
+            ->get();
+
+        $created = 0;
+
+        foreach ($schedules as $schedule) {
+            /** @var DepreciationSchedule $schedule */
+            foreach ($schedule->assets as $asset) {
+                /** @var Asset $asset */
+                if ($asset->acquisition_value === null) {
+                    continue;
+                }
+
+                $alreadyExists = DepreciationEntry::query()
+                    ->where('asset_id', $asset->id)
+                    ->where('period', $period)
+                    ->exists();
+                if ($alreadyExists) {
+                    continue;
+                }
+
+                $acquisition = (float) $asset->acquisition_value;
+                $residualPct = (float) $schedule->residual_value_pct;
+                $usefulYears = max(1, (int) $schedule->useful_life_years);
+
+                $residualValue = $acquisition * ($residualPct / 100);
+                $depreciableBase = max(0.0, $acquisition - $residualValue);
+                $annualDepreciation = $depreciableBase / $usefulYears;
+                $monthlyDepreciation = round($annualDepreciation / 12, 2);
+
+                $lastApproved = DepreciationEntry::query()
+                    ->where('asset_id', $asset->id)
+                    ->where('status', 'approved')
+                    ->orderByDesc('period')
+                    ->orderByDesc('created_at')
+                    ->first();
+
+                $bookBefore = $lastApproved
+                    ? (float) $lastApproved->book_value_after
+                    : $acquisition;
+
+                $bookAfter = max($residualValue, $bookBefore - $monthlyDepreciation);
+
+                DepreciationEntry::create([
+                    'asset_id' => $asset->id,
+                    'period' => $period,
+                    'method' => $schedule->method,
+                    'amount' => $monthlyDepreciation,
+                    'book_value_before' => $bookBefore,
+                    'book_value_after' => $bookAfter,
+                    'calculated_at' => now(),
+                    'status' => 'draft',
+                ]);
+
+                $created++;
+            }
+        }
+
+        return $created;
     }
 }

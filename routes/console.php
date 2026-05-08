@@ -224,7 +224,7 @@ Artisan::command('app:run-depreciation {--period=} ', function () {
     }
 
     $this->info("Entradas de depreciación creadas para el periodo {$period}: {$created}");
-})->purpose('Calcular depreciación mensual para activos tecnológicos')->monthlyOn(1, '00:30');
+})->purpose('Calcular depreciación para activos tecnológicos (ejecución manual)');
 
 Artisan::command('app:check-depreciation-alerts', function () {
     $today = Carbon::today();

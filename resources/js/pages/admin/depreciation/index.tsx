@@ -1,5 +1,5 @@
 import { Head, router, useForm, usePage } from '@inertiajs/react';
-import { LayoutGrid, TrendingDown, Pencil, Trash2, Plus } from 'lucide-react';
+import { LayoutGrid, TrendingDown, Pencil, Trash2, Plus, Play } from 'lucide-react';
 import { useState, useMemo, useCallback } from 'react';
 import { DataTable, type DataTableColumn } from '@/components/data-table';
 import { AppModal } from '@/components/app-modal';
@@ -149,6 +149,8 @@ export default function DepreciationIndex({
     const periodFilter = entriesFilters.period;
     const [selectedEntryIds, setSelectedEntryIds] = useState<Set<string>>(new Set());
     const [approveModalOpen, setApproveModalOpen] = useState(false);
+    const [runModalOpen, setRunModalOpen] = useState(false);
+    const [runPeriod, setRunPeriod] = useState<string>(new Date().toISOString().slice(0, 7));
 
     const categoryMap = useMemo(() => {
         const map = new Map<string, (typeof categories)[number]>();
@@ -244,7 +246,9 @@ export default function DepreciationIndex({
     const handleDeleteSchedule = (schedule: DepreciationScheduleRow) => {
         if (!canDeleteSchedule) return;
         if (!window.confirm('¿Eliminar la regla de depreciación para esta categoría?')) return;
-        window.location.href = `/admin/depreciation/schedules/${schedule.id}`;
+        router.delete(`/admin/depreciation/schedules/${schedule.id}`, {
+            preserveScroll: true,
+        });
     };
 
     const scheduleColumns: DataTableColumn<DepreciationScheduleRow>[] = [
@@ -469,14 +473,25 @@ export default function DepreciationIndex({
                         </div>
                     </div>
                     {canCreateSchedule && (
-                        <Button
-                            type="button"
-                            className="mt-2 inline-flex items-center gap-2 bg-inv-primary text-white hover:bg-inv-primary/90 cursor-pointer"
-                            onClick={openCreateModal}
-                        >
-                            <Plus className="size-4" />
-                            Nueva regla
-                        </Button>
+                        <div className="mt-2 flex items-center gap-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="inline-flex items-center gap-2 cursor-pointer"
+                                onClick={() => setRunModalOpen(true)}
+                            >
+                                <Play className="size-4" />
+                                Ejecutar depreciación
+                            </Button>
+                            <Button
+                                type="button"
+                                className="inline-flex items-center gap-2 bg-inv-primary text-white hover:bg-inv-primary/90 cursor-pointer"
+                                onClick={openCreateModal}
+                            >
+                                <Plus className="size-4" />
+                                Nueva regla
+                            </Button>
+                        </div>
                     )}
                 </div>
 
@@ -866,6 +881,54 @@ export default function DepreciationIndex({
                     )}
                 </div>
             </div>
+            <AppModal
+                open={runModalOpen}
+                onOpenChange={setRunModalOpen}
+                title="Ejecutar depreciación manual"
+                contentClassName="space-y-4"
+            >
+                <div className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                        Seleccione el periodo para generar los movimientos de depreciación en borrador.
+                    </p>
+                    <div className="space-y-2">
+                        <Label htmlFor="run-depreciation-period">Periodo (YYYY-MM)</Label>
+                        <Input
+                            id="run-depreciation-period"
+                            type="month"
+                            value={runPeriod}
+                            onChange={(e) => setRunPeriod(e.target.value)}
+                        />
+                    </div>
+                    <div className="flex justify-end gap-2">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            className="cursor-pointer"
+                            onClick={() => setRunModalOpen(false)}
+                        >
+                            Cancelar
+                        </Button>
+                        <Button
+                            type="button"
+                            className="cursor-pointer bg-inv-primary text-white hover:bg-inv-primary/90"
+                            onClick={() => {
+                                if (!runPeriod) return;
+                                router.post(
+                                    '/admin/depreciation/run',
+                                    { period: runPeriod },
+                                    {
+                                        preserveScroll: true,
+                                        onSuccess: () => setRunModalOpen(false),
+                                    }
+                                );
+                            }}
+                        >
+                            Ejecutar
+                        </Button>
+                    </div>
+                </div>
+            </AppModal>
             <AppModal
                 open={approveModalOpen}
                 onOpenChange={setApproveModalOpen}
