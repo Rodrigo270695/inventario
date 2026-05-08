@@ -309,9 +309,13 @@ class AssetController extends Controller
         $query = Asset::query()->with([
             'model.subcategory.category',
             'model.brand:id,name',
+            'brand:id,name',
             'category:id,name,code',
             'warehouse.office.zonal',
+            'repairShop:id,name,code',
+            'purchaseItem:id,description',
             'registeredBy:id,name,last_name,usuario',
+            'updatedBy:id,name,last_name,usuario',
         ]);
 
         if ($q !== '') {

@@ -37,7 +37,7 @@ class AssetsExport implements FromCollection, WithColumnWidths, WithEvents, With
                 : ($categoryName ?? $categoryTypeLabel ?? '—');
             $subcategory = $asset->model?->subcategory?->name ?? '—';
             $modelName = $asset->model?->name ?? null;
-            $brandName = $asset->model?->brand?->name ?? '—';
+            $brandName = $asset->model?->brand?->name ?? $asset->brand?->name ?? '—';
 
             $statusLabels = [
                 'stored' => 'Almacenado',
@@ -73,24 +73,43 @@ class AssetsExport implements FromCollection, WithColumnWidths, WithEvents, With
                 ?? '—';
 
             $registeredBy = $this->fullName($asset->registeredBy ?? null);
+            $updatedBy = $this->fullName($asset->updatedBy ?? null);
 
-            $createdAt = $asset->created_at
-                ? $asset->created_at->locale('es')->timezone('America/Lima')->format('d M Y')
-                : '—';
+            $createdAt = $this->formatDateTime($asset->created_at);
+            $updatedAt = $this->formatDateTime($asset->updated_at);
 
             return [
+                $asset->id ?? '—',
                 $code,
+                $asset->serial_number ?? '—',
+                $asset->category_id ?? '—',
                 $category,
+                $asset->model?->subcategory_id ?? '—',
                 $subcategory,
+                $asset->brand_id ?? ($asset->model?->brand_id ?? '—'),
                 $modelName ?? '—',
                 $brandName,
+                $asset->model_id ?? '—',
                 $status,
                 $condition,
+                $this->formatMoney($asset->acquisition_value),
+                $this->formatDate($asset->acquisition_date),
+                $this->formatMoney($asset->current_value),
+                $this->formatPercent($asset->depreciation_rate),
+                $this->formatDate($asset->warranty_until),
+                $asset->warehouse_id ?? '—',
                 $zonal,
                 $office,
                 $warehouse,
+                $asset->repair_shop_id ?? '—',
+                $asset->repairShop?->name ?? '—',
+                $asset->purchase_item_id ?? '—',
+                $asset->purchaseItem?->description ?? '—',
                 $registeredBy,
+                $updatedBy,
                 $createdAt,
+                $updatedAt,
+                $asset->notes ?? '—',
             ];
         });
     }
@@ -98,36 +117,72 @@ class AssetsExport implements FromCollection, WithColumnWidths, WithEvents, With
     public function headings(): array
     {
         return [
+            'ID Activo',
             'Código',
+            'N° serie',
+            'ID Categoría',
             'Categoría',
+            'ID Subcategoría',
             'Subcategoría',
+            'ID Marca',
             'Modelo',
             'Marca',
+            'ID Modelo',
             'Estado',
             'Condición',
+            'Valor adquisición',
+            'Fecha adquisición',
+            'Valor actual',
+            'Tasa depreciación (%)',
+            'Garantía hasta',
+            'ID Almacén',
             'Zonal',
             'Oficina',
             'Almacén',
+            'ID Taller reparación',
+            'Taller reparación',
+            'ID Item compra',
+            'Item compra',
             'Registrado por',
+            'Actualizado por',
             'Creado',
+            'Actualizado',
+            'Notas',
         ];
     }
 
     public function columnWidths(): array
     {
         return [
-            'A' => 16, // Código
-            'B' => 22, // Categoría
-            'C' => 26, // Subcategoría
-            'D' => 26, // Modelo
-            'E' => 18, // Marca
-            'F' => 14, // Estado
-            'G' => 14, // Condición
-            'H' => 16, // Zonal
-            'I' => 20, // Oficina
-            'J' => 20, // Almacén
-            'K' => 22, // Registrado por
-            'L' => 14, // Creado
+            'A' => 38,
+            'B' => 16,
+            'C' => 20,
+            'D' => 38,
+            'E' => 28,
+            'F' => 38,
+            'G' => 28,
+            'H' => 38,
+            'I' => 26,
+            'J' => 20,
+            'K' => 38,
+            'L' => 14,
+            'M' => 14,
+            'N' => 16,
+            'O' => 14,
+            'P' => 16,
+            'Q' => 16,
+            'R' => 38,
+            'S' => 16,
+            'T' => 22,
+            'U' => 22,
+            'V' => 38,
+            'W' => 22,
+            'X' => 38,
+            'Y' => 28,
+            'Z' => 28,
+            'AA' => 18,
+            'AB' => 18,
+            'AC' => 40,
         ];
     }
 
@@ -167,5 +222,49 @@ class AssetsExport implements FromCollection, WithColumnWidths, WithEvents, With
         $parts = array_filter([$user->name ?? null, $user->last_name ?? null]);
 
         return implode(' ', $parts) ?: ($user->usuario ?? '—');
+    }
+
+    private function formatMoney(mixed $value): string
+    {
+        if ($value === null || $value === '') {
+            return '—';
+        }
+
+        return number_format((float) $value, 2, '.', '');
+    }
+
+    private function formatPercent(mixed $value): string
+    {
+        if ($value === null || $value === '') {
+            return '—';
+        }
+
+        return number_format((float) $value, 2, '.', '');
+    }
+
+    private function formatDate(mixed $value): string
+    {
+        if (! $value) {
+            return '—';
+        }
+
+        try {
+            return $value->format('d/m/Y');
+        } catch (\Throwable) {
+            return '—';
+        }
+    }
+
+    private function formatDateTime(mixed $value): string
+    {
+        if (! $value) {
+            return '—';
+        }
+
+        try {
+            return $value->locale('es')->timezone('America/Lima')->format('d M Y H:i');
+        } catch (\Throwable) {
+            return '—';
+        }
     }
 }
