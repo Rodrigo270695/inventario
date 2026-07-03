@@ -82,6 +82,7 @@ class DepreciationController extends Controller
             'canCreateSchedule' => $request->user()?->can('depreciation.create') ?? false,
             'canUpdateSchedule' => $request->user()?->can('depreciation.update') ?? false,
             'canDeleteSchedule' => $request->user()?->can('depreciation.delete') ?? false,
+            'canDeleteEntries' => $request->user()?->can('depreciation.delete') ?? false,
             'canApproveEntries' => $request->user()?->can('depreciation.approve') ?? false,
         ]);
     }
@@ -217,6 +218,27 @@ class DepreciationController extends Controller
         ]);
     }
 
+    public function destroyEntry(Request $request, DepreciationEntry $depreciation_entry)
+    {
+        if (! $request->user()?->can('depreciation.delete')) {
+            abort(403);
+        }
+
+        if ($depreciation_entry->status === 'approved') {
+            return redirect()->back()->with('toast', [
+                'type' => 'error',
+                'message' => 'No se puede eliminar un movimiento de depreciación aprobado.',
+            ]);
+        }
+
+        $depreciation_entry->delete();
+
+        return redirect()->back()->with('toast', [
+            'type' => 'success',
+            'message' => 'Movimiento de depreciación eliminado correctamente.',
+        ]);
+    }
+
     public function bulkApproveEntries(Request $request)
     {
         if (! $request->user()?->can('depreciation.approve')) {
@@ -273,6 +295,10 @@ class DepreciationController extends Controller
             foreach ($schedule->assets as $asset) {
                 /** @var Asset $asset */
                 if ($asset->acquisition_value === null) {
+                    continue;
+                }
+
+                if ($asset->current_value !== null && (float) $asset->current_value <= 0) {
                     continue;
                 }
 

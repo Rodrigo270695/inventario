@@ -69,6 +69,7 @@ type DepreciationIndexProps = {
     canCreateSchedule: boolean;
     canUpdateSchedule: boolean;
     canDeleteSchedule: boolean;
+    canDeleteEntries: boolean;
     canApproveEntries: boolean;
 };
 
@@ -141,6 +142,7 @@ export default function DepreciationIndex({
     canCreateSchedule,
     canUpdateSchedule,
     canDeleteSchedule,
+    canDeleteEntries,
     canApproveEntries,
 }: DepreciationIndexProps) {
     const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
@@ -248,6 +250,21 @@ export default function DepreciationIndex({
         if (!window.confirm('¿Eliminar la regla de depreciación para esta categoría?')) return;
         router.delete(`/admin/depreciation/schedules/${schedule.id}`, {
             preserveScroll: true,
+        });
+    };
+
+    const handleDeleteEntry = (entry: DepreciationEntryRow) => {
+        if (!canDeleteEntries || entry.status === 'approved') return;
+        if (!window.confirm('¿Eliminar este movimiento de depreciación en borrador?')) return;
+        router.delete(`/admin/depreciation/entries/${entry.id}`, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setSelectedEntryIds((prev) => {
+                    const next = new Set(prev);
+                    next.delete(entry.id);
+                    return next;
+                });
+            },
         });
     };
 
@@ -416,39 +433,54 @@ export default function DepreciationIndex({
             sortable: false,
             className: 'text-xs text-right text-foreground whitespace-nowrap',
             render: (row) =>
-                canApproveEntries && row.status !== 'approved' ? (
-                    <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="cursor-pointer border-emerald-500 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
-                        onClick={() => {
-                            if (
-                                !window.confirm(
-                                    '¿Aprobar este movimiento de depreciación? Esta acción no se puede deshacer fácilmente.'
-                                )
-                            ) {
-                                return;
-                            }
-                            const form = document.createElement('form');
-                            form.method = 'POST';
-                            form.action = `/admin/depreciation/entries/${row.id}/approve`;
-                            const token = (document.querySelector(
-                                'meta[name="csrf-token"]'
-                            ) as HTMLMetaElement | null)?.content;
-                            if (token) {
-                                const input = document.createElement('input');
-                                input.type = 'hidden';
-                                input.name = '_token';
-                                input.value = token;
-                                form.appendChild(input);
-                            }
-                            document.body.appendChild(form);
-                            form.submit();
-                        }}
-                    >
-                        Aprobar
-                    </Button>
+                row.status !== 'approved' && (canApproveEntries || canDeleteEntries) ? (
+                    <div className="flex justify-end gap-1">
+                        {canApproveEntries && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="cursor-pointer border-emerald-500 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
+                                onClick={() => {
+                                    if (
+                                        !window.confirm(
+                                            '¿Aprobar este movimiento de depreciación? Esta acción no se puede deshacer fácilmente.'
+                                        )
+                                    ) {
+                                        return;
+                                    }
+                                    const form = document.createElement('form');
+                                    form.method = 'POST';
+                                    form.action = `/admin/depreciation/entries/${row.id}/approve`;
+                                    const token = (document.querySelector(
+                                        'meta[name="csrf-token"]'
+                                    ) as HTMLMetaElement | null)?.content;
+                                    if (token) {
+                                        const input = document.createElement('input');
+                                        input.type = 'hidden';
+                                        input.name = '_token';
+                                        input.value = token;
+                                        form.appendChild(input);
+                                    }
+                                    document.body.appendChild(form);
+                                    form.submit();
+                                }}
+                            >
+                                Aprobar
+                            </Button>
+                        )}
+                        {canDeleteEntries && (
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="size-8 cursor-pointer text-rose-700 hover:bg-rose-50 hover:text-rose-800"
+                                onClick={() => handleDeleteEntry(row)}
+                            >
+                                <Trash2 className="size-4" />
+                            </Button>
+                        )}
+                    </div>
                 ) : null,
         },
     ];
@@ -802,46 +834,60 @@ export default function DepreciationIndex({
                                                         </p>
                                                     </div>
                                                 </div>
-                                                {canApproveEntries && row.status !== 'approved' && (
-                                                    <div className="mt-3">
-                                                        <Button
-                                                            type="button"
-                                                            variant="outline"
-                                                            size="sm"
-                                                            className="w-full cursor-pointer border-emerald-500 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
-                                                            onClick={() => {
-                                                                if (
-                                                                    !window.confirm(
-                                                                        '¿Aprobar este movimiento de depreciación? Esta acción no se puede deshacer fácilmente.'
-                                                                    )
-                                                                ) {
-                                                                    return;
-                                                                }
-                                                                const form =
-                                                                    document.createElement('form');
-                                                                form.method = 'POST';
-                                                                form.action = `/admin/depreciation/entries/${row.id}/approve`;
-                                                                const token = (
-                                                                    document.querySelector(
-                                                                        'meta[name="csrf-token"]'
-                                                                    ) as HTMLMetaElement | null
-                                                                )?.content;
-                                                                if (token) {
-                                                                    const input =
-                                                                        document.createElement('input');
-                                                                    input.type = 'hidden';
-                                                                    input.name = '_token';
-                                                                    input.value = token;
-                                                                    form.appendChild(input);
-                                                                }
-                                                                document.body.appendChild(form);
-                                                                form.submit();
-                                                            }}
-                                                        >
-                                                            Aprobar
-                                                        </Button>
-                                                    </div>
-                                                )}
+                                                {row.status !== 'approved' &&
+                                                    (canApproveEntries || canDeleteEntries) && (
+                                                        <div className="mt-3 flex gap-2">
+                                                            {canApproveEntries && (
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    className="flex-1 cursor-pointer border-emerald-500 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
+                                                                    onClick={() => {
+                                                                        if (
+                                                                            !window.confirm(
+                                                                                '¿Aprobar este movimiento de depreciación? Esta acción no se puede deshacer fácilmente.'
+                                                                            )
+                                                                        ) {
+                                                                            return;
+                                                                        }
+                                                                        const form =
+                                                                            document.createElement('form');
+                                                                        form.method = 'POST';
+                                                                        form.action = `/admin/depreciation/entries/${row.id}/approve`;
+                                                                        const token = (
+                                                                            document.querySelector(
+                                                                                'meta[name="csrf-token"]'
+                                                                            ) as HTMLMetaElement | null
+                                                                        )?.content;
+                                                                        if (token) {
+                                                                            const input =
+                                                                                document.createElement('input');
+                                                                            input.type = 'hidden';
+                                                                            input.name = '_token';
+                                                                            input.value = token;
+                                                                            form.appendChild(input);
+                                                                        }
+                                                                        document.body.appendChild(form);
+                                                                        form.submit();
+                                                                    }}
+                                                                >
+                                                                    Aprobar
+                                                                </Button>
+                                                            )}
+                                                            {canDeleteEntries && (
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    className="cursor-pointer border-rose-500 text-rose-700 hover:bg-rose-50 hover:text-rose-800"
+                                                                    onClick={() => handleDeleteEntry(row)}
+                                                                >
+                                                                    Eliminar
+                                                                </Button>
+                                                            )}
+                                                        </div>
+                                                    )}
                                             </div>
                                         ))}
                                     </div>
