@@ -274,6 +274,37 @@ class DepreciationController extends Controller
         ]);
     }
 
+    public function bulkDestroyEntries(Request $request)
+    {
+        if (! $request->user()?->can('depreciation.delete')) {
+            abort(403);
+        }
+
+        $data = $request->validate([
+            'entry_ids' => ['required', 'array'],
+            'entry_ids.*' => ['uuid', 'exists:depreciation_entries,id'],
+        ]);
+
+        $entries = DepreciationEntry::query()
+            ->whereIn('id', $data['entry_ids'])
+            ->where('status', 'draft')
+            ->get();
+
+        $count = 0;
+        /** @var DepreciationEntry $entry */
+        foreach ($entries as $entry) {
+            $entry->delete();
+            $count++;
+        }
+
+        return redirect()->back()->with('toast', [
+            'type' => 'success',
+            'message' => $count === 1
+                ? '1 movimiento en borrador eliminado correctamente.'
+                : "{$count} movimientos en borrador eliminados correctamente.",
+        ]);
+    }
+
     /**
      * @param \Illuminate\Support\Collection<int, DepreciationSchedule>|null $schedules
      */

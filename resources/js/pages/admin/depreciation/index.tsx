@@ -347,7 +347,7 @@ export default function DepreciationIndex({
     ];
 
     const entriesColumns: DataTableColumn<DepreciationEntryRow>[] = [
-        ...(canApproveEntries
+        ...(canApproveEntries || canDeleteEntries
             ? [
                   {
                       key: '_select',
@@ -708,7 +708,7 @@ export default function DepreciationIndex({
                                             ))}
                                         </SelectContent>
                                     </Select>
-                                    {canApproveEntries && draftEntries.length > 0 && (
+                                    {(canApproveEntries || canDeleteEntries) && draftEntries.length > 0 && (
                                         <>
                                             <div className="flex items-center gap-2 border-l border-border/70 pl-3">
                                                 <Checkbox
@@ -725,18 +725,51 @@ export default function DepreciationIndex({
                                                     Seleccionar todos
                                                 </Label>
                                             </div>
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="sm"
-                                                disabled={selectedEntryIds.size === 0}
-                                                className="cursor-pointer border-emerald-500 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 disabled:opacity-50"
-                                                onClick={() => setApproveModalOpen(true)}
-                                            >
-                                                Aprobar seleccionados
-                                                {selectedEntryIds.size > 0 &&
-                                                    ` (${selectedEntryIds.size})`}
-                                            </Button>
+                                            {canApproveEntries && (
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    disabled={selectedEntryIds.size === 0}
+                                                    className="cursor-pointer border-emerald-500 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 disabled:opacity-50"
+                                                    onClick={() => setApproveModalOpen(true)}
+                                                >
+                                                    Aprobar seleccionados
+                                                    {selectedEntryIds.size > 0 &&
+                                                        ` (${selectedEntryIds.size})`}
+                                                </Button>
+                                            )}
+                                            {canDeleteEntries && (
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    disabled={selectedEntryIds.size === 0}
+                                                    className="cursor-pointer border-rose-500 text-rose-700 hover:bg-rose-50 hover:text-rose-800 disabled:opacity-50"
+                                                    onClick={() => {
+                                                        if (selectedEntryIds.size === 0) return;
+                                                        if (
+                                                            !window.confirm(
+                                                                `¿Eliminar ${selectedEntryIds.size} movimiento${selectedEntryIds.size !== 1 ? 's' : ''} de depreciación en borrador?`
+                                                            )
+                                                        ) {
+                                                            return;
+                                                        }
+                                                        router.post(
+                                                            '/admin/depreciation/entries/bulk-delete',
+                                                            { entry_ids: Array.from(selectedEntryIds) },
+                                                            {
+                                                                preserveScroll: true,
+                                                                onSuccess: () => setSelectedEntryIds(new Set()),
+                                                            }
+                                                        );
+                                                    }}
+                                                >
+                                                    Eliminar seleccionados
+                                                    {selectedEntryIds.size > 0 &&
+                                                        ` (${selectedEntryIds.size})`}
+                                                </Button>
+                                            )}
                                         </>
                                     )}
                                 </div>

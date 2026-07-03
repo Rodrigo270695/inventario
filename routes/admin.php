@@ -66,6 +66,9 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::post('depreciation/entries/{depreciation_entry}/approve', [DepreciationController::class, 'approveEntry'])
         ->middleware('permission:depreciation.approve')
         ->name('depreciation.entries.approve');
+    Route::post('depreciation/entries/bulk-delete', [DepreciationController::class, 'bulkDestroyEntries'])
+        ->middleware('permission:depreciation.delete')
+        ->name('depreciation.entries.bulk-delete');
     Route::delete('depreciation/entries/{depreciation_entry}', [DepreciationController::class, 'destroyEntry'])
         ->middleware('permission:depreciation.delete')
         ->name('depreciation.entries.destroy');
