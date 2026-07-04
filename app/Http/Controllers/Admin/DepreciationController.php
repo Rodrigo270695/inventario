@@ -156,7 +156,7 @@ class DepreciationController extends Controller
         $schedules = DepreciationSchedule::query()
             ->with([
                 'category:id,name,code,gl_account_id,gl_depreciation_account_id',
-                'assets:id,category_id,acquisition_value,current_value',
+                'assets:id,category_id,acquisition_value,current_value,depreciation_rate',
             ])
             ->get();
 
@@ -316,7 +316,7 @@ class DepreciationController extends Controller
         }
 
         $schedules ??= DepreciationSchedule::query()
-            ->with('assets:id,category_id,acquisition_value,current_value')
+            ->with('assets:id,category_id,acquisition_value,current_value,depreciation_rate')
             ->get();
 
         $created = 0;
@@ -342,13 +342,14 @@ class DepreciationController extends Controller
                 }
 
                 $acquisition = (float) $asset->acquisition_value;
-                $residualPct = (float) $schedule->residual_value_pct;
-                $usefulYears = max(1, (int) $schedule->useful_life_years);
+                $depreciationRate = (float) $asset->depreciation_rate;
+                if ($depreciationRate <= 0) {
+                    continue;
+                }
 
+                $residualPct = (float) $schedule->residual_value_pct;
                 $residualValue = $acquisition * ($residualPct / 100);
-                $depreciableBase = max(0.0, $acquisition - $residualValue);
-                $annualDepreciation = $depreciableBase / $usefulYears;
-                $monthlyDepreciation = round($annualDepreciation / 12, 2);
+                $monthlyDepreciation = round(($acquisition * ($depreciationRate / 100)) / 12, 2);
 
                 $lastApproved = DepreciationEntry::query()
                     ->where('asset_id', $asset->id)
@@ -360,6 +361,11 @@ class DepreciationController extends Controller
                 $bookBefore = $lastApproved
                     ? (float) $lastApproved->book_value_after
                     : $acquisition;
+
+                $monthlyDepreciation = min($monthlyDepreciation, max(0.0, $bookBefore - $residualValue));
+                if ($monthlyDepreciation <= 0) {
+                    continue;
+                }
 
                 $bookAfter = max($residualValue, $bookBefore - $monthlyDepreciation);
 

@@ -161,7 +161,7 @@ Artisan::command('app:run-depreciation {--period=} ', function () {
 
     // Evitar recalcular si ya hay entradas para el periodo (se controla por activo)
     $schedules = DepreciationSchedule::query()
-        ->with('category:id,name,code', 'assets:id,category_id,acquisition_value,current_value')
+        ->with('category:id,name,code', 'assets:id,category_id,acquisition_value,current_value,depreciation_rate')
         ->get();
 
     $created = 0;
@@ -171,6 +171,10 @@ Artisan::command('app:run-depreciation {--period=} ', function () {
         foreach ($schedule->assets as $asset) {
             /** @var Asset $asset */
             if ($asset->acquisition_value === null) {
+                continue;
+            }
+
+            if ($asset->current_value !== null && (float) $asset->current_value <= 0) {
                 continue;
             }
 
@@ -184,15 +188,15 @@ Artisan::command('app:run-depreciation {--period=} ', function () {
             }
 
             $acquisition = (float) $asset->acquisition_value;
+            $depreciationRate = (float) $asset->depreciation_rate;
+            if ($depreciationRate <= 0) {
+                continue;
+            }
+
             $residualPct = (float) $schedule->residual_value_pct;
-            $usefulYears = max(1, (int) $schedule->useful_life_years);
 
             $residualValue = $acquisition * ($residualPct / 100);
-            $depreciableBase = max(0.0, $acquisition - $residualValue);
-
-            // Monto anual según método (por ahora sólo línea recta; otros métodos usan misma base simple)
-            $annualDepreciation = $depreciableBase / $usefulYears;
-            $monthlyDepreciation = round($annualDepreciation / 12, 2);
+            $monthlyDepreciation = round(($acquisition * ($depreciationRate / 100)) / 12, 2);
 
             // book_value_before: valor después de la última depreciación aprobada, o adquisición si no hay
             $lastApproved = DepreciationEntry::query()
@@ -205,6 +209,11 @@ Artisan::command('app:run-depreciation {--period=} ', function () {
             $bookBefore = $lastApproved
                 ? (float) $lastApproved->book_value_after
                 : $acquisition;
+
+            $monthlyDepreciation = min($monthlyDepreciation, max(0.0, $bookBefore - $residualValue));
+            if ($monthlyDepreciation <= 0) {
+                continue;
+            }
 
             $bookAfter = max($residualValue, $bookBefore - $monthlyDepreciation);
 
