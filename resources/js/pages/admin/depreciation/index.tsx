@@ -452,14 +452,9 @@ export default function DepreciationIndex({
             sortable: false,
             className: 'text-[11px] text-foreground min-w-[7rem]',
             render: (row) => (
-                <div className="leading-tight">
-                    <span className="block font-semibold text-foreground">
-                        {row.asset?.code ?? '—'}
-                    </span>
-                    <span className="block text-[10px] text-muted-foreground">
-                        {row.period}
-                    </span>
-                </div>
+                <span className="font-semibold text-foreground">
+                    {row.asset?.code ?? '—'}
+                </span>
             ),
         },
         {
