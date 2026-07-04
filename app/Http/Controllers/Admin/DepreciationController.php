@@ -40,6 +40,16 @@ class DepreciationController extends Controller
             $entriesQuery->where('period', $period);
         }
 
+        $entriesStatsQuery = clone $entriesQuery;
+        $entriesStats = [
+            'total_amount' => (float) (clone $entriesStatsQuery)->sum('amount'),
+            'draft_amount' => (float) (clone $entriesStatsQuery)->where('status', 'draft')->sum('amount'),
+            'approved_amount' => (float) (clone $entriesStatsQuery)->where('status', 'approved')->sum('amount'),
+            'total_count' => (clone $entriesStatsQuery)->count(),
+            'draft_count' => (clone $entriesStatsQuery)->where('status', 'draft')->count(),
+            'approved_count' => (clone $entriesStatsQuery)->where('status', 'approved')->count(),
+        ];
+
         $entriesPaginator = $entriesQuery->paginate($perPage)->withQueryString();
 
         $recentEntries = $entriesPaginator->getCollection()->all();
@@ -78,6 +88,7 @@ class DepreciationController extends Controller
                 'period' => $period === '' ? 'all' : $period,
                 'per_page' => $perPage,
             ],
+            'entriesStats' => $entriesStats,
             'categories' => $categories,
             'canCreateSchedule' => $request->user()?->can('depreciation.create') ?? false,
             'canUpdateSchedule' => $request->user()?->can('depreciation.update') ?? false,

@@ -57,6 +57,14 @@ type DepreciationIndexProps = {
     };
     availablePeriods: string[];
     entriesFilters: { period: string; per_page: number };
+    entriesStats: {
+        total_amount: number | string;
+        draft_amount: number | string;
+        approved_amount: number | string;
+        total_count: number;
+        draft_count: number;
+        approved_count: number;
+    };
     categories: {
         id: string;
         name: string;
@@ -138,6 +146,7 @@ export default function DepreciationIndex({
     entriesPaginator,
     availablePeriods,
     entriesFilters,
+    entriesStats,
     categories,
     canCreateSchedule,
     canUpdateSchedule,
@@ -675,6 +684,53 @@ export default function DepreciationIndex({
 
                     {tab === 'entries' && (
                         <div className="space-y-4 p-4 md:p-6">
+                            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                                <div className="rounded-xl border border-border/70 bg-background/60 p-4 shadow-sm">
+                                    <p className="text-xs font-medium text-muted-foreground">
+                                        Total depreciación
+                                    </p>
+                                    <p className="mt-1 text-lg font-semibold text-foreground">
+                                        {formatCurrency(entriesStats.total_amount)}
+                                    </p>
+                                    <p className="mt-1 text-[11px] text-muted-foreground">
+                                        {periodFilter === 'all' ? 'Todos los periodos' : `Periodo ${periodFilter}`}
+                                    </p>
+                                </div>
+                                <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 shadow-sm">
+                                    <p className="text-xs font-medium text-slate-600">
+                                        En borrador
+                                    </p>
+                                    <p className="mt-1 text-lg font-semibold text-slate-800">
+                                        {formatCurrency(entriesStats.draft_amount)}
+                                    </p>
+                                    <p className="mt-1 text-[11px] text-slate-500">
+                                        {entriesStats.draft_count} movimiento{entriesStats.draft_count !== 1 ? 's' : ''}
+                                    </p>
+                                </div>
+                                <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 shadow-sm">
+                                    <p className="text-xs font-medium text-emerald-700">
+                                        Aprobado
+                                    </p>
+                                    <p className="mt-1 text-lg font-semibold text-emerald-800">
+                                        {formatCurrency(entriesStats.approved_amount)}
+                                    </p>
+                                    <p className="mt-1 text-[11px] text-emerald-600">
+                                        {entriesStats.approved_count} movimiento{entriesStats.approved_count !== 1 ? 's' : ''}
+                                    </p>
+                                </div>
+                                <div className="rounded-xl border border-sky-200 bg-sky-50/60 p-4 shadow-sm">
+                                    <p className="text-xs font-medium text-sky-700">
+                                        Movimientos
+                                    </p>
+                                    <p className="mt-1 text-lg font-semibold text-sky-800">
+                                        {entriesStats.total_count}
+                                    </p>
+                                    <p className="mt-1 text-[11px] text-sky-600">
+                                        Total generado para el filtro
+                                    </p>
+                                </div>
+                            </div>
+
                             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                                 <div className="flex items-center gap-2">
                                     <TrendingDown className="size-4 text-sky-600" />
