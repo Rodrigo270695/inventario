@@ -59,6 +59,7 @@ type DepreciationIndexProps = {
     entriesFilters: { period: string; per_page: number };
     entriesStats: {
         total_amount: number | string;
+        book_value_before_total: number | string;
         draft_amount: number | string;
         approved_amount: number | string;
         total_count: number;
@@ -684,7 +685,7 @@ export default function DepreciationIndex({
 
                     {tab === 'entries' && (
                         <div className="space-y-4 p-4 md:p-6">
-                            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                                 <div className="rounded-xl border border-border/70 bg-background/60 p-4 shadow-sm">
                                     <p className="text-xs font-medium text-muted-foreground">
                                         Total depreciación
@@ -694,6 +695,17 @@ export default function DepreciationIndex({
                                     </p>
                                     <p className="mt-1 text-[11px] text-muted-foreground">
                                         {periodFilter === 'all' ? 'Todos los periodos' : `Periodo ${periodFilter}`}
+                                    </p>
+                                </div>
+                                <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4 shadow-sm">
+                                    <p className="text-xs font-medium text-amber-700">
+                                        Total valor antes
+                                    </p>
+                                    <p className="mt-1 text-lg font-semibold text-amber-800">
+                                        {formatCurrency(entriesStats.book_value_before_total)}
+                                    </p>
+                                    <p className="mt-1 text-[11px] text-amber-600">
+                                        Suma del valor antes
                                     </p>
                                 </div>
                                 <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 shadow-sm">

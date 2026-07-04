@@ -43,6 +43,7 @@ class DepreciationController extends Controller
         $entriesStatsQuery = clone $entriesQuery;
         $entriesStats = [
             'total_amount' => (float) (clone $entriesStatsQuery)->sum('amount'),
+            'book_value_before_total' => (float) (clone $entriesStatsQuery)->sum('book_value_before'),
             'draft_amount' => (float) (clone $entriesStatsQuery)->where('status', 'draft')->sum('amount'),
             'approved_amount' => (float) (clone $entriesStatsQuery)->where('status', 'approved')->sum('amount'),
             'total_count' => (clone $entriesStatsQuery)->count(),
