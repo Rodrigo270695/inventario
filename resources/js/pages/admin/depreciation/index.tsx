@@ -1,5 +1,5 @@
 import { Head, router, useForm, usePage } from '@inertiajs/react';
-import { LayoutGrid, TrendingDown, Pencil, Trash2, Plus, Play, FileDown, Check } from 'lucide-react';
+import { LayoutGrid, TrendingDown, Pencil, Trash2, Plus, Play, FileDown, Check, CheckCircle2 } from 'lucide-react';
 import { useState, useMemo, useCallback } from 'react';
 import { DataTable, type DataTableColumn } from '@/components/data-table';
 import { AppModal } from '@/components/app-modal';
@@ -873,62 +873,68 @@ export default function DepreciationIndex({
                                         Movimientos de depreciación
                                     </h2>
                                 </div>
-                                <div className="flex flex-wrap items-center gap-3">
-                                    <Label className="text-xs text-muted-foreground">
-                                        Periodo
-                                    </Label>
-                                    <Select
-                                        value={periodFilter}
-                                        onValueChange={(v) => {
-                                            router.get(buildEntriesUrl({
-                                                period: v,
-                                                schedule_id: scheduleFilter !== 'all' ? scheduleFilter : undefined,
-                                                per_page: entriesFilters.per_page,
-                                                page: 1,
-                                            }), {}, { preserveState: true });
-                                        }}
-                                    >
-                                        <SelectTrigger className="h-8 w-40 text-xs">
-                                            <SelectValue placeholder="Todos los periodos" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="all">Todos los periodos</SelectItem>
-                                            {availablePeriods.map((p) => (
-                                                <SelectItem key={p} value={p}>
-                                                    {p}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    <Label className="text-xs text-muted-foreground">
-                                        Regla
-                                    </Label>
-                                    <Select
-                                        value={scheduleFilter}
-                                        onValueChange={(v) => {
-                                            router.get(buildEntriesUrl({
-                                                period: periodFilter !== 'all' ? periodFilter : undefined,
-                                                schedule_id: v,
-                                                per_page: entriesFilters.per_page,
-                                                page: 1,
-                                            }), {}, { preserveState: true });
-                                        }}
-                                    >
-                                        <SelectTrigger className="h-8 w-64 text-xs">
-                                            <SelectValue placeholder="Todas las reglas" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="all">Todas las reglas</SelectItem>
-                                            {schedules.map((schedule) => (
-                                                <SelectItem key={schedule.id} value={schedule.id}>
-                                                    {schedule.category?.name ?? 'Categoría sin nombre'}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                <div className="flex w-full flex-col gap-2 md:w-auto">
+                                    <div className="grid w-full gap-2 sm:grid-cols-2 md:flex md:w-auto md:items-center">
+                                        <div className="flex flex-col gap-1 md:flex-row md:items-center">
+                                            <Label className="text-xs text-muted-foreground">
+                                                Periodo
+                                            </Label>
+                                            <Select
+                                                value={periodFilter}
+                                                onValueChange={(v) => {
+                                                    router.get(buildEntriesUrl({
+                                                        period: v,
+                                                        schedule_id: scheduleFilter !== 'all' ? scheduleFilter : undefined,
+                                                        per_page: entriesFilters.per_page,
+                                                        page: 1,
+                                                    }), {}, { preserveState: true });
+                                                }}
+                                            >
+                                                <SelectTrigger className="h-8 w-full text-xs md:w-40">
+                                                    <SelectValue placeholder="Todos los periodos" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="all">Todos los periodos</SelectItem>
+                                                    {availablePeriods.map((p) => (
+                                                        <SelectItem key={p} value={p}>
+                                                            {p}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="flex flex-col gap-1 md:flex-row md:items-center">
+                                            <Label className="text-xs text-muted-foreground">
+                                                Regla
+                                            </Label>
+                                            <Select
+                                                value={scheduleFilter}
+                                                onValueChange={(v) => {
+                                                    router.get(buildEntriesUrl({
+                                                        period: periodFilter !== 'all' ? periodFilter : undefined,
+                                                        schedule_id: v,
+                                                        per_page: entriesFilters.per_page,
+                                                        page: 1,
+                                                    }), {}, { preserveState: true });
+                                                }}
+                                            >
+                                                <SelectTrigger className="h-8 w-full text-xs md:w-64">
+                                                    <SelectValue placeholder="Todas las reglas" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="all">Todas las reglas</SelectItem>
+                                                    {schedules.map((schedule) => (
+                                                        <SelectItem key={schedule.id} value={schedule.id}>
+                                                            {schedule.category?.name ?? 'Categoría sin nombre'}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
                                     {(canApproveEntries || canDeleteEntries) && draftEntries.length > 0 && (
-                                        <>
-                                            <div className="flex items-center gap-2 border-l border-border/70 pl-3">
+                                        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center md:justify-end">
+                                            <div className="flex items-center gap-2 sm:border-l sm:border-border/70 sm:pl-3">
                                                 <Checkbox
                                                     id="depreciation-select-all"
                                                     checked={allDraftSelected}
@@ -949,9 +955,10 @@ export default function DepreciationIndex({
                                                     variant="outline"
                                                     size="sm"
                                                     disabled={selectedEntryIds.size === 0}
-                                                    className="cursor-pointer border-emerald-500 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 disabled:opacity-50"
+                                                    className="w-full cursor-pointer border-emerald-500 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 disabled:opacity-50 sm:w-auto"
                                                     onClick={() => setApproveModalOpen(true)}
                                                 >
+                                                    <CheckCircle2 className="mr-1.5 size-3.5" />
                                                     Aprobar seleccionados
                                                     {selectedEntryIds.size > 0 &&
                                                         ` (${selectedEntryIds.size})`}
@@ -963,7 +970,7 @@ export default function DepreciationIndex({
                                                     variant="outline"
                                                     size="sm"
                                                     disabled={selectedEntryIds.size === 0}
-                                                    className="cursor-pointer border-rose-500 text-rose-700 hover:bg-rose-50 hover:text-rose-800 disabled:opacity-50"
+                                                    className="w-full cursor-pointer border-rose-500 text-rose-700 hover:bg-rose-50 hover:text-rose-800 disabled:opacity-50 sm:w-auto"
                                                     onClick={() => {
                                                         if (selectedEntryIds.size === 0) return;
                                                         if (
@@ -983,12 +990,13 @@ export default function DepreciationIndex({
                                                         );
                                                     }}
                                                 >
+                                                    <Trash2 className="mr-1.5 size-3.5" />
                                                     Eliminar seleccionados
                                                     {selectedEntryIds.size > 0 &&
                                                         ` (${selectedEntryIds.size})`}
                                                 </Button>
                                             )}
-                                        </>
+                                        </div>
                                     )}
                                 </div>
                             </div>
