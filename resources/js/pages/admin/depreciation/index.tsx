@@ -813,59 +813,59 @@ export default function DepreciationIndex({
 
                     {tab === 'entries' && (
                         <div className="space-y-4 p-4 md:p-6">
-                            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-                                <div className="rounded-xl border border-border/70 bg-background/60 p-4 shadow-sm">
-                                    <p className="text-xs font-medium text-muted-foreground">
+                            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+                                <div className="rounded-lg border border-border/70 bg-background/60 px-3 py-2.5 shadow-sm">
+                                    <p className="text-[10px] font-medium leading-tight text-muted-foreground">
                                         Total depreciación
                                     </p>
-                                    <p className="mt-1 text-lg font-semibold text-foreground">
+                                    <p className="mt-0.5 text-sm font-semibold leading-tight text-foreground">
                                         {formatCurrency(entriesStats.total_amount)}
                                     </p>
-                                    <p className="mt-1 text-[11px] text-muted-foreground">
+                                    <p className="mt-0.5 truncate text-[10px] leading-tight text-muted-foreground">
                                         {periodFilter === 'all' ? 'Todos los periodos' : `Periodo ${periodFilter}`}
                                     </p>
                                 </div>
-                                <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4 shadow-sm">
-                                    <p className="text-xs font-medium text-amber-700">
+                                <div className="rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2.5 shadow-sm">
+                                    <p className="text-[10px] font-medium leading-tight text-amber-700">
                                         Total valor antes
                                     </p>
-                                    <p className="mt-1 text-lg font-semibold text-amber-800">
+                                    <p className="mt-0.5 text-sm font-semibold leading-tight text-amber-800">
                                         {formatCurrency(entriesStats.book_value_before_total)}
                                     </p>
-                                    <p className="mt-1 text-[11px] text-amber-600">
+                                    <p className="mt-0.5 truncate text-[10px] leading-tight text-amber-600">
                                         Suma del valor antes
                                     </p>
                                 </div>
-                                <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 shadow-sm">
-                                    <p className="text-xs font-medium text-slate-600">
+                                <div className="rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2.5 shadow-sm">
+                                    <p className="text-[10px] font-medium leading-tight text-slate-600">
                                         En borrador
                                     </p>
-                                    <p className="mt-1 text-lg font-semibold text-slate-800">
+                                    <p className="mt-0.5 text-sm font-semibold leading-tight text-slate-800">
                                         {formatCurrency(entriesStats.draft_amount)}
                                     </p>
-                                    <p className="mt-1 text-[11px] text-slate-500">
+                                    <p className="mt-0.5 truncate text-[10px] leading-tight text-slate-500">
                                         {entriesStats.draft_count} movimiento{entriesStats.draft_count !== 1 ? 's' : ''}
                                     </p>
                                 </div>
-                                <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 shadow-sm">
-                                    <p className="text-xs font-medium text-emerald-700">
+                                <div className="rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 py-2.5 shadow-sm">
+                                    <p className="text-[10px] font-medium leading-tight text-emerald-700">
                                         Aprobado
                                     </p>
-                                    <p className="mt-1 text-lg font-semibold text-emerald-800">
+                                    <p className="mt-0.5 text-sm font-semibold leading-tight text-emerald-800">
                                         {formatCurrency(entriesStats.approved_amount)}
                                     </p>
-                                    <p className="mt-1 text-[11px] text-emerald-600">
+                                    <p className="mt-0.5 truncate text-[10px] leading-tight text-emerald-600">
                                         {entriesStats.approved_count} movimiento{entriesStats.approved_count !== 1 ? 's' : ''}
                                     </p>
                                 </div>
-                                <div className="rounded-xl border border-sky-200 bg-sky-50/60 p-4 shadow-sm">
-                                    <p className="text-xs font-medium text-sky-700">
+                                <div className="rounded-lg border border-sky-200 bg-sky-50/60 px-3 py-2.5 shadow-sm">
+                                    <p className="text-[10px] font-medium leading-tight text-sky-700">
                                         Movimientos
                                     </p>
-                                    <p className="mt-1 text-lg font-semibold text-sky-800">
+                                    <p className="mt-0.5 text-sm font-semibold leading-tight text-sky-800">
                                         {entriesStats.total_count}
                                     </p>
-                                    <p className="mt-1 text-[11px] text-sky-600">
+                                    <p className="mt-0.5 truncate text-[10px] leading-tight text-sky-600">
                                         Total generado para el filtro
                                     </p>
                                 </div>
