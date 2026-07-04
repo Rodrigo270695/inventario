@@ -176,6 +176,7 @@ class PermissionSeeder extends Seeder
         'depreciation.update',
         'depreciation.delete',
         'depreciation.approve',
+        'depreciation.export',
     ];
 
     public function run(): void

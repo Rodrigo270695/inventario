@@ -1,5 +1,5 @@
 import { Head, router, useForm, usePage } from '@inertiajs/react';
-import { LayoutGrid, TrendingDown, Pencil, Trash2, Plus, Play } from 'lucide-react';
+import { LayoutGrid, TrendingDown, Pencil, Trash2, Plus, Play, FileDown } from 'lucide-react';
 import { useState, useMemo, useCallback } from 'react';
 import { DataTable, type DataTableColumn } from '@/components/data-table';
 import { AppModal } from '@/components/app-modal';
@@ -80,6 +80,7 @@ type DepreciationIndexProps = {
     canDeleteSchedule: boolean;
     canDeleteEntries: boolean;
     canApproveEntries: boolean;
+    canExportEntries: boolean;
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -141,6 +142,15 @@ function buildEntriesUrl(params: { period?: string; per_page?: number; page?: nu
     return q ? `/admin/depreciation?${q}` : '/admin/depreciation';
 }
 
+function buildExportUrl(params: { period?: string }): string {
+    const search = new URLSearchParams();
+    if (params.period !== undefined && params.period !== 'all') {
+        search.set('period', params.period);
+    }
+    const q = search.toString();
+    return q ? `/admin/depreciation/export?${q}` : '/admin/depreciation/export';
+}
+
 export default function DepreciationIndex({
     schedules,
     recentEntries,
@@ -154,6 +164,7 @@ export default function DepreciationIndex({
     canDeleteSchedule,
     canDeleteEntries,
     canApproveEntries,
+    canExportEntries,
 }: DepreciationIndexProps) {
     const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
     const [editingSchedule, setEditingSchedule] = useState<DepreciationScheduleRow | null>(null);
@@ -514,25 +525,41 @@ export default function DepreciationIndex({
                             </p>
                         </div>
                     </div>
-                    {canCreateSchedule && (
+                    {(canCreateSchedule || canExportEntries) && (
                         <div className="mt-2 flex items-center gap-2">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                className="inline-flex items-center gap-2 cursor-pointer"
-                                onClick={() => setRunModalOpen(true)}
-                            >
-                                <Play className="size-4" />
-                                Ejecutar depreciación
-                            </Button>
-                            <Button
-                                type="button"
-                                className="inline-flex items-center gap-2 bg-inv-primary text-white hover:bg-inv-primary/90 cursor-pointer"
-                                onClick={openCreateModal}
-                            >
-                                <Plus className="size-4" />
-                                Nueva regla
-                            </Button>
+                            {canExportEntries && (
+                                <a
+                                    href={buildExportUrl({
+                                        period: periodFilter !== 'all' ? periodFilter : undefined,
+                                    })}
+                                    className="inline-flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-md bg-[#217346] text-white shadow-sm hover:bg-[#1a5c38] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#217346] focus-visible:ring-offset-2"
+                                    aria-label="Exportar depreciación a Excel"
+                                    title="Exportar depreciación a Excel"
+                                >
+                                    <FileDown className="size-5" />
+                                </a>
+                            )}
+                            {canCreateSchedule && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="inline-flex items-center gap-2 cursor-pointer"
+                                    onClick={() => setRunModalOpen(true)}
+                                >
+                                    <Play className="size-4" />
+                                    Ejecutar depreciación
+                                </Button>
+                            )}
+                            {canCreateSchedule && (
+                                <Button
+                                    type="button"
+                                    className="inline-flex items-center gap-2 bg-inv-primary text-white hover:bg-inv-primary/90 cursor-pointer"
+                                    onClick={openCreateModal}
+                                >
+                                    <Plus className="size-4" />
+                                    Nueva regla
+                                </Button>
+                            )}
                         </div>
                     )}
                 </div>

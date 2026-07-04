@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Exports\DepreciationEntriesExport;
 use App\Http\Controllers\Controller;
 use App\Models\AssetCategory;
 use App\Models\Asset;
@@ -11,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Inertia\Inertia;
 use Inertia\Response;
+use Maatwebsite\Excel\Facades\Excel;
 
 class DepreciationController extends Controller
 {
@@ -96,7 +98,38 @@ class DepreciationController extends Controller
             'canDeleteSchedule' => $request->user()?->can('depreciation.delete') ?? false,
             'canDeleteEntries' => $request->user()?->can('depreciation.delete') ?? false,
             'canApproveEntries' => $request->user()?->can('depreciation.approve') ?? false,
+            'canExportEntries' => $request->user()?->can('depreciation.export') ?? false,
         ]);
+    }
+
+    public function export(Request $request)
+    {
+        if (! $request->user()?->can('depreciation.export')) {
+            abort(403);
+        }
+
+        $period = $request->input('period', '');
+        $period = ($period === null || $period === 'null') ? '' : trim((string) $period);
+
+        $query = DepreciationEntry::query()
+            ->with([
+                'asset.model.subcategory.category',
+                'asset.model.brand:id,name',
+                'asset.brand:id,name',
+                'asset.category:id,name,code',
+            ])
+            ->orderByDesc('period')
+            ->orderByDesc('created_at');
+
+        if ($period !== '' && $period !== 'all') {
+            $query->where('period', $period);
+        }
+
+        $entries = $query->get();
+        $suffix = ($period !== '' && $period !== 'all') ? '-'.$period : '';
+        $filename = 'depreciacion'.$suffix.'-'.now()->format('Y-m-d-His').'.xlsx';
+
+        return Excel::download(new DepreciationEntriesExport($entries), $filename, \Maatwebsite\Excel\Excel::XLSX);
     }
 
     public function storeSchedule(Request $request)

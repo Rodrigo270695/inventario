@@ -51,6 +51,9 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::get('depreciation', [DepreciationController::class, 'index'])
         ->middleware('permission:depreciation.view')
         ->name('depreciation.index');
+    Route::get('depreciation/export', [DepreciationController::class, 'export'])
+        ->middleware('permission:depreciation.export')
+        ->name('depreciation.export');
     Route::post('depreciation/schedules', [DepreciationController::class, 'storeSchedule'])
         ->middleware('permission:depreciation.create')
         ->name('depreciation.schedules.store');

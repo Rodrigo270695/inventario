@@ -259,6 +259,7 @@ export const PERMISSION_TREE: PermissionTreeNode[] = [
                     { key: 'depreciation.update', label: 'Actualizar reglas', permission: 'depreciation.update' },
                     { key: 'depreciation.delete', label: 'Eliminar reglas', permission: 'depreciation.delete' },
                     { key: 'depreciation.approve', label: 'Aprobar movimientos', permission: 'depreciation.approve' },
+                    { key: 'depreciation.export', label: 'Exportar a Excel', permission: 'depreciation.export' },
                 ],
             },
         ],
