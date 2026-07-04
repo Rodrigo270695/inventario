@@ -160,7 +160,7 @@ export default function DepreciationIndex({
         return map;
     }, [categories]);
 
-    const { data, setData, post, put, processing, errors, reset } = useForm({
+    const { data, setData, post, put, processing, errors } = useForm({
         category_id: '',
         method: 'straight_line',
         useful_life_years: '',
@@ -194,7 +194,7 @@ export default function DepreciationIndex({
 
     const openCreateModal = () => {
         setEditingSchedule(null);
-        reset({
+        setData({
             category_id: '',
             method: 'straight_line',
             useful_life_years: '',
@@ -205,7 +205,7 @@ export default function DepreciationIndex({
 
     const openEditModal = (schedule: DepreciationScheduleRow) => {
         setEditingSchedule(schedule);
-        reset({
+        setData({
             category_id: schedule.category_id,
             method: schedule.method,
             useful_life_years: String(schedule.useful_life_years ?? ''),
