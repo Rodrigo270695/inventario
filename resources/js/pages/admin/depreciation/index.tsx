@@ -1,5 +1,5 @@
 import { Head, router, useForm, usePage } from '@inertiajs/react';
-import { LayoutGrid, TrendingDown, Pencil, Trash2, Plus, Play, FileDown } from 'lucide-react';
+import { LayoutGrid, TrendingDown, Pencil, Trash2, Plus, Play, FileDown, Check } from 'lucide-react';
 import { useState, useMemo, useCallback } from 'react';
 import { DataTable, type DataTableColumn } from '@/components/data-table';
 import { AppModal } from '@/components/app-modal';
@@ -444,80 +444,95 @@ export default function DepreciationIndex({
             key: 'period',
             label: 'Periodo',
             sortable: false,
-            className: 'text-xs text-foreground whitespace-nowrap',
+            className: 'text-[11px] text-foreground whitespace-nowrap',
         },
         {
             key: 'asset',
             label: 'Activo',
             sortable: false,
-            className: 'text-xs text-foreground',
+            className: 'text-[11px] text-foreground min-w-[7rem]',
             render: (row) => (
-                <span className="font-medium text-foreground">
-                    {row.asset?.code ?? '—'}
-                </span>
+                <div className="leading-tight">
+                    <span className="block font-semibold text-foreground">
+                        {row.asset?.code ?? '—'}
+                    </span>
+                    <span className="block text-[10px] text-muted-foreground">
+                        {row.period}
+                    </span>
+                </div>
             ),
         },
         {
-            key: 'brand',
-            label: 'Marca',
+            key: 'brand_model',
+            label: 'Marca-Modelo',
             sortable: false,
-            className: 'text-xs text-foreground whitespace-nowrap',
-            render: (row) => row.asset?.model?.brand?.name ?? row.asset?.brand?.name ?? '—',
-        },
-        {
-            key: 'model',
-            label: 'Modelo',
-            sortable: false,
-            className: 'text-xs text-foreground whitespace-nowrap',
-            render: (row) => row.asset?.model?.name ?? '—',
+            className: 'text-[11px] text-foreground min-w-[8rem]',
+            render: (row) => (
+                <div className="max-w-40 leading-tight">
+                    <span className="block truncate font-medium text-foreground">
+                        {row.asset?.model?.brand?.name ?? row.asset?.brand?.name ?? '—'}
+                    </span>
+                    <span className="block truncate text-[10px] text-muted-foreground">
+                        {row.asset?.model?.name ?? '—'}
+                    </span>
+                </div>
+            ),
         },
         {
             key: 'subcategory',
             label: 'Subcategoría',
             sortable: false,
-            className: 'text-xs text-foreground whitespace-nowrap',
-            render: (row) => row.asset?.model?.subcategory?.name ?? '—',
+            className: 'text-[11px] text-foreground min-w-[10rem]',
+            render: (row) => (
+                <span className="block max-w-56 truncate">
+                    {row.asset?.model?.subcategory?.name ?? '—'}
+                </span>
+            ),
         },
         {
             key: 'depreciation_rate',
             label: 'Deprec. %',
             sortable: false,
-            className: 'text-xs text-foreground whitespace-nowrap',
-            render: (row) => formatPercent(row.asset?.depreciation_rate),
+            className: 'text-[11px] text-foreground whitespace-nowrap text-center',
+            render: (row) => (
+                <span className="inline-flex rounded-full bg-sky-100 px-1.5 py-px text-[10px] font-semibold text-sky-700">
+                    {formatPercent(row.asset?.depreciation_rate)}
+                </span>
+            ),
         },
         {
             key: 'amount',
             label: 'Monto',
             sortable: false,
-            className: 'text-xs text-foreground whitespace-nowrap',
+            className: 'text-[11px] text-foreground whitespace-nowrap tabular-nums',
             render: (row) => formatCurrency(row.amount),
         },
         {
             key: 'book_value_before',
             label: 'Valor antes',
             sortable: false,
-            className: 'text-xs text-foreground whitespace-nowrap',
+            className: 'text-[11px] text-foreground whitespace-nowrap tabular-nums',
             render: (row) => formatCurrency(row.book_value_before),
         },
         {
             key: 'book_value_after',
             label: 'Valor después',
             sortable: false,
-            className: 'text-xs text-foreground whitespace-nowrap',
+            className: 'text-[11px] text-foreground whitespace-nowrap tabular-nums',
             render: (row) => formatCurrency(row.book_value_after),
         },
         {
             key: 'status',
             label: 'Estado',
             sortable: false,
-            className: 'text-xs text-foreground whitespace-nowrap',
+            className: 'text-[11px] text-foreground whitespace-nowrap',
             render: (row) =>
                 row.status === 'approved' ? (
-                    <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+                    <span className="inline-flex items-center rounded-full bg-emerald-100 px-1.5 py-px text-[10px] font-medium text-emerald-700">
                         Aprobado
                     </span>
                 ) : (
-                    <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
+                    <span className="inline-flex items-center rounded-full bg-slate-100 px-1.5 py-px text-[10px] font-medium text-slate-700">
                         Borrador
                     </span>
                 ),
@@ -526,23 +541,25 @@ export default function DepreciationIndex({
             key: 'created_at',
             label: 'Generado',
             sortable: false,
-            className: 'text-xs text-foreground whitespace-nowrap',
+            className: 'text-[11px] text-foreground whitespace-nowrap',
             render: (row) => formatDateTime(row.created_at),
         },
         {
             key: 'entry_actions',
             label: '',
             sortable: false,
-            className: 'text-xs text-right text-foreground whitespace-nowrap',
+            className: 'text-[11px] text-right text-foreground whitespace-nowrap',
             render: (row) =>
                 row.status !== 'approved' && (canApproveEntries || canDeleteEntries) ? (
-                    <div className="flex justify-end gap-1">
+                    <div className="flex justify-end gap-0.5">
                         {canApproveEntries && (
                             <Button
                                 type="button"
-                                variant="outline"
-                                size="sm"
-                                className="cursor-pointer border-emerald-500 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
+                                variant="ghost"
+                                size="icon"
+                                className="size-7 cursor-pointer text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+                                title="Aprobar"
+                                aria-label="Aprobar movimiento"
                                 onClick={() => {
                                     if (
                                         !window.confirm(
@@ -568,7 +585,7 @@ export default function DepreciationIndex({
                                     form.submit();
                                 }}
                             >
-                                Aprobar
+                                <Check className="size-3.5" />
                             </Button>
                         )}
                         {canDeleteEntries && (
@@ -576,10 +593,12 @@ export default function DepreciationIndex({
                                 type="button"
                                 variant="ghost"
                                 size="icon"
-                                className="size-8 cursor-pointer text-rose-700 hover:bg-rose-50 hover:text-rose-800"
+                                className="size-7 cursor-pointer text-rose-500 hover:bg-rose-50 hover:text-rose-600"
+                                title="Eliminar"
+                                aria-label="Eliminar movimiento"
                                 onClick={() => handleDeleteEntry(row)}
                             >
-                                <Trash2 className="size-4" />
+                                <Trash2 className="size-3.5" />
                             </Button>
                         )}
                     </div>
@@ -991,7 +1010,8 @@ export default function DepreciationIndex({
                                             columns={entriesColumns}
                                             data={filteredEntries}
                                             keyExtractor={(row) => row.id}
-                                            variant="neutral"
+                                            variant="default"
+                                            className="[&_td]:px-2 [&_td]:py-2 [&_th]:px-2 [&_th]:py-2 [&_table]:text-[11px]"
                                         />
                                     </div>
 
