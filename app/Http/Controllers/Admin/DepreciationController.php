@@ -27,19 +27,35 @@ class DepreciationController extends Controller
 
         $period = $request->input('period', '');
         $period = ($period === null || $period === 'null') ? '' : trim((string) $period);
+        $scheduleId = $request->input('schedule_id', '');
+        $scheduleId = ($scheduleId === null || $scheduleId === 'null' || $scheduleId === 'all') ? '' : trim((string) $scheduleId);
         $perPage = (int) $request->input('per_page', 50);
         if (! in_array($perPage, self::ENTRIES_PER_PAGE_OPTIONS, true)) {
             $perPage = 50;
         }
 
+        $selectedSchedule = $scheduleId !== '' ? $schedules->firstWhere('id', $scheduleId) : null;
+        if ($scheduleId !== '' && ! $selectedSchedule) {
+            $scheduleId = '';
+        }
+
         $entriesQuery = DepreciationEntry::query()
-            ->with('asset:id,code,category_id')
+            ->with([
+                'asset:id,code,category_id,model_id,brand_id,depreciation_rate',
+                'asset.model:id,name,subcategory_id,brand_id',
+                'asset.model.brand:id,name',
+                'asset.brand:id,name',
+                'asset.model.subcategory:id,name',
+            ])
             ->orderByDesc('period')
             ->orderByDesc('created_at')
             ->select(['id', 'asset_id', 'period', 'method', 'amount', 'book_value_before', 'book_value_after', 'status', 'created_at']);
 
         if ($period !== '' && $period !== 'all') {
             $entriesQuery->where('period', $period);
+        }
+        if ($selectedSchedule) {
+            $entriesQuery->whereHas('asset', fn ($query) => $query->where('category_id', $selectedSchedule->category_id));
         }
 
         $entriesStatsQuery = clone $entriesQuery;
@@ -89,6 +105,7 @@ class DepreciationController extends Controller
             'availablePeriods' => $availablePeriods,
             'entriesFilters' => [
                 'period' => $period === '' ? 'all' : $period,
+                'schedule_id' => $scheduleId === '' ? 'all' : $scheduleId,
                 'per_page' => $perPage,
             ],
             'entriesStats' => $entriesStats,
@@ -110,6 +127,9 @@ class DepreciationController extends Controller
 
         $period = $request->input('period', '');
         $period = ($period === null || $period === 'null') ? '' : trim((string) $period);
+        $scheduleId = $request->input('schedule_id', '');
+        $scheduleId = ($scheduleId === null || $scheduleId === 'null' || $scheduleId === 'all') ? '' : trim((string) $scheduleId);
+        $selectedSchedule = $scheduleId !== '' ? DepreciationSchedule::query()->find($scheduleId) : null;
 
         $query = DepreciationEntry::query()
             ->with([
@@ -124,9 +144,13 @@ class DepreciationController extends Controller
         if ($period !== '' && $period !== 'all') {
             $query->where('period', $period);
         }
+        if ($selectedSchedule) {
+            $query->whereHas('asset', fn ($assetQuery) => $assetQuery->where('category_id', $selectedSchedule->category_id));
+        }
 
         $entries = $query->get();
         $suffix = ($period !== '' && $period !== 'all') ? '-'.$period : '';
+        $suffix .= $selectedSchedule ? '-regla' : '';
         $filename = 'depreciacion'.$suffix.'-'.now()->format('Y-m-d-His').'.xlsx';
 
         return Excel::download(new DepreciationEntriesExport($entries), $filename, \Maatwebsite\Excel\Excel::XLSX);
@@ -194,15 +218,26 @@ class DepreciationController extends Controller
 
         $data = $request->validate([
             'period' => ['required', 'date_format:Y-m'],
+            'schedule_ids' => ['nullable', 'array'],
+            'schedule_ids.*' => ['uuid', 'exists:depreciation_schedules,id'],
         ]);
 
         $period = $data['period'];
+        $selectedScheduleIds = $data['schedule_ids'] ?? null;
+
+        if (is_array($selectedScheduleIds) && $selectedScheduleIds === []) {
+            return redirect()->back()->with('toast', [
+                'type' => 'error',
+                'message' => 'Seleccione al menos una regla de depreciación.',
+            ]);
+        }
 
         $schedules = DepreciationSchedule::query()
             ->with([
                 'category:id,name,code,gl_account_id,gl_depreciation_account_id',
                 'assets:id,category_id,acquisition_value,current_value,depreciation_rate',
             ])
+            ->when(is_array($selectedScheduleIds), fn ($query) => $query->whereIn('id', $selectedScheduleIds))
             ->get();
 
         if ($schedules->isEmpty()) {

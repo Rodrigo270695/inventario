@@ -40,7 +40,19 @@ type DepreciationEntryRow = {
     book_value_after: string;
     status: string;
     created_at: string;
-    asset?: { id: string; code: string; category_id?: string | null } | null;
+    asset?: {
+        id: string;
+        code: string;
+        category_id?: string | null;
+        depreciation_rate?: string | number | null;
+        brand?: { id: string; name: string } | null;
+        model?: {
+            id: string;
+            name: string;
+            brand?: { id: string; name: string } | null;
+            subcategory?: { id: string; name: string } | null;
+        } | null;
+    } | null;
 };
 
 type DepreciationIndexProps = {
@@ -56,7 +68,7 @@ type DepreciationIndexProps = {
         links: PaginationLink[];
     };
     availablePeriods: string[];
-    entriesFilters: { period: string; per_page: number };
+    entriesFilters: { period: string; schedule_id: string; per_page: number };
     entriesStats: {
         total_amount: number | string;
         book_value_before_total: number | string;
@@ -132,20 +144,35 @@ function formatDateTime(value: string | null | undefined): string {
     });
 }
 
-function buildEntriesUrl(params: { period?: string; per_page?: number; page?: number }): string {
+function formatPercent(value: string | number | null | undefined): string {
+    if (value == null || value === '') return '—';
+    const n = typeof value === 'string' ? Number(value) : value;
+    if (!Number.isFinite(n)) return '—';
+    return `${new Intl.NumberFormat('es-PE', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+    }).format(n)} %`;
+}
+
+function buildEntriesUrl(params: { period?: string; schedule_id?: string; per_page?: number; page?: number }): string {
     const search = new URLSearchParams();
     if (params.period !== undefined && params.period !== 'all')
         search.set('period', params.period);
+    if (params.schedule_id !== undefined && params.schedule_id !== 'all')
+        search.set('schedule_id', params.schedule_id);
     if (params.per_page !== undefined) search.set('per_page', String(params.per_page));
     if (params.page !== undefined) search.set('page', String(params.page));
     const q = search.toString();
     return q ? `/admin/depreciation?${q}` : '/admin/depreciation';
 }
 
-function buildExportUrl(params: { period?: string }): string {
+function buildExportUrl(params: { period?: string; schedule_id?: string }): string {
     const search = new URLSearchParams();
     if (params.period !== undefined && params.period !== 'all') {
         search.set('period', params.period);
+    }
+    if (params.schedule_id !== undefined && params.schedule_id !== 'all') {
+        search.set('schedule_id', params.schedule_id);
     }
     const q = search.toString();
     return q ? `/admin/depreciation/export?${q}` : '/admin/depreciation/export';
@@ -170,10 +197,12 @@ export default function DepreciationIndex({
     const [editingSchedule, setEditingSchedule] = useState<DepreciationScheduleRow | null>(null);
     const [tab, setTab] = useState<'config' | 'entries'>('config');
     const periodFilter = entriesFilters.period;
+    const scheduleFilter = entriesFilters.schedule_id ?? 'all';
     const [selectedEntryIds, setSelectedEntryIds] = useState<Set<string>>(new Set());
     const [approveModalOpen, setApproveModalOpen] = useState(false);
     const [runModalOpen, setRunModalOpen] = useState(false);
     const [runPeriod, setRunPeriod] = useState<string>(new Date().toISOString().slice(0, 7));
+    const [selectedScheduleIds, setSelectedScheduleIds] = useState<Set<string>>(new Set());
 
     const categoryMap = useMemo(() => {
         const map = new Map<string, (typeof categories)[number]>();
@@ -198,6 +227,9 @@ export default function DepreciationIndex({
     const allDraftSelected =
         draftEntries.length > 0 && draftEntries.every((e) => selectedEntryIds.has(e.id));
 
+    const allSchedulesSelected =
+        schedules.length > 0 && schedules.every((schedule) => selectedScheduleIds.has(schedule.id));
+
     const toggleSelectAll = useCallback(() => {
         setSelectedEntryIds((prev) =>
             allDraftSelected ? new Set() : new Set(draftEntries.map((e) => e.id))
@@ -212,6 +244,27 @@ export default function DepreciationIndex({
             return next;
         });
     }, []);
+
+    const openRunModal = () => {
+        setSelectedScheduleIds(new Set(schedules.map((schedule) => schedule.id)));
+        setRunModalOpen(true);
+    };
+
+    const toggleAllSchedules = (checked: boolean) => {
+        setSelectedScheduleIds(checked ? new Set(schedules.map((schedule) => schedule.id)) : new Set());
+    };
+
+    const toggleSchedule = (scheduleId: string, checked: boolean) => {
+        setSelectedScheduleIds((prev) => {
+            const next = new Set(prev);
+            if (checked) {
+                next.add(scheduleId);
+            } else {
+                next.delete(scheduleId);
+            }
+            return next;
+        });
+    };
 
     const openCreateModal = () => {
         setEditingSchedule(null);
@@ -405,6 +458,34 @@ export default function DepreciationIndex({
             ),
         },
         {
+            key: 'brand',
+            label: 'Marca',
+            sortable: false,
+            className: 'text-xs text-foreground whitespace-nowrap',
+            render: (row) => row.asset?.model?.brand?.name ?? row.asset?.brand?.name ?? '—',
+        },
+        {
+            key: 'model',
+            label: 'Modelo',
+            sortable: false,
+            className: 'text-xs text-foreground whitespace-nowrap',
+            render: (row) => row.asset?.model?.name ?? '—',
+        },
+        {
+            key: 'subcategory',
+            label: 'Subcategoría',
+            sortable: false,
+            className: 'text-xs text-foreground whitespace-nowrap',
+            render: (row) => row.asset?.model?.subcategory?.name ?? '—',
+        },
+        {
+            key: 'depreciation_rate',
+            label: 'Deprec. %',
+            sortable: false,
+            className: 'text-xs text-foreground whitespace-nowrap',
+            render: (row) => formatPercent(row.asset?.depreciation_rate),
+        },
+        {
             key: 'amount',
             label: 'Monto',
             sortable: false,
@@ -531,6 +612,7 @@ export default function DepreciationIndex({
                                 <a
                                     href={buildExportUrl({
                                         period: periodFilter !== 'all' ? periodFilter : undefined,
+                                        schedule_id: scheduleFilter !== 'all' ? scheduleFilter : undefined,
                                     })}
                                     className="inline-flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-md bg-[#217346] text-white shadow-sm hover:bg-[#1a5c38] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#217346] focus-visible:ring-offset-2"
                                     aria-label="Exportar depreciación a Excel"
@@ -544,7 +626,7 @@ export default function DepreciationIndex({
                                     type="button"
                                     variant="outline"
                                     className="inline-flex items-center gap-2 cursor-pointer"
-                                    onClick={() => setRunModalOpen(true)}
+                                    onClick={openRunModal}
                                 >
                                     <Play className="size-4" />
                                     Ejecutar depreciación
@@ -786,6 +868,7 @@ export default function DepreciationIndex({
                                         onValueChange={(v) => {
                                             router.get(buildEntriesUrl({
                                                 period: v,
+                                                schedule_id: scheduleFilter !== 'all' ? scheduleFilter : undefined,
                                                 per_page: entriesFilters.per_page,
                                                 page: 1,
                                             }), {}, { preserveState: true });
@@ -799,6 +882,32 @@ export default function DepreciationIndex({
                                             {availablePeriods.map((p) => (
                                                 <SelectItem key={p} value={p}>
                                                     {p}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <Label className="text-xs text-muted-foreground">
+                                        Regla
+                                    </Label>
+                                    <Select
+                                        value={scheduleFilter}
+                                        onValueChange={(v) => {
+                                            router.get(buildEntriesUrl({
+                                                period: periodFilter !== 'all' ? periodFilter : undefined,
+                                                schedule_id: v,
+                                                per_page: entriesFilters.per_page,
+                                                page: 1,
+                                            }), {}, { preserveState: true });
+                                        }}
+                                    >
+                                        <SelectTrigger className="h-8 w-64 text-xs">
+                                            <SelectValue placeholder="Todas las reglas" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">Todas las reglas</SelectItem>
+                                            {schedules.map((schedule) => (
+                                                <SelectItem key={schedule.id} value={schedule.id}>
+                                                    {schedule.category?.name ?? 'Categoría sin nombre'}
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
@@ -931,6 +1040,40 @@ export default function DepreciationIndex({
                                                 <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-muted-foreground">
                                                     <div>
                                                         <p className="font-medium text-foreground/80">
+                                                            Marca
+                                                        </p>
+                                                        <p className="mt-0.5 text-xs">
+                                                            {row.asset?.model?.brand?.name ??
+                                                                row.asset?.brand?.name ??
+                                                                '—'}
+                                                        </p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-medium text-foreground/80">
+                                                            Modelo
+                                                        </p>
+                                                        <p className="mt-0.5 text-xs">
+                                                            {row.asset?.model?.name ?? '—'}
+                                                        </p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-medium text-foreground/80">
+                                                            Subcategoría
+                                                        </p>
+                                                        <p className="mt-0.5 text-xs">
+                                                            {row.asset?.model?.subcategory?.name ?? '—'}
+                                                        </p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-medium text-foreground/80">
+                                                            Deprec. %
+                                                        </p>
+                                                        <p className="mt-0.5 text-xs">
+                                                            {formatPercent(row.asset?.depreciation_rate)}
+                                                        </p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-medium text-foreground/80">
                                                             Monto
                                                         </p>
                                                         <p className="mt-0.5 text-xs">
@@ -1033,6 +1176,7 @@ export default function DepreciationIndex({
                                     buildPageUrl={(page) =>
                                         buildEntriesUrl({
                                             period: periodFilter !== 'all' ? periodFilter : undefined,
+                                            schedule_id: scheduleFilter !== 'all' ? scheduleFilter : undefined,
                                             per_page: entriesFilters.per_page,
                                             page,
                                         })
@@ -1041,6 +1185,7 @@ export default function DepreciationIndex({
                                         router.get(
                                             buildEntriesUrl({
                                                 period: periodFilter !== 'all' ? periodFilter : undefined,
+                                                schedule_id: scheduleFilter !== 'all' ? scheduleFilter : undefined,
                                                 per_page: perPage,
                                                 page: 1,
                                             }),
@@ -1074,6 +1219,52 @@ export default function DepreciationIndex({
                             onChange={(e) => setRunPeriod(e.target.value)}
                         />
                     </div>
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between gap-3">
+                            <Label>Reglas a ejecutar</Label>
+                            <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+                                <Checkbox
+                                    checked={allSchedulesSelected}
+                                    onCheckedChange={(checked) => toggleAllSchedules(Boolean(checked))}
+                                    className="data-[state=checked]:bg-inv-primary data-[state=checked]:border-inv-primary data-[state=checked]:text-white"
+                                />
+                                Todas las reglas
+                            </label>
+                        </div>
+                        <div className="max-h-56 space-y-2 overflow-y-auto rounded-lg border border-border/70 p-3">
+                            {schedules.length === 0 ? (
+                                <p className="text-xs text-muted-foreground">
+                                    No hay reglas configuradas.
+                                </p>
+                            ) : (
+                                schedules.map((schedule) => (
+                                    <label
+                                        key={schedule.id}
+                                        className="flex cursor-pointer items-start gap-3 rounded-md border border-border/60 bg-background/60 p-2 text-sm hover:bg-inv-primary/5"
+                                    >
+                                        <Checkbox
+                                            checked={selectedScheduleIds.has(schedule.id)}
+                                            onCheckedChange={(checked) =>
+                                                toggleSchedule(schedule.id, Boolean(checked))
+                                            }
+                                            className="mt-0.5 data-[state=checked]:bg-inv-primary data-[state=checked]:border-inv-primary data-[state=checked]:text-white"
+                                        />
+                                        <span className="min-w-0">
+                                            <span className="block truncate font-medium text-foreground">
+                                                {schedule.category?.name ?? 'Categoría sin nombre'}
+                                            </span>
+                                            <span className="block text-[11px] text-muted-foreground">
+                                                {methodLabel(schedule.method)} · {schedule.useful_life_years} años · Residual {schedule.residual_value_pct ?? '0'} %
+                                            </span>
+                                        </span>
+                                    </label>
+                                ))
+                            )}
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                            Seleccionadas: {selectedScheduleIds.size} de {schedules.length}
+                        </p>
+                    </div>
                     <div className="flex justify-end gap-2">
                         <Button
                             type="button"
@@ -1086,11 +1277,15 @@ export default function DepreciationIndex({
                         <Button
                             type="button"
                             className="cursor-pointer bg-inv-primary text-white hover:bg-inv-primary/90"
+                            disabled={selectedScheduleIds.size === 0}
                             onClick={() => {
-                                if (!runPeriod) return;
+                                if (!runPeriod || selectedScheduleIds.size === 0) return;
                                 router.post(
                                     '/admin/depreciation/run',
-                                    { period: runPeriod },
+                                    {
+                                        period: runPeriod,
+                                        schedule_ids: Array.from(selectedScheduleIds),
+                                    },
                                     {
                                         preserveScroll: true,
                                         onSuccess: () => setRunModalOpen(false),
