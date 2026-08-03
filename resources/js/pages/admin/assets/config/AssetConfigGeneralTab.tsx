@@ -72,11 +72,11 @@ export function AssetConfigGeneralTab({ asset }: Props) {
     };
 
     return (
-        <div className="space-y-6 p-4 md:p-6">
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <div>
-                    <p className="text-muted-foreground text-xs font-medium">Código</p>
-                    <p className="text-foreground text-sm">{asset.code}</p>
+        <div className="space-y-5 p-3 sm:space-y-6 sm:p-4 md:p-6">
+            <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+                <div className="min-w-0">
+                    <p className="text-xs font-medium text-muted-foreground">Código</p>
+                    <p className="break-words text-sm text-foreground">{asset.code}</p>
                 </div>
                 <div>
                     <p className="text-muted-foreground text-xs font-medium">Nº serie</p>

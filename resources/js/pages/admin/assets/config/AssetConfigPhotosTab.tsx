@@ -83,8 +83,8 @@ export function AssetConfigPhotosTab({ asset, photos }: Props) {
     }, [lightboxPhoto]);
 
     return (
-        <div className="space-y-6 p-4 md:p-6">
-            <div className="rounded-xl border border-inv-primary/40 bg-inv-primary/5 p-4">
+        <div className="space-y-5 p-3 sm:space-y-6 sm:p-4 md:p-6">
+            <div className="rounded-xl border border-inv-primary/40 bg-inv-primary/5 p-3 sm:p-4">
                 <h2 className="mb-3 text-sm font-semibold text-foreground">Subir foto</h2>
                 <form onSubmit={handleSubmit} className="space-y-3">
                     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

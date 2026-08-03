@@ -107,8 +107,8 @@ export function AssetConfigComputerComponentsTab({
     };
 
     return (
-        <div className="space-y-6 p-4 md:p-6">
-            <div className="rounded-xl border border-inv-primary/40 bg-inv-primary/5 p-4">
+        <div className="space-y-5 p-3 sm:space-y-6 sm:p-4 md:p-6">
+            <div className="rounded-xl border border-inv-primary/40 bg-inv-primary/5 p-3 sm:p-4">
                 <h2 className="text-sm font-semibold text-foreground">Componentes instalados</h2>
                 <p className="mt-1 text-xs text-muted-foreground">
                     Vista y registro de los componentes de hardware asociados al activo{' '}

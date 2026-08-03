@@ -92,21 +92,21 @@ export default function AssetConfigPage({
                 </div>
             )}
 
-            <div className="min-h-[60vh] flex flex-col gap-6 p-4 md:p-6">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-3">
+            <div className="flex min-h-[60vh] flex-col gap-4 p-3 sm:gap-6 sm:p-4 md:p-6">
+                <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
                         <Link
                             href="/admin/assets"
-                            className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl border-2 border-inv-surface/20 bg-inv-primary/5 text-inv-primary shadow-sm transition-all hover:border-inv-primary/40 hover:bg-inv-primary/10 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inv-primary focus-visible:ring-offset-2 dark:border-inv-surface/30 dark:bg-inv-section/20 dark:text-inv-primary dark:hover:bg-inv-section/30"
+                            className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl border-2 border-inv-surface/20 bg-inv-primary/5 text-inv-primary shadow-sm transition-all hover:border-inv-primary/40 hover:bg-inv-primary/10 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inv-primary focus-visible:ring-offset-2 sm:size-10 dark:border-inv-surface/30 dark:bg-inv-section/20 dark:text-inv-primary dark:hover:bg-inv-section/30"
                             aria-label="Volver a activos"
                         >
                             <ArrowLeft className="size-5" />
                         </Link>
-                        <div className="border-l-2 border-inv-primary/30 pl-4">
-                            <h1 className="text-lg font-semibold tracking-tight text-foreground md:text-xl">
+                        <div className="min-w-0 border-l-2 border-inv-primary/30 pl-3 sm:pl-4">
+                            <h1 className="text-base font-semibold tracking-tight text-foreground sm:text-lg md:text-xl">
                                 Configurar activo
                             </h1>
-                            <p className="mt-0.5 text-muted-foreground text-xs md:text-sm">
+                            <p className="mt-0.5 truncate text-xs text-muted-foreground sm:text-sm">
                                 <span className="font-medium text-foreground/90">{asset.code}</span>
                                 {asset.model && (
                                     <>
@@ -122,7 +122,7 @@ export default function AssetConfigPage({
                     </div>
                 </div>
 
-                <div className="relative overflow-hidden rounded-2xl">
+                <div className="relative min-w-0 overflow-hidden rounded-2xl">
                     <div
                         className="pointer-events-none absolute inset-0 opacity-[0.07] dark:opacity-[0.12]"
                         style={{
@@ -138,81 +138,56 @@ export default function AssetConfigPage({
                         aria-hidden
                     />
 
-                    <div className="relative border-b border-inv-primary/50 bg-inv-primary/25 dark:bg-inv-section/70 dark:border-inv-surface/60">
-                        <nav className="flex gap-0.5 p-2" aria-label="Tabs">
-                            <button
-                                type="button"
-                                onClick={() => setTab('general')}
-                                className={cn(
-                                    'cursor-pointer inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-medium transition-all sm:text-sm',
-                                    tab === 'general'
-                                        ? 'bg-inv-primary text-white shadow-md ring-2 ring-inv-surface/30 dark:ring-inv-section/50'
-                                        : 'text-muted-foreground hover:bg-inv-primary/10 hover:text-inv-primary dark:hover:bg-inv-section/30'
-                                )}
-                            >
-                                <Info className="hidden size-4 sm:inline-block" />
-                                <span>Info gral.</span>
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setTab('assignments')}
-                                className={cn(
-                                    'cursor-pointer inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-medium transition-all sm:text-sm',
-                                    tab === 'assignments'
-                                        ? 'bg-inv-primary text-white shadow-md ring-2 ring-inv-surface/30 dark:ring-inv-section/50'
-                                        : 'text-muted-foreground hover:bg-inv-primary/10 hover:text-inv-primary dark:hover:bg-inv-section/30'
-                                )}
-                            >
-                                <Shield className="hidden size-4 sm:inline-block" />
-                                <span>Asignaciones</span>
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setTab('photos')}
-                                className={cn(
-                                    'cursor-pointer inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-medium transition-all sm:text-sm',
-                                    tab === 'photos'
-                                        ? 'bg-inv-primary text-white shadow-md ring-2 ring-inv-surface/30 dark:ring-inv-section/50'
-                                        : 'text-muted-foreground hover:bg-inv-primary/10 hover:text-inv-primary dark:hover:bg-inv-section/30'
-                                )}
-                            >
-                                <ImageIcon className="hidden size-4 sm:inline-block" />
-                                <span>Fotos</span>
-                            </button>
-                            {showComputerTab && (
-                                <>
-                                    <button
-                                        type="button"
-                                        onClick={() => setTab('computer')}
-                                        className={cn(
-                                            'cursor-pointer inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-medium transition-all sm:text-sm',
-                                            tab === 'computer'
-                                                ? 'bg-inv-primary text-white shadow-md ring-2 ring-inv-surface/30 dark:ring-inv-section/50'
-                                                : 'text-muted-foreground hover:bg-inv-primary/10 hover:text-inv-primary dark:hover:bg-inv-section/30'
-                                        )}
-                                    >
-                                        <Monitor className="hidden size-4 sm:inline-block" />
-                                        <span>Datos de PC</span>
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setTab('computer_components')}
-                                        className={cn(
-                                            'cursor-pointer inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-medium transition-all sm:text-sm',
-                                            tab === 'computer_components'
-                                                ? 'bg-inv-primary text-white shadow-md ring-2 ring-inv-surface/30 dark:ring-inv-section/50'
-                                                : 'text-muted-foreground hover:bg-inv-primary/10 hover:text-inv-primary dark:hover:bg-inv-section/30'
-                                        )}
-                                    >
-                                        <Cpu className="hidden size-4 sm:inline-block" />
-                                        <span>Componentes</span>
-                                    </button>
-                                </>
-                            )}
+                    <div className="relative border-b border-inv-primary/50 bg-inv-primary/25 dark:border-inv-surface/60 dark:bg-inv-section/70">
+                        <nav
+                            className="flex gap-1 overflow-x-auto overscroll-x-contain px-2 py-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                            aria-label="Pestañas del activo"
+                        >
+                            {(
+                                [
+                                    { id: 'general' as const, label: 'Info general', short: 'Info', Icon: Info },
+                                    { id: 'assignments' as const, label: 'Asignaciones', short: 'Asign.', Icon: Shield },
+                                    { id: 'photos' as const, label: 'Fotos', short: 'Fotos', Icon: ImageIcon },
+                                    ...(showComputerTab
+                                        ? ([
+                                              {
+                                                  id: 'computer' as const,
+                                                  label: 'Datos de PC',
+                                                  short: 'PC',
+                                                  Icon: Monitor,
+                                              },
+                                              {
+                                                  id: 'computer_components' as const,
+                                                  label: 'Componentes',
+                                                  short: 'Comp.',
+                                                  Icon: Cpu,
+                                              },
+                                          ] as const)
+                                        : []),
+                                ] as const
+                            ).map(({ id, label, short, Icon }) => (
+                                <button
+                                    key={id}
+                                    type="button"
+                                    onClick={() => setTab(id)}
+                                    className={cn(
+                                        'inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium whitespace-nowrap transition-all sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm',
+                                        tab === id
+                                            ? 'bg-inv-primary text-white shadow-md ring-2 ring-inv-surface/30 dark:ring-inv-section/50'
+                                            : 'text-muted-foreground hover:bg-inv-primary/10 hover:text-inv-primary dark:hover:bg-inv-section/30',
+                                    )}
+                                    aria-current={tab === id ? 'page' : undefined}
+                                    title={label}
+                                >
+                                    <Icon className="size-3.5 shrink-0 sm:size-4" />
+                                    <span className="sm:hidden">{short}</span>
+                                    <span className="hidden sm:inline">{label}</span>
+                                </button>
+                            ))}
                         </nav>
                     </div>
 
-                    <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm">
+                    <div className="relative min-w-0 overflow-hidden rounded-b-2xl border border-t-0 border-border/80 bg-card shadow-sm">
                         {tab === 'general' && <AssetConfigGeneralTab asset={asset} />}
                         {tab === 'assignments' && (
                             <AssetConfigAssignmentsTab

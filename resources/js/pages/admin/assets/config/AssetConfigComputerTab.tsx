@@ -1,7 +1,7 @@
 import { router } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
 import type { AssetConfigAsset } from './types';
-import { formatDateShort, formatDateTimeShort } from './utils';
+import { formatDateTimeShort } from './utils';
 
 type Props = {
     asset: AssetConfigAsset;
@@ -45,8 +45,8 @@ function diskKindLabel(disk: Record<string, unknown> | null): string {
 function InfoRow({ label, value }: { label: string; value: string }) {
     return (
         <div className="min-w-0">
-            <dt className="text-muted-foreground text-[11px] font-medium">{label}</dt>
-            <dd className="truncate text-sm text-foreground" title={value}>
+            <dt className="text-[11px] font-medium text-muted-foreground">{label}</dt>
+            <dd className="break-words text-sm text-foreground" title={value}>
                 {value}
             </dd>
         </div>
@@ -106,18 +106,18 @@ export function AssetConfigComputerTab({ asset }: Props) {
     };
 
     return (
-        <div className="space-y-6 p-4 md:p-6">
+        <div className="space-y-5 p-3 sm:space-y-6 sm:p-4 md:p-6">
             <div>
                 <h2 className="text-sm font-semibold text-foreground">Datos de equipo</h2>
-                <p className="text-muted-foreground mt-1 text-xs">
+                <p className="mt-1 text-xs text-muted-foreground">
                     Identidad de red (editable). El detalle de hardware lo actualiza el agente; el historial queda en
                     Auditoría.
                 </p>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                    <label htmlFor="computer-hostname" className="text-muted-foreground text-xs font-medium">
+            <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
+                <div className="space-y-1.5 sm:space-y-2">
+                    <label htmlFor="computer-hostname" className="text-xs font-medium text-muted-foreground">
                         Hostname
                     </label>
                     <input
@@ -126,11 +126,11 @@ export function AssetConfigComputerTab({ asset }: Props) {
                         value={computerForm.hostname}
                         onChange={(e) => setComputerForm((f) => ({ ...f, hostname: e.target.value }))}
                         placeholder="Ej. WS-OFICINA-01"
-                        className="w-full rounded-md border border-border/70 bg-background px-3 py-2 text-sm text-foreground shadow-sm outline-none focus:border-inv-primary focus:ring-1 focus:ring-inv-primary"
+                        className="w-full rounded-md border border-border/70 bg-background px-3 py-2.5 text-sm text-foreground shadow-sm outline-none focus:border-inv-primary focus:ring-1 focus:ring-inv-primary sm:py-2"
                     />
                 </div>
-                <div className="space-y-2">
-                    <label htmlFor="computer-bios_serial" className="text-muted-foreground text-xs font-medium">
+                <div className="space-y-1.5 sm:space-y-2">
+                    <label htmlFor="computer-bios_serial" className="text-xs font-medium text-muted-foreground">
                         Serial BIOS
                     </label>
                     <input
@@ -139,11 +139,11 @@ export function AssetConfigComputerTab({ asset }: Props) {
                         value={computerForm.bios_serial}
                         onChange={(e) => setComputerForm((f) => ({ ...f, bios_serial: e.target.value }))}
                         placeholder="Serial del fabricante"
-                        className="w-full rounded-md border border-border/70 bg-background px-3 py-2 text-sm text-foreground shadow-sm outline-none focus:border-inv-primary focus:ring-1 focus:ring-inv-primary"
+                        className="w-full rounded-md border border-border/70 bg-background px-3 py-2.5 text-sm text-foreground shadow-sm outline-none focus:border-inv-primary focus:ring-1 focus:ring-inv-primary sm:py-2"
                     />
                 </div>
-                <div className="space-y-2">
-                    <label htmlFor="computer-ip_address" className="text-muted-foreground text-xs font-medium">
+                <div className="space-y-1.5 sm:space-y-2">
+                    <label htmlFor="computer-ip_address" className="text-xs font-medium text-muted-foreground">
                         Dirección IP
                     </label>
                     <input
@@ -152,11 +152,11 @@ export function AssetConfigComputerTab({ asset }: Props) {
                         value={computerForm.ip_address}
                         onChange={(e) => setComputerForm((f) => ({ ...f, ip_address: e.target.value }))}
                         placeholder="Ej. 192.168.1.10"
-                        className="w-full rounded-md border border-border/70 bg-background px-3 py-2 text-sm text-foreground shadow-sm outline-none focus:border-inv-primary focus:ring-1 focus:ring-inv-primary"
+                        className="w-full rounded-md border border-border/70 bg-background px-3 py-2.5 text-sm text-foreground shadow-sm outline-none focus:border-inv-primary focus:ring-1 focus:ring-inv-primary sm:py-2"
                     />
                 </div>
-                <div className="space-y-2">
-                    <label htmlFor="computer-mac_address" className="text-muted-foreground text-xs font-medium">
+                <div className="space-y-1.5 sm:space-y-2">
+                    <label htmlFor="computer-mac_address" className="text-xs font-medium text-muted-foreground">
                         Dirección MAC
                     </label>
                     <input
@@ -165,33 +165,33 @@ export function AssetConfigComputerTab({ asset }: Props) {
                         value={computerForm.mac_address}
                         onChange={(e) => setComputerForm((f) => ({ ...f, mac_address: e.target.value }))}
                         placeholder="Ej. 00:1A:2B:3C:4D:5E"
-                        className="w-full rounded-md border border-border/70 bg-background px-3 py-2 text-sm text-foreground shadow-sm outline-none focus:border-inv-primary focus:ring-1 focus:ring-inv-primary"
+                        className="w-full rounded-md border border-border/70 bg-background px-3 py-2.5 text-sm text-foreground shadow-sm outline-none focus:border-inv-primary focus:ring-1 focus:ring-inv-primary sm:py-2"
                     />
                 </div>
-                <div className="space-y-2 sm:col-span-2">
-                    <span className="text-muted-foreground text-xs font-medium">Última vez visto (solo lectura)</span>
-                    <p className="rounded-md border border-border/70 bg-muted/40 px-3 py-2 text-sm text-foreground">
-                        {computer?.last_seen_at ? formatDateShort(computer.last_seen_at) : '—'}
+                <div className="space-y-1.5 sm:col-span-2 sm:space-y-2">
+                    <span className="text-xs font-medium text-muted-foreground">Última vez visto (solo lectura)</span>
+                    <p className="rounded-md border border-border/70 bg-muted/40 px-3 py-2.5 text-sm text-foreground sm:py-2">
+                        {computer?.last_seen_at ? formatDateTimeShort(computer.last_seen_at) : '—'}
                     </p>
                 </div>
             </div>
 
-            <div className="flex justify-end">
+            <div className="flex justify-stretch sm:justify-end">
                 <button
                     type="button"
                     onClick={handleSaveComputer}
                     disabled={savingComputer}
-                    className="cursor-pointer rounded-md bg-inv-primary px-4 py-2 text-sm font-semibold text-white shadow-sm disabled:opacity-60"
+                    className="w-full cursor-pointer rounded-md bg-inv-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm disabled:opacity-60 sm:w-auto sm:py-2"
                 >
                     {savingComputer ? 'Guardando…' : 'Guardar datos de equipo'}
                 </button>
             </div>
 
-            <div className="border-t border-border/70 pt-6">
-                <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
-                    <div>
+            <div className="border-t border-border/70 pt-5 sm:pt-6">
+                <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+                    <div className="min-w-0">
                         <h3 className="text-sm font-semibold text-foreground">Hardware detectado por el agente</h3>
-                        <p className="text-muted-foreground text-xs">
+                        <p className="text-xs text-muted-foreground">
                             Vista actual del equipo. El historial de envíos está en Auditoría → Reportes.
                         </p>
                     </div>
@@ -199,7 +199,7 @@ export function AssetConfigComputerTab({ asset }: Props) {
                         <button
                             type="button"
                             onClick={() => setShowRawJson((v) => !v)}
-                            className="cursor-pointer text-xs font-medium text-inv-primary hover:underline"
+                            className="shrink-0 cursor-pointer self-start text-xs font-medium text-inv-primary hover:underline sm:self-auto"
                         >
                             {showRawJson ? 'Ocultar JSON' : 'Ver JSON'}
                         </button>
@@ -213,16 +213,15 @@ export function AssetConfigComputerTab({ asset }: Props) {
                     </p>
                 ) : (
                     <div className="space-y-4">
-                        <dl className="grid gap-3 rounded-md border border-border/70 bg-muted/20 p-3 sm:grid-cols-2 lg:grid-cols-3">
-                            <InfoRow
-                                label="Sistema"
-                                value={text(os?.caption ?? os?.name)}
-                            />
+                        <dl className="grid grid-cols-1 gap-3 rounded-md border border-border/70 bg-muted/20 p-3 sm:grid-cols-2 lg:grid-cols-3">
+                            <InfoRow label="Sistema" value={text(os?.caption ?? os?.name)} />
                             <InfoRow
                                 label="Versión SO"
-                                value={[os?.version, os?.build ? `build ${os.build}` : null]
-                                    .filter(Boolean)
-                                    .join(' · ') || '—'}
+                                value={
+                                    [os?.version, os?.build ? `build ${os.build}` : null]
+                                        .filter(Boolean)
+                                        .join(' · ') || '—'
+                                }
                             />
                             <InfoRow label="Arquitectura" value={text(os?.architecture)} />
                             <InfoRow label="Fabricante" value={text(snapshot.manufacturer)} />
