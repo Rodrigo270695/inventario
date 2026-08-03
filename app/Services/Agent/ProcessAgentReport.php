@@ -37,6 +37,11 @@ class ProcessAgentReport
             $computer->mac_address = mb_substr($mac, 0, 50);
         }
 
+        // Snapshot completo para mostrar en Datos de PC (Auditoría guarda el historial).
+        if ($payload !== []) {
+            $computer->hardware_snapshot = $payload;
+        }
+
         $computer->last_seen_at = $reportedAt
             ? Carbon::parse($reportedAt)
             : now();

@@ -13,6 +13,7 @@ export type AssetComputerData = {
     ip_address: string | null;
     mac_address: string | null;
     last_seen_at: string | null;
+    hardware_snapshot?: Record<string, unknown> | null;
 } | null;
 
 export type AssetComputerComponent = {

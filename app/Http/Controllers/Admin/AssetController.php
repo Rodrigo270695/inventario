@@ -10,6 +10,7 @@ use App\Models\AssetAssignment;
 use App\Models\AssetBrand;
 use App\Models\AssetCategory;
 use App\Models\AssetComputer;
+use App\Models\AgentReport;
 use App\Models\AssetModel;
 use App\Models\AssetPhoto;
 use App\Models\AssetSubcategory;
@@ -695,14 +696,48 @@ class AssetController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'last_name', 'usuario']);
 
+        $this->ensureComputerHardwareSnapshot($asset);
+
         return Inertia::render('admin/assets/config', [
-            'asset' => $asset,
+            'asset' => $asset->fresh([
+                'model.subcategory.category',
+                'warehouse.office.zonal',
+                'registeredBy:id,name,last_name,usuario',
+                'updatedBy:id,name,last_name,usuario',
+                'computer',
+            ]),
             'assignments' => $assignments,
             'photos' => $photos,
             'usersForAssignment' => $usersForAssignment,
             'computerComponents' => $computerComponents,
             'componentsForComputer' => $componentsForComputer,
         ]);
+    }
+
+    /**
+     * Si la ficha PC no tiene snapshot aún, lo toma del último reporte del agente.
+     */
+    private function ensureComputerHardwareSnapshot(Asset $asset): void
+    {
+        $computer = $asset->computer;
+        if (! $computer instanceof AssetComputer) {
+            return;
+        }
+        if (is_array($computer->hardware_snapshot) && $computer->hardware_snapshot !== []) {
+            return;
+        }
+
+        $latest = AgentReport::query()
+            ->where('asset_id', $asset->id)
+            ->orderByDesc('reported_at')
+            ->first();
+
+        if (! $latest || ! is_array($latest->payload) || $latest->payload === []) {
+            return;
+        }
+
+        $computer->hardware_snapshot = $latest->payload;
+        $computer->saveQuietly();
     }
 
     private const CONDITION_VALUES = ['new', 'good', 'regular', 'damaged', 'obsolete'];

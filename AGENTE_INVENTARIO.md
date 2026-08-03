@@ -459,7 +459,7 @@ Desencadenador: Diario 08:00
 | Tabla | Uso con el agente |
 |-------|-------------------|
 | `assets` | Activo al que pertenece la PC (`asset_id`) |
-| `asset_computers` | Estado actual de red/identidad de la PC |
+| `asset_computers` | Estado actual de red/identidad + `hardware_snapshot` (detalle para Datos de PC) |
 | `agent_reports` | Historial de snapshots (JSON completo) |
 | `agent_tokens` | Credenciales del agente |
 | `api_key_logs` | Auditoría de llamadas API |

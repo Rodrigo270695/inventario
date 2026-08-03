@@ -17,12 +17,14 @@ class AssetComputer extends Model
         'ip_address',
         'mac_address',
         'last_seen_at',
+        'hardware_snapshot',
     ];
 
     protected function casts(): array
     {
         return [
             'last_seen_at' => 'datetime',
+            'hardware_snapshot' => 'array',
         ];
     }
 
