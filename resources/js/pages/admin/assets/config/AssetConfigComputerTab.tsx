@@ -1,7 +1,7 @@
 import { router } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
 import type { AssetConfigAsset } from './types';
-import { formatDateShort } from './utils';
+import { formatDateShort, formatDateTimeShort } from './utils';
 
 type Props = {
     asset: AssetConfigAsset;
@@ -22,6 +22,24 @@ function text(value: unknown, fallback = '—'): string {
         return fallback;
     }
     return String(value);
+}
+
+function diskKindLabel(disk: Record<string, unknown> | null): string {
+    if (!disk) return '—';
+    const kind = text(disk.kind, '').toUpperCase();
+    if (kind === 'SSD' || kind === 'HDD') return kind;
+
+    const model = text(disk.model, '');
+    const iface = text(disk.interface, '');
+    const bus = text(disk.bus, '');
+    const media = text(disk.media_type, '');
+    const blob = `${model} ${iface} ${bus} ${media}`;
+
+    if (/(nvme|ssd|solid|sa400|sa200|bx500|mx500|870 evo|980)/i.test(blob)) return 'SSD';
+    if (/\bhdd\b|dt01aca|wd\d{2}|st\d{4}/i.test(blob)) return 'HDD';
+    if (/fixed hard disk/i.test(media) && !/(nvme|ssd)/i.test(blob)) return 'HDD?';
+
+    return '—';
 }
 
 function InfoRow({ label, value }: { label: string; value: string }) {
@@ -223,7 +241,12 @@ export function AssetConfigComputerTab({ asset }: Props) {
                                 label="RAM total"
                                 value={memory?.total_gb != null ? `${text(memory.total_gb)} GB` : '—'}
                             />
-                            <InfoRow label="Capturado" value={text(snapshot.collected_at)} />
+                            <InfoRow
+                                label="Capturado"
+                                value={formatDateTimeShort(
+                                    typeof snapshot.collected_at === 'string' ? snapshot.collected_at : null,
+                                )}
+                            />
                         </dl>
 
                         {asArray(memory?.modules).length > 0 && (
@@ -271,6 +294,7 @@ export function AssetConfigComputerTab({ asset }: Props) {
                                         <thead className="bg-muted/40 text-xs text-muted-foreground">
                                             <tr>
                                                 <th className="px-3 py-2 font-medium">Modelo</th>
+                                                <th className="px-3 py-2 font-medium">Tipo</th>
                                                 <th className="px-3 py-2 font-medium">Capacidad</th>
                                                 <th className="px-3 py-2 font-medium">Interfaz</th>
                                                 <th className="px-3 py-2 font-medium">Serial</th>
@@ -282,10 +306,13 @@ export function AssetConfigComputerTab({ asset }: Props) {
                                                 return (
                                                     <tr key={idx} className="border-t border-border/60">
                                                         <td className="px-3 py-2">{text(d?.model)}</td>
+                                                        <td className="px-3 py-2 font-medium">{diskKindLabel(d)}</td>
                                                         <td className="px-3 py-2">
                                                             {d?.size_gb != null ? `${text(d.size_gb)} GB` : '—'}
                                                         </td>
-                                                        <td className="px-3 py-2">{text(d?.interface)}</td>
+                                                        <td className="px-3 py-2">
+                                                            {text(d?.bus || d?.interface)}
+                                                        </td>
                                                         <td className="px-3 py-2 font-mono text-xs">{text(d?.serial)}</td>
                                                     </tr>
                                                 );
