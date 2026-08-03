@@ -177,6 +177,24 @@ class PermissionSeeder extends Seeder
         'depreciation.delete',
         'depreciation.approve',
         'depreciation.export',
+        // Licencias
+        'licenses.view',
+        'licenses.create',
+        'licenses.update',
+        'licenses.delete',
+        'licenses.assign',
+        'licenses.revoke',
+        // Auditoría (tokens del agente)
+        'audit.view',
+        'audit.logs.view',
+        'audit.reports.view',
+        'audit.tokens.manage',
+        // Seguridad
+        'security.login_attempts.view',
+        'security.api_logs.view',
+        'security.backups.view',
+        'security.backups.create',
+        'security.backups.verify',
     ];
 
     public function run(): void
