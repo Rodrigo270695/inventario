@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\Audit\StoreAgentTokenRequest;
 use App\Models\AgentReport;
 use App\Models\AgentToken;
 use App\Models\AuditLog;
+use App\Models\UnmatchedAgentReport;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -80,6 +81,10 @@ class AuditController extends Controller
             ? $this->paginateAgentReports($request, $reportsSortBy, $reportsSortOrder)
             : $this->emptyPaginator($request, 'reports_page');
 
+        $unmatchedReports = $canViewReports
+            ? $this->paginateUnmatchedReports($request)
+            : $this->emptyPaginator($request, 'unmatched_page');
+
         $agentTokens = $canManageTokens
             ? $this->paginateAgentTokens($request, $tokensSortBy, $tokensSortOrder)
             : $this->emptyPaginator($request, 'tokens_page');
@@ -99,6 +104,7 @@ class AuditController extends Controller
             ],
             'auditLogs' => $auditLogs,
             'agentReports' => $agentReports,
+            'unmatchedReports' => $unmatchedReports,
             'agentTokens' => $agentTokens,
         ]);
     }
@@ -208,6 +214,30 @@ class AuditController extends Controller
                     'payload_preview' => Str::limit(
                         json_encode($report->payload ?? [], JSON_UNESCAPED_UNICODE),
                         240
+                    ),
+                ];
+            });
+    }
+
+    private function paginateUnmatchedReports(Request $request): LengthAwarePaginator
+    {
+        return UnmatchedAgentReport::query()
+            ->orderByDesc('created_at')
+            ->paginate(15, ['*'], 'unmatched_page')
+            ->withQueryString()
+            ->through(static function (UnmatchedAgentReport $row): array {
+                return [
+                    'id' => $row->id,
+                    'hostname' => $row->hostname,
+                    'bios_serial' => $row->bios_serial,
+                    'mac_address' => $row->mac_address,
+                    'reason' => $row->reason,
+                    'candidate_count' => (int) $row->candidate_count,
+                    'reported_at' => $row->reported_at?->toIso8601String(),
+                    'created_at' => $row->created_at?->toIso8601String(),
+                    'payload_preview' => Str::limit(
+                        json_encode($row->payload ?? [], JSON_UNESCAPED_UNICODE),
+                        200
                     ),
                 ];
             });

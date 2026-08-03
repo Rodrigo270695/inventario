@@ -59,6 +59,18 @@ type AgentReportRow = {
     payload_preview: string;
 };
 
+type UnmatchedReportRow = {
+    id: string;
+    hostname: string | null;
+    bios_serial: string | null;
+    mac_address: string | null;
+    reason: string;
+    candidate_count: number;
+    reported_at: string | null;
+    created_at: string | null;
+    payload_preview: string;
+};
+
 type AgentTokenRow = {
     id: string;
     name: string | null;
@@ -79,6 +91,7 @@ type Props = {
     filters: AuditFilters;
     auditLogs: Paginated<AuditLogRow>;
     agentReports: Paginated<AgentReportRow>;
+    unmatchedReports: Paginated<UnmatchedReportRow>;
     agentTokens: Paginated<AgentTokenRow>;
 };
 
@@ -135,6 +148,7 @@ export default function AuditIndex({
     filters,
     auditLogs,
     agentReports,
+    unmatchedReports,
     agentTokens,
 }: Props) {
     const [toastQueue, setToastQueue] = useState<Array<ToastMessage & { id: number }>>([]);
@@ -228,6 +242,35 @@ export default function AuditIndex({
             className="border-t border-border px-2 py-2 sm:px-3"
         />
     );
+
+    const unmatchedPagination = (
+        <TablePagination
+            from={unmatchedReports.from}
+            to={unmatchedReports.to}
+            total={unmatchedReports.total}
+            perPage={unmatchedReports.per_page}
+            currentPage={unmatchedReports.current_page}
+            lastPage={unmatchedReports.last_page}
+            links={unmatchedReports.links}
+            buildPageUrl={(page) => buildAuditUrl('reports', filters, { name: 'unmatched_page', value: page })}
+            onPerPageChange={() => {}}
+            perPageOptions={[15]}
+            className="border-t border-border px-2 py-2 sm:px-3"
+        />
+    );
+
+    const unmatchedReasonLabel = (reason: string): string => {
+        switch (reason) {
+            case 'not_found':
+                return 'Sin coincidencia';
+            case 'ambiguous':
+                return 'Ambiguo';
+            case 'missing_identity':
+                return 'Sin serial/MAC';
+            default:
+                return reason;
+        }
+    };
 
     const tokensPagination = (
         <TablePagination
@@ -492,51 +535,132 @@ export default function AuditIndex({
                     )}
 
                     {effectiveTab === 'reports' && canViewReports && (
-                        <div className="min-w-0 overflow-x-auto overscroll-x-contain">
-                            <table className="w-full min-w-[640px] text-xs sm:text-sm">
-                                <thead className="border-b border-border bg-muted/40">
-                                    <tr>
-                                        {sortReportsHeader('Recibido', 'created_at')}
-                                        {sortReportsHeader('Reportado', 'reported_at')}
-                                        {sortReportsHeader('Activo', 'asset')}
-                                        <th className="px-2 py-1.5 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:px-3 sm:py-2 sm:text-xs">
-                                            Snapshot
-                                        </th>
-                                        <th className="px-2 py-1.5 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:px-3 sm:py-2 sm:text-xs">
-                                            Payload (vista)
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {agentReports.data.length === 0 ? (
+                        <div className="min-w-0 space-y-6">
+                            <div className="min-w-0 overflow-x-auto overscroll-x-contain">
+                                <div className="border-b border-border px-3 py-2">
+                                    <h3 className="text-sm font-semibold text-foreground">Reportes vinculados</h3>
+                                    <p className="text-xs text-muted-foreground">
+                                        Snapshots asociados a un activo (por UUID, serial o MAC).
+                                    </p>
+                                </div>
+                                <table className="w-full min-w-[640px] text-xs sm:text-sm">
+                                    <thead className="border-b border-border bg-muted/40">
                                         <tr>
-                                            <td colSpan={5} className="px-2 py-8 text-center text-muted-foreground sm:px-3">
-                                                No hay reportes del agente.
-                                            </td>
+                                            {sortReportsHeader('Recibido', 'created_at')}
+                                            {sortReportsHeader('Reportado', 'reported_at')}
+                                            {sortReportsHeader('Activo', 'asset')}
+                                            <th className="px-2 py-1.5 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:px-3 sm:py-2 sm:text-xs">
+                                                Snapshot
+                                            </th>
+                                            <th className="px-2 py-1.5 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:px-3 sm:py-2 sm:text-xs">
+                                                Payload (vista)
+                                            </th>
                                         </tr>
-                                    ) : (
-                                        agentReports.data.map((row) => (
-                                            <tr key={row.id} className="border-b border-border/60 hover:bg-muted/20">
-                                                <td className="px-2 py-2 whitespace-nowrap text-muted-foreground sm:px-3">
-                                                    {formatDateTime(row.created_at)}
-                                                </td>
-                                                <td className="px-2 py-2 whitespace-nowrap text-muted-foreground sm:px-3">
-                                                    {formatDateTime(row.reported_at)}
-                                                </td>
-                                                <td className="px-2 py-2 font-medium sm:px-3">{row.asset_code}</td>
-                                                <td className="px-2 py-2 sm:px-3">{row.is_full_snapshot ? 'Completo' : 'Parcial'}</td>
-                                                <td
-                                                    className="max-w-[200px] truncate px-2 py-2 font-mono text-[10px] text-muted-foreground sm:max-w-md sm:px-3 sm:text-[11px]"
-                                                    title={row.payload_preview}
-                                                >
-                                                    {row.payload_preview}
+                                    </thead>
+                                    <tbody>
+                                        {agentReports.data.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={5} className="px-2 py-8 text-center text-muted-foreground sm:px-3">
+                                                    No hay reportes del agente.
                                                 </td>
                                             </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
-                            {reportsPagination}
+                                        ) : (
+                                            agentReports.data.map((row) => (
+                                                <tr key={row.id} className="border-b border-border/60 hover:bg-muted/20">
+                                                    <td className="px-2 py-2 whitespace-nowrap text-muted-foreground sm:px-3">
+                                                        {formatDateTime(row.created_at)}
+                                                    </td>
+                                                    <td className="px-2 py-2 whitespace-nowrap text-muted-foreground sm:px-3">
+                                                        {formatDateTime(row.reported_at)}
+                                                    </td>
+                                                    <td className="px-2 py-2 font-medium sm:px-3">{row.asset_code}</td>
+                                                    <td className="px-2 py-2 sm:px-3">
+                                                        {row.is_full_snapshot ? 'Completo' : 'Parcial'}
+                                                    </td>
+                                                    <td
+                                                        className="max-w-[200px] truncate px-2 py-2 font-mono text-[10px] text-muted-foreground sm:max-w-md sm:px-3 sm:text-[11px]"
+                                                        title={row.payload_preview}
+                                                    >
+                                                        {row.payload_preview}
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                                {reportsPagination}
+                            </div>
+
+                            <div className="min-w-0 overflow-x-auto overscroll-x-contain border-t border-border">
+                                <div className="border-b border-border px-3 py-2">
+                                    <h3 className="text-sm font-semibold text-foreground">Sin vincular</h3>
+                                    <p className="text-xs text-muted-foreground">
+                                        El agente reportó pero no se encontró (o hubo varios) activos por serial/MAC.
+                                        Complete la serie en el activo o corrija duplicados.
+                                    </p>
+                                </div>
+                                <table className="w-full min-w-[720px] text-xs sm:text-sm">
+                                    <thead className="border-b border-border bg-muted/40">
+                                        <tr>
+                                            <th className="px-2 py-1.5 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:px-3 sm:py-2 sm:text-xs">
+                                                Recibido
+                                            </th>
+                                            <th className="px-2 py-1.5 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:px-3 sm:py-2 sm:text-xs">
+                                                Hostname
+                                            </th>
+                                            <th className="px-2 py-1.5 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:px-3 sm:py-2 sm:text-xs">
+                                                Serial
+                                            </th>
+                                            <th className="px-2 py-1.5 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:px-3 sm:py-2 sm:text-xs">
+                                                MAC
+                                            </th>
+                                            <th className="px-2 py-1.5 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:px-3 sm:py-2 sm:text-xs">
+                                                Motivo
+                                            </th>
+                                            <th className="px-2 py-1.5 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:px-3 sm:py-2 sm:text-xs">
+                                                Payload
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {unmatchedReports.data.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={6} className="px-2 py-8 text-center text-muted-foreground sm:px-3">
+                                                    No hay reportes sin vincular.
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            unmatchedReports.data.map((row) => (
+                                                <tr key={row.id} className="border-b border-border/60 hover:bg-muted/20">
+                                                    <td className="px-2 py-2 whitespace-nowrap text-muted-foreground sm:px-3">
+                                                        {formatDateTime(row.created_at)}
+                                                    </td>
+                                                    <td className="px-2 py-2 sm:px-3">{row.hostname ?? '—'}</td>
+                                                    <td className="px-2 py-2 font-mono text-[11px] sm:px-3">
+                                                        {row.bios_serial ?? '—'}
+                                                    </td>
+                                                    <td className="px-2 py-2 font-mono text-[11px] sm:px-3">
+                                                        {row.mac_address ?? '—'}
+                                                    </td>
+                                                    <td className="px-2 py-2 sm:px-3">
+                                                        {unmatchedReasonLabel(row.reason)}
+                                                        {row.candidate_count > 1
+                                                            ? ` (${row.candidate_count})`
+                                                            : ''}
+                                                    </td>
+                                                    <td
+                                                        className="max-w-[160px] truncate px-2 py-2 font-mono text-[10px] text-muted-foreground sm:max-w-sm sm:px-3 sm:text-[11px]"
+                                                        title={row.payload_preview}
+                                                    >
+                                                        {row.payload_preview}
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                                {unmatchedPagination}
+                            </div>
                         </div>
                     )}
 
@@ -556,8 +680,9 @@ export default function AuditIndex({
                                     <code className="rounded bg-muted px-1 py-0.5 font-mono text-[10px]">Authorization: Bearer …</code> o cabecera{' '}
                                     <code className="rounded bg-muted px-1 py-0.5 font-mono text-[10px]">X-Agent-Token</code>. Endpoint:{' '}
                                     <code className="break-all rounded bg-muted px-1 py-0.5 font-mono text-[10px]">POST /api/agent/reports</code> (JSON:{' '}
-                                    <code className="font-mono text-[10px]">asset_id</code>,{' '}
-                                    <code className="font-mono text-[10px]">payload</code>, opcional{' '}
+                                    <code className="font-mono text-[10px]">payload</code> obligatorio;{' '}
+                                    <code className="font-mono text-[10px]">asset_id</code> opcional — si no va, el ERP
+                                    vincula por serial BIOS / MAC; opcional{' '}
                                     <code className="font-mono text-[10px]">reported_at</code>,{' '}
                                     <code className="font-mono text-[10px]">is_full_snapshot</code>).
                                 </p>

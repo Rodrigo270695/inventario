@@ -106,26 +106,32 @@ Se puede usar como **v1 rápida** o como backend interno que Python invoca.
 
 El agente **debe conocer** el `asset_id` (UUID del activo en el ERP).
 
-### Opción recomendada (v1)
+### Opción recomendada (v1 — despliegue masivo)
 
 Archivo de configuración local en la PC:
 
 ```json
 {
-  "api_base_url": "https://inventario.tudominio.com",
+  "api_base_url": "https://activos.grupomaclabi.com",
   "token": "UUID-DEL-TOKEN|secreto-en-claro",
-  "asset_id": "uuid-del-activo",
-  "report_interval_hours": 24,
   "is_full_snapshot": true
 }
 ```
 
+**No hace falta `asset_id`.** El ERP vincula así:
+
+1. Serial BIOS / system del payload → `assets.serial_number` o `asset_computers.bios_serial`
+2. Si no hay match único → MAC → `asset_computers.mac_address`
+3. Si falla (0 o varios) → queda en **Auditoría → Reportes → Sin vincular**
+
+`asset_id` sigue siendo opcional para forzar el vínculo (pruebas / casos especiales).
+
 Flujo operativo:
 
-1. En el ERP se crea/registra el activo (código, marca, modelo, etc.).
-2. En ficha del activo (o al desplegar) se copia el `asset_id`.
-3. Se instala el agente con ese `asset_id` y un token válido.
-4. El agente siempre reporta contra ese activo.
+1. TI genera un token de agente (por oficina o global).
+2. Despliega el `.exe` + config con URL y token (igual en todas las PCs).
+3. Task Scheduler diario; el usuario de la PC no hace nada.
+4. Si un reporte no vincula, TI revisa “Sin vincular” y corrige serie/duplicados en el activo.
 
 ### Opciones futuras (no v1)
 

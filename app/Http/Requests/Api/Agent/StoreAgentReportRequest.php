@@ -17,7 +17,8 @@ class StoreAgentReportRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'asset_id' => ['required', 'uuid', 'exists:assets,id'],
+            // Opcional: si no viene, se resuelve por serial BIOS / MAC del payload.
+            'asset_id' => ['nullable', 'uuid', 'exists:assets,id'],
             'payload' => ['required', 'array', 'max:2000'],
             'reported_at' => ['nullable', 'date'],
             'is_full_snapshot' => ['sometimes', 'boolean'],
