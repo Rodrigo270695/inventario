@@ -138,7 +138,7 @@ export default function AssetConfigPage({
                         aria-hidden
                     />
 
-                    <div className="relative border-b border-inv-primary/50 bg-inv-primary/25 dark:border-inv-surface/60 dark:bg-inv-section/70">
+                    <div className="relative border-b border-inv-primary/40 bg-inv-primary/15 dark:border-inv-surface/60 dark:bg-inv-section/70">
                         <nav
                             className="flex gap-1 overflow-x-auto overscroll-x-contain px-2 py-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                             aria-label="Pestañas del activo"
@@ -165,25 +165,37 @@ export default function AssetConfigPage({
                                           ] as const)
                                         : []),
                                 ] as const
-                            ).map(({ id, label, short, Icon }) => (
-                                <button
-                                    key={id}
-                                    type="button"
-                                    onClick={() => setTab(id)}
-                                    className={cn(
-                                        'inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium whitespace-nowrap transition-all sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm',
-                                        tab === id
-                                            ? 'bg-inv-primary text-white shadow-md ring-2 ring-inv-surface/30 dark:ring-inv-section/50'
-                                            : 'text-muted-foreground hover:bg-inv-primary/10 hover:text-inv-primary dark:hover:bg-inv-section/30',
-                                    )}
-                                    aria-current={tab === id ? 'page' : undefined}
-                                    title={label}
-                                >
-                                    <Icon className="size-3.5 shrink-0 sm:size-4" />
-                                    <span className="sm:hidden">{short}</span>
-                                    <span className="hidden sm:inline">{label}</span>
-                                </button>
-                            ))}
+                            ).map(({ id, label, short, Icon }) => {
+                                const active = tab === id;
+                                return (
+                                    <button
+                                        key={id}
+                                        type="button"
+                                        onClick={() => setTab(id)}
+                                        className={cn(
+                                            'inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium whitespace-nowrap transition-colors outline-none sm:gap-2 sm:rounded-xl sm:px-4 sm:py-2.5 sm:text-sm',
+                                            'focus-visible:ring-2 focus-visible:ring-inv-primary focus-visible:ring-offset-1',
+                                            active
+                                                ? 'bg-white text-inv-primary shadow-sm ring-1 ring-inv-primary/35 dark:bg-inv-section dark:text-inv-primary dark:ring-inv-primary/50'
+                                                : 'bg-transparent text-muted-foreground hover:bg-white/60 hover:text-inv-primary dark:hover:bg-inv-section/40',
+                                        )}
+                                        aria-current={active ? 'page' : undefined}
+                                        title={label}
+                                    >
+                                        <Icon
+                                            className={cn(
+                                                'size-3.5 shrink-0 sm:size-4',
+                                                active ? 'text-inv-primary' : 'text-muted-foreground',
+                                            )}
+                                            aria-hidden
+                                        />
+                                        <span className={cn(active && 'font-semibold', 'sm:hidden')}>{short}</span>
+                                        <span className={cn(active && 'font-semibold', 'hidden sm:inline')}>
+                                            {label}
+                                        </span>
+                                    </button>
+                                );
+                            })}
                         </nav>
                     </div>
 
