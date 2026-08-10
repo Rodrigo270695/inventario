@@ -34,6 +34,12 @@ type Props = {
     zonalsForSelect: ZonalOption[];
     officesForSelect: OfficeOption[];
     warehousesForSelect: WarehouseOption[];
+    prefill?: {
+        serial_number?: string;
+        category_id?: string;
+        subcategory_id?: string;
+        notes?: string;
+    };
 };
 
 /** Valor interno del select de modelo para «registrar otro modelo». */
@@ -64,6 +70,7 @@ export function AssetFormModal({
     zonalsForSelect,
     officesForSelect,
     warehousesForSelect,
+    prefill,
 }: Props) {
     const isEdit = asset != null;
     const [subcategoryId, setSubcategoryId] = useState('');
@@ -156,7 +163,7 @@ export function AssetFormModal({
             return;
         }
 
-        const sessionKey = isEdit && asset ? `edit:${asset.id}` : 'create';
+        const sessionKey = isEdit && asset ? `edit:${asset.id}` : `create:${prefill?.serial_number ?? ''}:${prefill?.category_id ?? ''}`;
         if (formSessionRef.current === sessionKey) {
             return;
         }
@@ -203,13 +210,13 @@ export function AssetFormModal({
             } else {
                 setCascadeZonalId('');
                 setCascadeOfficeId('');
-                setSubcategoryId('');
+                setSubcategoryId(prefill?.subcategory_id ?? '');
                 setData({
                     code: '',
-                    serial_number: '',
+                    serial_number: prefill?.serial_number ?? '',
                     model_id: '',
                     brand_id: '',
-                    category_id: '',
+                    category_id: prefill?.category_id ?? '',
                     status: 'stored',
                     condition: 'new',
                     warehouse_id: '',
@@ -218,12 +225,12 @@ export function AssetFormModal({
                     current_value: '',
                     depreciation_rate: '',
                     warranty_until: '',
-                    notes: '',
+                    notes: prefill?.notes ?? '',
                     new_model_name: '',
                 });
             }
         });
-    }, [open, isEdit, asset, modelsForSelect, officesForSelect, setData]);
+    }, [open, isEdit, asset, modelsForSelect, officesForSelect, prefill, setData]);
 
     const handleCategoryChange = (v: string) => {
         const value = v === '_' ? '' : v;

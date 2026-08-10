@@ -7,7 +7,14 @@ use App\Http\Requests\Admin\Audit\StoreAgentTokenRequest;
 use App\Models\AgentReport;
 use App\Models\AgentToken;
 use App\Models\AuditLog;
+use App\Models\AssetBrand;
+use App\Models\AssetCategory;
+use App\Models\AssetModel;
+use App\Models\AssetSubcategory;
+use App\Models\Office;
 use App\Models\UnmatchedAgentReport;
+use App\Models\Warehouse;
+use App\Models\Zonal;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -89,6 +96,12 @@ class AuditController extends Controller
             ? $this->paginateAgentTokens($request, $tokensSortBy, $tokensSortOrder)
             : $this->emptyPaginator($request, 'tokens_page');
 
+        // Catalog data for "Crear activo desde reporte sin vincular"
+        $catalogForAsset = [];
+        if ($canViewReports) {
+            $catalogForAsset = $this->buildAssetCatalogData();
+        }
+
         return Inertia::render('admin/audit/index', [
             'tab' => $tab,
             'canViewLogs' => $canViewLogs,
@@ -106,6 +119,7 @@ class AuditController extends Controller
             'agentReports' => $agentReports,
             'unmatchedReports' => $unmatchedReports,
             'agentTokens' => $agentTokens,
+            ...$catalogForAsset,
         ]);
     }
 
@@ -235,12 +249,56 @@ class AuditController extends Controller
                     'candidate_count' => (int) $row->candidate_count,
                     'reported_at' => $row->reported_at?->toIso8601String(),
                     'created_at' => $row->created_at?->toIso8601String(),
+                    'payload' => $row->payload ?? [],
                     'payload_preview' => Str::limit(
                         json_encode($row->payload ?? [], JSON_UNESCAPED_UNICODE),
                         200
                     ),
                 ];
             });
+    }
+
+    /** @return array<string, mixed> */
+    private function buildAssetCatalogData(): array
+    {
+        $categoriesForSelect = AssetCategory::query()
+            ->forFixedAssetForms()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'code']);
+
+        $subcategoriesForSelect = AssetSubcategory::query()
+            ->where('is_active', true)
+            ->whereHas('category', fn ($q) => $q->forFixedAssetForms())
+            ->orderBy('name')
+            ->get(['id', 'asset_category_id', 'name', 'code']);
+
+        $modelsForSelect = AssetModel::query()
+            ->where('is_active', true)
+            ->with('brand:id,name')
+            ->orderBy('name')
+            ->get(['id', 'subcategory_id', 'name', 'brand_id']);
+
+        $brandsForSelect = AssetBrand::query()->orderBy('name')->get(['id', 'name']);
+
+        $warehousesForSelect = Warehouse::query()
+            ->where('is_active', true)
+            ->with('office:id,zonal_id,name,code')
+            ->orderBy('name')
+            ->get(['id', 'name', 'code', 'office_id']);
+
+        $zonalsForSelect = Zonal::query()->where('is_active', true)->orderBy('name')->get(['id', 'name', 'code']);
+        $officesForSelect = Office::query()->where('is_active', true)->orderBy('name')->get(['id', 'zonal_id', 'name', 'code']);
+
+        return [
+            'categoriesForSelect' => $categoriesForSelect,
+            'subcategoriesForSelect' => $subcategoriesForSelect,
+            'modelsForSelect' => $modelsForSelect,
+            'brandsForSelect' => $brandsForSelect,
+            'warehousesForSelect' => $warehousesForSelect,
+            'zonalsForSelect' => $zonalsForSelect,
+            'officesForSelect' => $officesForSelect,
+        ];
     }
 
     private function paginateAgentTokens(Request $request, string $sortBy, string $sortOrder): LengthAwarePaginator

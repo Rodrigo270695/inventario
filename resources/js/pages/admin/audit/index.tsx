@@ -1,6 +1,7 @@
 import { Head, router, useForm, usePage } from '@inertiajs/react';
-import { ClipboardCopy, ScrollText, Trash2 } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { ClipboardCopy, Plus, ScrollText, Trash2 } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AssetFormModal } from '@/components/assets/asset-form-modal';
 import { TablePagination } from '@/components/table-pagination';
 import { Toast } from '@/components/toast';
 import type { ToastMessage } from '@/components/toast';
@@ -68,8 +69,17 @@ type UnmatchedReportRow = {
     candidate_count: number;
     reported_at: string | null;
     created_at: string | null;
+    payload: Record<string, unknown>;
     payload_preview: string;
 };
+
+type CategoryOption = { id: string; name: string; code: string };
+type SubcategoryOption = { id: string; asset_category_id: string; name: string; code: string | null };
+type ModelOption = { id: string; subcategory_id: string; name: string; brand?: { id: string; name: string } | null };
+type BrandOption = { id: string; name: string };
+type ZonalOption = { id: string; name: string; code: string };
+type OfficeOption = { id: string; zonal_id: string; name: string; code: string | null };
+type WarehouseOption = { id: string; name: string; code: string | null; office_id: string; office?: { id: string; zonal_id: string; name: string; code: string | null } };
 
 type AgentTokenRow = {
     id: string;
@@ -93,6 +103,13 @@ type Props = {
     agentReports: Paginated<AgentReportRow>;
     unmatchedReports: Paginated<UnmatchedReportRow>;
     agentTokens: Paginated<AgentTokenRow>;
+    categoriesForSelect?: CategoryOption[];
+    subcategoriesForSelect?: SubcategoryOption[];
+    modelsForSelect?: ModelOption[];
+    brandsForSelect?: BrandOption[];
+    zonalsForSelect?: ZonalOption[];
+    officesForSelect?: OfficeOption[];
+    warehousesForSelect?: WarehouseOption[];
 };
 
 function buildAuditUrl(tab: TabId, f: AuditFilters, pageParam?: { name: string; value: number }): string {
@@ -150,11 +167,70 @@ export default function AuditIndex({
     agentReports,
     unmatchedReports,
     agentTokens,
+    categoriesForSelect = [],
+    subcategoriesForSelect = [],
+    modelsForSelect = [],
+    brandsForSelect = [],
+    zonalsForSelect = [],
+    officesForSelect = [],
+    warehousesForSelect = [],
 }: Props) {
     const [toastQueue, setToastQueue] = useState<Array<ToastMessage & { id: number }>>([]);
     const lastFlashToastRef = useRef<ToastMessage | null>(null);
     const [plainTokenBanner, setPlainTokenBanner] = useState<string | null>(null);
     const lastPlainTokenRef = useRef<string | null>(null);
+
+    // Modal "Crear activo desde reporte sin vincular"
+    const [assetModalOpen, setAssetModalOpen] = useState(false);
+    const [assetPrefill, setAssetPrefill] = useState<{
+        serial_number?: string;
+        category_id?: string;
+        subcategory_id?: string;
+        notes?: string;
+    }>({});
+
+    /** Detecta si el equipo es LAPTOP o CPU según el payload del agente */
+    const detectSubcategoryName = useCallback((payload: Record<string, unknown>): 'LAPTOP' | 'CPU' => {
+        const laptopChassis = /notebook|laptop|portable|sub|ultrabook/i;
+        const laptopModel = /laptop|notebook|thinkpad|ideapad|elitebook|probook|vivobook|zenbook|spectre|latitude\b|inspiron/i;
+        const chassisType = String(payload?.chassis_type ?? '');
+        if (laptopChassis.test(chassisType)) return 'LAPTOP';
+        const model = String(payload?.model ?? '');
+        if (laptopModel.test(model)) return 'LAPTOP';
+        const hostname = String(payload?.hostname ?? '');
+        if (/\b(nb|nbook|laptop|lt)\b/i.test(hostname)) return 'LAPTOP';
+        return 'CPU';
+    }, []);
+
+    const computerCategoryId = useMemo(
+        () => categoriesForSelect.find((c) => /equipo.*c[oó]mputo|cómputo|computo/i.test(c.name))?.id ?? '',
+        [categoriesForSelect]
+    );
+
+    const openCreateAssetModal = useCallback(
+        (row: UnmatchedReportRow) => {
+            const subcatName = detectSubcategoryName(row.payload);
+            const subcatId =
+                subcategoriesForSelect.find(
+                    (s) => s.asset_category_id === computerCategoryId && s.name.toUpperCase() === subcatName
+                )?.id ?? '';
+
+            const notesParts: string[] = [];
+            if (row.hostname) notesParts.push(`Hostname: ${row.hostname}`);
+            if (row.mac_address) notesParts.push(`MAC: ${row.mac_address}`);
+            const ip = String((row.payload as Record<string, unknown>)?.ip_address ?? '');
+            if (ip) notesParts.push(`IP: ${ip}`);
+
+            setAssetPrefill({
+                serial_number: row.bios_serial ?? '',
+                category_id: computerCategoryId,
+                subcategory_id: subcatId,
+                notes: notesParts.join(' | '),
+            });
+            setAssetModalOpen(true);
+        },
+        [detectSubcategoryName, subcategoriesForSelect, computerCategoryId]
+    );
 
     const { props } = usePage();
     const flash = (props as { flash?: { toast?: ToastMessage; created_agent_token?: string | null } }).flash;
@@ -620,12 +696,15 @@ export default function AuditIndex({
                                             <th className="px-2 py-1.5 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:px-3 sm:py-2 sm:text-xs">
                                                 Payload
                                             </th>
+                                            <th className="px-2 py-1.5 text-right text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:px-3 sm:py-2 sm:text-xs">
+                                                Acción
+                                            </th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {unmatchedReports.data.length === 0 ? (
                                             <tr>
-                                                <td colSpan={6} className="px-2 py-8 text-center text-muted-foreground sm:px-3">
+                                                <td colSpan={7} className="px-2 py-8 text-center text-muted-foreground sm:px-3">
                                                     No hay reportes sin vincular.
                                                 </td>
                                             </tr>
@@ -653,6 +732,17 @@ export default function AuditIndex({
                                                         title={row.payload_preview}
                                                     >
                                                         {row.payload_preview}
+                                                    </td>
+                                                    <td className="px-2 py-2 text-right sm:px-3">
+                                                        <Button
+                                                            type="button"
+                                                            size="sm"
+                                                            className="h-7 gap-1 bg-inv-primary px-2 text-[11px] text-white hover:bg-inv-primary/90"
+                                                            onClick={() => openCreateAssetModal(row)}
+                                                        >
+                                                            <Plus className="size-3" />
+                                                            Crear activo
+                                                        </Button>
                                                     </td>
                                                 </tr>
                                             ))
@@ -820,6 +910,20 @@ export default function AuditIndex({
                     )}
                 </div>
             </div>
+
+            <AssetFormModal
+                open={assetModalOpen}
+                onOpenChange={setAssetModalOpen}
+                asset={null}
+                prefill={assetPrefill}
+                categoriesForSelect={categoriesForSelect}
+                subcategoriesForSelect={subcategoriesForSelect}
+                modelsForSelect={modelsForSelect}
+                brandsForSelect={brandsForSelect}
+                zonalsForSelect={zonalsForSelect}
+                officesForSelect={officesForSelect}
+                warehousesForSelect={warehousesForSelect}
+            />
         </AppLayout>
     );
 }
