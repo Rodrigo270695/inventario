@@ -30,22 +30,29 @@ function purchaseOrderOfficeId(order: PurchaseOrder): string | null {
     return order.office_id ?? order.office?.id ?? null;
 }
 
-function canActOnPurchaseOrderScope(
+export function canActOnPurchaseOrderScope(
     order: PurchaseOrder,
     allowedOfficeIds: string[] | null | undefined,
     allowedZonalIds: string[] | null | undefined
 ): boolean {
     if (allowedOfficeIds === null || allowedOfficeIds === undefined) return true;
-    if (allowedOfficeIds.length === 0) return false;
 
     const oid = purchaseOrderOfficeId(order);
-    if (!oid) return false;
-    if (allowedOfficeIds.includes(oid)) return true;
+    if (oid && allowedOfficeIds.includes(oid)) return true;
 
     const zid = order.office?.zonal_id;
     if (!zid) return false;
     if (allowedZonalIds === null || allowedZonalIds === undefined) return true;
     return allowedZonalIds.includes(zid);
+}
+
+export function canMutatePurchaseOrder(
+    order: PurchaseOrder,
+    userId?: string | null,
+    isSuperadmin?: boolean
+): boolean {
+    if (isSuperadmin) return true;
+    return !!userId && order.requested_by === userId;
 }
 
 export const PurchaseOrderActionsCell: React.FC<Props> = ({
@@ -64,6 +71,8 @@ export const PurchaseOrderActionsCell: React.FC<Props> = ({
     const page = usePage();
     const allowedZonalIds = (page.props as { allowedZonalIds?: string[] | null }).allowedZonalIds;
     const allowedOfficeIds = (page.props as { allowedOfficeIds?: string[] | null }).allowedOfficeIds;
+    const auth = (page.props as { auth?: { user?: { id?: string } | null; is_superadmin?: boolean } }).auth;
+    const isOwner = canMutatePurchaseOrder(order, auth?.user?.id, auth?.is_superadmin);
 
     const zonalOk = canActOnPurchaseOrderScope(order, allowedOfficeIds, allowedZonalIds);
 
@@ -73,8 +82,8 @@ export const PurchaseOrderActionsCell: React.FC<Props> = ({
     const isObservedMajor = order.status === 'observed';
 
     const canEdit =
-        isPendingMinor || isObservedMinor || isPendingMajor || isObservedMajor;
-    const canDeleteRow = isPendingMinor;
+        isOwner && (isPendingMinor || isObservedMinor || isPendingMajor || isObservedMajor);
+    const canDeleteRow = isOwner && isPendingMinor;
     const busy = actioningId === order.id;
 
     const showMinorActions = isPendingMinor && zonalOk && (canMinorApprove || canMinorObserve);

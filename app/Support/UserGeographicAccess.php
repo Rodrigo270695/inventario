@@ -35,9 +35,13 @@ final class UserGeographicAccess
             ->values()
             ->all();
 
+        $zonalIdsFromPivot = $user->zonals()->pluck('zonals.id');
+
         $allowedZonalIds = Office::query()
             ->whereIn('id', $allowedOfficeIds)
             ->pluck('zonal_id')
+            ->merge($zonalIdsFromPivot)
+            ->merge($managedZonalIds)
             ->unique()
             ->values()
             ->all();

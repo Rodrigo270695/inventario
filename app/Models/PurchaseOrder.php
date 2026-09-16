@@ -111,14 +111,16 @@ class PurchaseOrder extends Model
         return $this->hasMany(PurchaseQuote::class, 'purchase_order_id');
     }
 
+    /**
+     * Quien tiene el zonal ve todas las OC de ese zonal (cualquier oficina).
+     * Se evita whereHas(office) porque Office aplica scope por oficina asignada
+     * y ocultaría órdenes de otras oficinas del mismo zonal.
+     */
     public function applyAllowedZonalsConstraint(Builder $builder, array $allowedZonalIds): void
     {
-        static::constrainByOfficesOrZonals(
-            $builder,
-            $allowedZonalIds,
-            fn (Builder $q) => $q->whereIn($this->getTable().'.office_id', static::allowedOfficeIdsFromRequest() ?? []),
-            fn (Builder $q) => $q->whereHas('office', fn ($oq) => $oq->whereIn('zonal_id', $allowedZonalIds)),
-        );
+        $builder->whereIn($this->getTable().'.office_id', function ($q) use ($allowedZonalIds) {
+            $q->select('id')->from('offices')->whereIn('zonal_id', $allowedZonalIds);
+        });
     }
 
     /**

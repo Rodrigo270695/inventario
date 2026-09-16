@@ -44,11 +44,9 @@ function canActOnPurchaseOrderScope(
     allowedZonalIds: string[] | null | undefined
 ): boolean {
     if (allowedOfficeIds === null || allowedOfficeIds === undefined) return true;
-    if (allowedOfficeIds.length === 0) return false;
 
     const oid = purchaseOrderOfficeId(order);
-    if (!oid) return false;
-    if (allowedOfficeIds.includes(oid)) return true;
+    if (oid && allowedOfficeIds.includes(oid)) return true;
 
     const zid = order.office?.zonal_id;
     if (!zid) return false;

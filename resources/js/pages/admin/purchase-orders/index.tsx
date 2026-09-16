@@ -35,6 +35,8 @@ import { AppModal } from '@/components/app-modal';
 import { PurchaseOrderStatusBadge } from '@/components/purchase-orders/status-badge';
 import {
     PurchaseOrderActionsCell,
+    canActOnPurchaseOrderScope,
+    canMutatePurchaseOrder,
     type PurchaseOrderActionKind,
 } from '@/components/purchase-orders/actions-cell';
 import type { BreadcrumbItem, PaginationMeta, PurchaseOrder } from '@/types';
@@ -280,29 +282,6 @@ function formatGerOperCell(row: PurchaseOrder): React.ReactNode {
     return <span>—</span>;
 }
 
-function purchaseOrderOfficeId(order: PurchaseOrder): string | null {
-    return order.office_id ?? order.office?.id ?? null;
-}
-
-function canActOnPurchaseOrderScope(
-    order: PurchaseOrder,
-    allowedOfficeIds: string[] | null | undefined,
-    allowedZonalIds: string[] | null | undefined
-): boolean {
-    if (allowedOfficeIds === null || allowedOfficeIds === undefined) return true;
-    if (allowedOfficeIds.length === 0) return false;
-
-    const oid = purchaseOrderOfficeId(order);
-    if (!oid) return false;
-    if (allowedOfficeIds.includes(oid)) return true;
-
-    // Compatibilidad: si el payload no trae office_id pero sí zonal, permitir fallback por zonal.
-    const zid = order.office?.zonal_id;
-    if (!zid) return false;
-    if (allowedZonalIds === null || allowedZonalIds === undefined) return true;
-    return allowedZonalIds.includes(zid);
-}
-
 function officeDisplayParts(row: PurchaseOrder): { office: string; zonal: string | null } {
     const office = (row as { office?: { name?: string; code?: string | null; zonal?: { name?: string; code?: string } | null } | null }).office;
     if (!office) return { office: '—', zonal: null };
@@ -340,8 +319,10 @@ export default function PurchaseOrdersIndex({
     const { props } = usePage();
     const allowedZonalIds = (props as { allowedZonalIds?: string[] | null }).allowedZonalIds;
     const allowedOfficeIds = (props as { allowedOfficeIds?: string[] | null }).allowedOfficeIds;
-    const auth = (props as { auth?: { permissions?: string[] } }).auth;
+    const auth = (props as { auth?: { permissions?: string[]; user?: { id?: string } | null; is_superadmin?: boolean } }).auth;
     const permissions = auth?.permissions ?? [];
+    const currentUserId = auth?.user?.id ?? null;
+    const isSuperadmin = auth?.is_superadmin ?? false;
     const canCreate = permissions.includes('purchase_orders.create');
     const canExport = permissions.includes('purchase_orders.export');
     const canUpdate = permissions.includes('purchase_orders.update');
@@ -884,7 +865,8 @@ export default function PurchaseOrdersIndex({
                                                     row.status === 'observed_minor' ||
                                                     row.status === 'pending' ||
                                                     row.status === 'observed') &&
-                                                    canUpdate && (
+                                                    canUpdate &&
+                                                    canMutatePurchaseOrder(row, currentUserId, isSuperadmin) && (
                                                     <Link
                                                         href={`/admin/purchase-orders/${row.id}/edit`}
                                                         className="inline-flex shrink-0 items-center justify-center rounded-md border border-blue-200 bg-white px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:bg-slate-900 dark:text-blue-400 dark:hover:bg-blue-950/30"
@@ -893,7 +875,9 @@ export default function PurchaseOrdersIndex({
                                                         <span>Editar</span>
                                                     </Link>
                                                 )}
-                                                {row.status === 'pending_minor' && canDelete && (
+                                                {row.status === 'pending_minor' &&
+                                                    canDelete &&
+                                                    canMutatePurchaseOrder(row, currentUserId, isSuperadmin) && (
                                                     <Button
                                                         type="button"
                                                         variant="outline"

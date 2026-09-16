@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin\PurchaseOrder;
 
+use App\Models\PurchaseOrder;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -9,9 +10,22 @@ class PurchaseOrderRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->isMethod('POST')
-            ? $this->user()?->can('purchase_orders.create')
-            : $this->user()?->can('purchase_orders.update');
+        if ($this->isMethod('POST')) {
+            return $this->user()?->can('purchase_orders.create') ?? false;
+        }
+
+        if (! $this->user()?->can('purchase_orders.update')) {
+            return false;
+        }
+
+        $order = $this->route('purchase_order');
+        if (! $order instanceof PurchaseOrder) {
+            return false;
+        }
+
+        $user = $this->user();
+
+        return $user->hasRole('superadmin', 'web') || $order->requested_by === $user->id;
     }
 
     /**

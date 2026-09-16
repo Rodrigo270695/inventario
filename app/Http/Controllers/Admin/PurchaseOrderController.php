@@ -15,7 +15,6 @@ use App\Models\Supplier;
 use App\Models\User;
 use App\Models\Zonal;
 use App\Services\PurchaseOrderFlowNotifier;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -84,8 +83,6 @@ class PurchaseOrderController extends Controller
             'observedByUser:id,name,last_name,usuario',
         ]);
 
-        $this->applyPurchaseOrderMinorStageVisibility($query, $user);
-
         if ($q !== '') {
             $term = '%'.mb_strtolower($q).'%';
             $query->where(function ($qb) use ($term) {
@@ -131,7 +128,6 @@ class PurchaseOrderController extends Controller
         $baseQuery = PurchaseOrder::query()
             ->where('created_at', '>=', $from)
             ->where('created_at', '<=', $to);
-        $this->applyPurchaseOrderMinorStageVisibility($baseQuery, $user);
         $totalCount = (clone $baseQuery)->count();
         $pendingCount = (clone $baseQuery)->whereIn('status', ['pending_minor', 'pending'])->count();
         $approvedCount = (clone $baseQuery)->where('status', 'approved')->count();
@@ -192,8 +188,6 @@ class PurchaseOrderController extends Controller
             'rejectedByUser:id,name,last_name,usuario',
             'observedByUser:id,name,last_name,usuario',
         ]);
-
-        $this->applyPurchaseOrderMinorStageVisibility($query, $request->user());
 
         if ($q !== '') {
             $term = '%'.mb_strtolower($q).'%';
@@ -260,7 +254,6 @@ class PurchaseOrderController extends Controller
         }
 
         $this->authorizePurchaseOrderZonalAccess($user, $purchaseOrder);
-        $this->authorizePurchaseOrderView($user, $purchaseOrder);
 
         $purchaseOrder->load([
             'supplier:id,name,ruc',
@@ -426,7 +419,7 @@ class PurchaseOrderController extends Controller
 
     public function edit(Request $request, PurchaseOrder $purchaseOrder): Response
     {
-        $this->authorizePurchaseOrderZonalAccess($request->user(), $purchaseOrder);
+        $this->authorizePurchaseOrderOwner($request->user(), $purchaseOrder);
         if (! in_array($purchaseOrder->status, ['pending_minor', 'observed_minor', 'pending', 'observed'], true)) {
             abort(403, 'Solo se pueden editar órdenes en estado pendiente (zonal o general) u observado.');
         }
@@ -461,7 +454,7 @@ class PurchaseOrderController extends Controller
 
     public function update(PurchaseOrderRequest $request, PurchaseOrder $purchaseOrder): RedirectResponse
     {
-        $this->authorizePurchaseOrderZonalAccess($request->user(), $purchaseOrder);
+        $this->authorizePurchaseOrderOwner($request->user(), $purchaseOrder);
         if (! in_array($purchaseOrder->status, ['pending_minor', 'observed_minor', 'pending', 'observed'], true)) {
             abort(403, 'Solo se pueden modificar órdenes en estado pendiente (zonal o general) u observado.');
         }
@@ -604,7 +597,7 @@ class PurchaseOrderController extends Controller
 
     public function destroy(PurchaseOrder $purchaseOrder): RedirectResponse
     {
-        $this->authorizePurchaseOrderZonalAccess(request()->user(), $purchaseOrder);
+        $this->authorizePurchaseOrderOwner(request()->user(), $purchaseOrder);
         if ($purchaseOrder->status !== 'pending_minor') {
             abort(403, 'Solo se pueden eliminar órdenes en espera de aprobación zonal (pendiente zonal).');
         }
@@ -793,8 +786,9 @@ class PurchaseOrderController extends Controller
     }
 
     /**
-     * Misma visibilidad que el listado (scope AllowedZonalsScope + FilterZonalsByUser),
-     * más el solicitante de la OC (puede ver su pedido aunque el zonal de la oficina no esté en su pivot).
+     * Visibilidad por zonal: el scope AllowedZonalsScope + FilterZonalsByUser
+     * deja ver las OC de oficinas cuyo zonal tiene asignado el usuario.
+     * El solicitante también puede ver su pedido aunque ya no tenga ese zonal.
      */
     private function authorizePurchaseOrderZonalAccess(?User $user, PurchaseOrder $purchaseOrder): void
     {
@@ -813,41 +807,19 @@ class PurchaseOrderController extends Controller
         abort(403, 'No tiene acceso a esta orden de compra.');
     }
 
-    private function applyPurchaseOrderMinorStageVisibility(Builder $query, ?User $user): void
+    /**
+     * Solo el creador (requested_by) puede editar, actualizar o eliminar. Superadmin sí puede.
+     */
+    private function authorizePurchaseOrderOwner(?User $user, PurchaseOrder $purchaseOrder): void
     {
-        if (! $user) {
-            return;
-        }
+        $this->authorizePurchaseOrderZonalAccess($user, $purchaseOrder);
         if ($user->hasRole('superadmin', 'web')) {
-            return;
-        }
-        if ($user->can('purchase_orders.minor_approve') || $user->can('purchase_orders.minor_observe')) {
-            return;
-        }
-        $query->where(function ($q) use ($user) {
-            $q->whereNotIn('status', ['pending_minor', 'observed_minor'])
-                ->orWhere('requested_by', $user->id);
-        });
-    }
-
-    private function authorizePurchaseOrderView(?User $user, PurchaseOrder $purchaseOrder): void
-    {
-        if (! $user) {
-            abort(403);
-        }
-        if (! in_array($purchaseOrder->status, ['pending_minor', 'observed_minor'], true)) {
             return;
         }
         if ($purchaseOrder->requested_by === $user->id) {
             return;
         }
-        if ($user->hasRole('superadmin', 'web')) {
-            return;
-        }
-        if ($user->can('purchase_orders.minor_approve') || $user->can('purchase_orders.minor_observe')) {
-            return;
-        }
-        abort(403, 'Esta orden aún está en aprobación zonal.');
+        abort(403, 'Solo quien creó la orden puede modificarla.');
     }
 
     /**
