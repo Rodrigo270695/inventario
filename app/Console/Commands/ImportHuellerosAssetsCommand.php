@@ -313,14 +313,65 @@ class ImportHuellerosAssetsCommand extends Command
 
     private function resolveCategory(string $excelName): ?AssetCategory
     {
-        $u = mb_strtoupper($excelName);
-
-        if (str_contains($u, 'COMPUTO') || str_contains($u, 'CÓMPUTO')) {
-            return AssetCategory::query()->where('code', 'AF-COMP')->where('is_active', true)->first();
+        $excelName = trim($excelName);
+        if ($excelName === '') {
+            return null;
         }
 
-        if (str_contains($u, 'DIVERSOS')) {
-            return AssetCategory::query()->where('code', 'AF-EQDIV')->where('is_active', true)->first();
+        $upper = mb_strtoupper($excelName);
+        $normalized = mb_strtoupper(Str::ascii($excelName));
+
+        $exact = AssetCategory::query()
+            ->where('is_active', true)
+            ->whereRaw('UPPER(TRIM(name)) = ?', [$upper])
+            ->first();
+
+        if ($exact) {
+            return $exact;
+        }
+
+        $isComputo = str_contains($normalized, 'COMPUTO') && ! str_contains($normalized, 'COMPLEMENTO');
+        $isDiversos = str_contains($normalized, 'DIVERSOS') && ! str_contains($normalized, 'COMPLEMENTO');
+
+        if ($isComputo) {
+            $byCode = AssetCategory::query()
+                ->where('is_active', true)
+                ->whereIn('code', ['AF-COMP', 'SM-COMP-CAT'])
+                ->orderByRaw("CASE WHEN code = 'AF-COMP' THEN 0 ELSE 1 END")
+                ->first();
+
+            if ($byCode) {
+                return $byCode;
+            }
+
+            return AssetCategory::query()
+                ->where('is_active', true)
+                ->where(function ($q) {
+                    $q->whereRaw('UPPER(name) like ?', ['%COMPUTO%'])
+                        ->orWhereRaw('UPPER(name) like ?', ['%CÓMPUTO%']);
+                })
+                ->whereRaw('UPPER(name) not like ?', ['%COMPLEMENTO%'])
+                ->orderByRaw("CASE WHEN UPPER(code) like 'AF-%' THEN 0 ELSE 1 END")
+                ->first();
+        }
+
+        if ($isDiversos) {
+            $byCode = AssetCategory::query()
+                ->where('is_active', true)
+                ->whereIn('code', ['AF-EQDIV', 'SM-EQDIV-CAT'])
+                ->orderByRaw("CASE WHEN code = 'AF-EQDIV' THEN 0 ELSE 1 END")
+                ->first();
+
+            if ($byCode) {
+                return $byCode;
+            }
+
+            return AssetCategory::query()
+                ->where('is_active', true)
+                ->whereRaw('UPPER(name) like ?', ['%DIVERSOS%'])
+                ->whereRaw('UPPER(name) not like ?', ['%COMPLEMENTO%'])
+                ->orderByRaw("CASE WHEN UPPER(code) like 'AF-%' THEN 0 ELSE 1 END")
+                ->first();
         }
 
         return null;
